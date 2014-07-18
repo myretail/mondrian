@@ -5,18 +5,21 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
 
+<<<<<<< HEAD
 import mondrian.olap.Exp;
 import mondrian.olap.MondrianException;
 import mondrian.olap.Util;
+=======
+>>>>>>> upstream/4.0
 import mondrian.rolap.*;
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.rolap.sql.*;
 import mondrian.spi.Dialect;
-import mondrian.util.Pair;
+import mondrian.util.*;
 
 import java.util.*;
 
@@ -49,8 +52,11 @@ public abstract class AbstractQuerySpec implements QuerySpec {
      *
      * @return a new query object
      */
-    protected SqlQuery newSqlQuery() {
-        return getStar().getSqlQuery();
+    protected SqlQueryBuilder createQueryBuilder(String desc) {
+        return new SqlQueryBuilder(
+            getStar().getSqlQueryDialect(),
+            desc,
+            new SqlTupleReader.ColumnLayoutBuilder());
     }
 
     public RolapStar getStar() {
@@ -60,99 +66,83 @@ public abstract class AbstractQuerySpec implements QuerySpec {
     /**
      * Adds a measure to a query.
      *
-     * @param i Ordinal of measure
-     * @param sqlQuery Query object
+     * @param measure Measure
+     * @param alias Measure alias
+     * @param queryBuilder Query builder
      */
-    protected void addMeasure(final int i, final SqlQuery sqlQuery) {
-        RolapStar.Measure measure = getMeasure(i);
+    protected void addMeasure(
+        RolapStar.Measure measure,
+        String alias,
+        final SqlQueryBuilder queryBuilder)
+    {
         if (!isPartOfSelect(measure)) {
             return;
         }
-        Util.assertTrue(measure.getTable() == getStar().getFactTable());
-        measure.getTable().addToFrom(sqlQuery, false, true);
+        assert measure.getTable() == getStar().getFactTable();
 
-        String exprInner =
-            measure.getExpression() == null
-                ? "*"
-                : measure.generateExprString(sqlQuery);
+        String exprInner;
+        if (measure.getExpression() == null) {
+            exprInner = "*";
+        } else {
+            exprInner = measure.getExpression().toSql();
+            queryBuilder.addColumn(
+                queryBuilder.column(
+                    measure.getExpression(), measure.getTable()),
+                Clause.FROM);
+        }
         String exprOuter = measure.getAggregator().getExpression(exprInner);
-        sqlQuery.addSelect(
+        queryBuilder.sqlQuery.addSelect(
             exprOuter,
             measure.getInternalType(),
-            getMeasureAlias(i));
+            alias);
     }
 
     protected abstract boolean isAggregate();
 
-    protected Map<String, String> nonDistinctGenerateSql(SqlQuery sqlQuery)
+    protected Map<String, String> nonDistinctGenerateSql(
+        SqlQueryBuilder queryBuilder)
     {
         // add constraining dimensions
-        RolapStar.Column[] columns = getColumns();
-        int arity = columns.length;
         if (countOnly) {
-            sqlQuery.addSelect("count(*)", SqlStatement.Type.INT);
+            queryBuilder.sqlQuery.addSelect("count(*)", SqlStatement.Type.INT);
+            queryBuilder.addRelation(
+                queryBuilder.table(
+                    star.getFactTable().getPath()),
+                SqlQueryBuilder.NullJoiner.INSTANCE);
         }
-        for (int i = 0; i < arity; i++) {
-            RolapStar.Column column = columns[i];
-            RolapStar.Table table = column.getTable();
-            if (table.isFunky()) {
-                // this is a funky dimension -- ignore for now
-                continue;
-            }
-            table.addToFrom(sqlQuery, false, true);
-
-            String expr = column.generateExprString(sqlQuery);
-
-            StarColumnPredicate predicate = getColumnPredicate(i);
-            final String where = RolapStar.Column.createInExpr(
-                expr,
-                predicate,
-                column.getDatatype(),
-                sqlQuery);
+        for (Ord<Pair<RolapStar.Column, String>> c : Ord.zip(getColumns())) {
+            final RolapStar.Column column = c.e.left;
+            final String alias = c.e.right;
+            StarColumnPredicate predicate = getColumnPredicate(c.i);
+            final Dialect dialect = queryBuilder.getDialect();
+            final String where = Predicates.toSql(predicate, dialect);
             if (!where.equals("true")) {
-                sqlQuery.addWhere(where);
+                queryBuilder.sqlQuery.addWhere(where);
             }
 
-            if (countOnly) {
-                continue;
-            }
+            final SqlQueryBuilder.Column queryColumn =
+                queryBuilder.column(
+                    column.getExpression(), column.getTable());
 
-            if (!isPartOfSelect(column)) {
-                continue;
-            }
-
-            // some DB2 (AS400) versions throw an error, if a column alias is
-            // there and *not* used in a subsequent order by/group by
-            final Dialect dialect = sqlQuery.getDialect();
-            final String alias;
-            final Dialect.DatabaseProduct databaseProduct =
-                dialect.getDatabaseProduct();
-            if (databaseProduct == Dialect.DatabaseProduct.DB2_AS400) {
-                alias =
-                    sqlQuery.addSelect(expr, column.getInternalType(), null);
+            if (countOnly || !isPartOfSelect(column)) {
+                queryBuilder.addColumn(queryColumn, Clause.FROM);
             } else {
-                alias =
-                    sqlQuery.addSelect(
-                        expr, column.getInternalType(), getColumnAlias(i));
-            }
-
-            if (isAggregate()) {
-                sqlQuery.addGroupBy(expr, alias);
-            }
-
-            // Add ORDER BY clause to make the results deterministic.
-            // Derby has a bug with ORDER BY, so ignore it.
-            if (isOrdered()) {
-                sqlQuery.addOrderBy(expr, true, false, false);
+                queryBuilder.addColumn(
+                    queryColumn,
+                    Clause.SELECT
+                        .maybeGroup(isAggregate())
+                        .maybeOrder(isOrdered()),
+                    SqlQueryBuilder.NullJoiner.INSTANCE,
+                    alias);
             }
         }
 
         // Add compound member predicates
-        extraPredicates(sqlQuery);
+        extraPredicates(queryBuilder);
 
         // add measures
-        for (int i = 0, count = getMeasureCount(); i < count; i++) {
-            addMeasure(i, sqlQuery);
+        for (Pair<RolapStar.Measure, String> measureAlias : getMeasures()) {
+            addMeasure(measureAlias.left, measureAlias.right, queryBuilder);
         }
 
         return Collections.emptyMap();
@@ -185,34 +175,34 @@ public abstract class AbstractQuerySpec implements QuerySpec {
         return false;
     }
 
-    public Pair<String, List<SqlStatement.Type>> generateSqlQuery() {
-        SqlQuery sqlQuery = newSqlQuery();
+    public Pair<String, List<SqlStatement.Type>> generateSqlQuery(String desc) {
+        SqlQueryBuilder queryBuilder = createQueryBuilder(desc);
 
         int k = getDistinctMeasureCount();
-        final Dialect dialect = sqlQuery.getDialect();
+        final Dialect dialect = queryBuilder.getDialect();
         final Map<String, String> groupingSetsAliases;
         if (!dialect.allowsCountDistinct() && k > 0
             || !dialect.allowsMultipleCountDistinct() && k > 1)
         {
             groupingSetsAliases =
-                distinctGenerateSql(sqlQuery, countOnly);
+                distinctGenerateSql(queryBuilder, countOnly);
         } else {
             groupingSetsAliases =
-                nonDistinctGenerateSql(sqlQuery);
+                nonDistinctGenerateSql(queryBuilder);
         }
         if (!countOnly) {
-            addGroupingFunction(sqlQuery);
-            addGroupingSets(sqlQuery, groupingSetsAliases);
+            addGroupingFunction(queryBuilder);
+            addGroupingSets(queryBuilder, groupingSetsAliases);
         }
-        return sqlQuery.toSqlAndTypes();
+        return queryBuilder.toSqlAndTypes();
     }
 
-    protected void addGroupingFunction(SqlQuery sqlQuery) {
+    protected void addGroupingFunction(SqlQueryBuilder queryBuilder) {
         throw new UnsupportedOperationException();
     }
 
     protected void addGroupingSets(
-        SqlQuery sqlQuery,
+        SqlQueryBuilder queryBuilder,
         Map<String, String> groupingSetsAliases)
     {
         throw new UnsupportedOperationException();
@@ -226,9 +216,8 @@ public abstract class AbstractQuerySpec implements QuerySpec {
      */
     protected int getDistinctMeasureCount() {
         int k = 0;
-        for (int i = 0, count = getMeasureCount(); i < count; i++) {
-            RolapStar.Measure measure = getMeasure(i);
-            if (measure.getAggregator().isDistinct()) {
+        for (Pair<RolapStar.Measure, String> pair : getMeasures()) {
+            if (pair.left.getAggregator().isDistinct()) {
                 ++k;
             }
         }
@@ -240,7 +229,7 @@ public abstract class AbstractQuerySpec implements QuerySpec {
      * an algorithm which converts distinct-aggregates to non-distinct
      * aggregates over subqueries.
      *
-     * @param outerSqlQuery Query to modify
+     * @param outerQueryBuilder Query to modify
      * @param countOnly If true, only generate a single row: no need to
      *   generate a GROUP BY clause or put any constraining columns in the
      *   SELECT clause
@@ -248,10 +237,10 @@ public abstract class AbstractQuerySpec implements QuerySpec {
      * were enabled.
      */
     protected Map<String, String> distinctGenerateSql(
-        final SqlQuery outerSqlQuery,
+        final SqlQueryBuilder outerQueryBuilder,
         boolean countOnly)
     {
-        final Dialect dialect = outerSqlQuery.getDialect();
+        final Dialect dialect = outerQueryBuilder.getDialect();
         final Dialect.DatabaseProduct databaseProduct =
             dialect.getDatabaseProduct();
         final Map<String, String> groupingSetsAliases =
@@ -275,43 +264,37 @@ public abstract class AbstractQuerySpec implements QuerySpec {
         //    where dim1.k = f.k1
         //    and dim2.k = f.k2) as dummyname
 
-        final SqlQuery innerSqlQuery = newSqlQuery();
-        if (databaseProduct == Dialect.DatabaseProduct.GREENPLUM) {
-            innerSqlQuery.setDistinct(false);
-        } else {
-            innerSqlQuery.setDistinct(true);
-        }
+        final SqlQueryBuilder innerQueryBuilder =
+            createQueryBuilder("distinct segment");
+        final boolean distinct =
+            databaseProduct != Dialect.DatabaseProduct.GREENPLUM;
+        innerQueryBuilder.sqlQuery.setDistinct(distinct);
+
         // add constraining dimensions
-        RolapStar.Column[] columns = getColumns();
-        int arity = columns.length;
-        for (int i = 0; i < arity; i++) {
-            RolapStar.Column column = columns[i];
-            RolapStar.Table table = column.getTable();
-            if (table.isFunky()) {
-                // this is a funky dimension -- ignore for now
-                continue;
-            }
-            table.addToFrom(innerSqlQuery, false, true);
-            String expr = column.generateExprString(innerSqlQuery);
-            StarColumnPredicate predicate = getColumnPredicate(i);
-            final String where = RolapStar.Column.createInExpr(
-                expr,
-                predicate,
-                column.getDatatype(),
-                innerSqlQuery);
+        for (Ord<Pair<RolapStar.Column, String>> c : Ord.zip(getColumns())) {
+            final RolapStar.Column column = c.e.left;
+            String expr = column.getExpression().toSql();
+            final SqlQueryBuilder.Column queryBuilderColumn =
+                innerQueryBuilder.column(
+                    column.getExpression(), column.getTable());
+
+            StarColumnPredicate predicate = getColumnPredicate(c.i);
+            final String where = Predicates.toSql(predicate, dialect);
             if (!where.equals("true")) {
-                innerSqlQuery.addWhere(where);
+                innerQueryBuilder.sqlQuery.addWhere(where);
             }
             if (countOnly) {
+                innerQueryBuilder.addColumn(queryBuilderColumn, Clause.FROM);
                 continue;
             }
-            String alias = "d" + i;
-            alias = innerSqlQuery.addSelect(expr, null, alias);
-            if (databaseProduct == Dialect.DatabaseProduct.GREENPLUM) {
-                innerSqlQuery.addGroupBy(expr, alias);
-            }
+            int x = innerQueryBuilder.addColumn(
+                queryBuilderColumn,
+                Clause.SELECT.maybeGroup(!distinct),
+                null,
+                "d" + c.i);
+            final String alias = innerQueryBuilder.sqlQuery.getAlias(x);
             final String quotedAlias = dialect.quoteIdentifier(alias);
-            outerSqlQuery.addSelectGroupBy(quotedAlias, null);
+            outerQueryBuilder.sqlQuery.addSelectGroupBy(quotedAlias, null);
             // Add this alias to the map of grouping sets aliases
             groupingSetsAliases.put(
                 expr,
@@ -320,9 +303,10 @@ public abstract class AbstractQuerySpec implements QuerySpec {
         }
 
         // add predicates not associated with columns
-        extraPredicates(innerSqlQuery);
+        extraPredicates(innerQueryBuilder);
 
         // add measures
+<<<<<<< HEAD
         for (int i = 0, count = getMeasureCount(); i < count; i++) {
             RolapStar.Measure measure = getMeasure(i);
 
@@ -342,30 +326,49 @@ public abstract class AbstractQuerySpec implements QuerySpec {
                 measure.getAggregator().getNonDistinctAggregator()
                     .getExpression(dialect.quoteIdentifier(alias)),
                 measure.getInternalType());
+=======
+        for (Pair<RolapStar.Measure, String> pair : getMeasures()) {
+            RolapStar.Measure measure = pair.left;
+
+            assert measure.getTable() == getStar().getFactTable();
+            final int x =
+                innerQueryBuilder.addColumn(
+                    innerQueryBuilder.column(
+                        measure.getExpression(), measure.getTable()),
+                    Clause.SELECT.maybeGroup(!distinct),
+                    null,
+                    pair.right);
+
+            String alias = innerQueryBuilder.sqlQuery.getAlias(x);
+            final String quotedAlias = dialect.quoteIdentifier(alias);
+            outerQueryBuilder.sqlQuery.addSelect(
+                measure.getAggregator().getNonDistinctAggregator()
+                    .getExpression(quotedAlias),
+                null);
+>>>>>>> upstream/4.0
         }
-        outerSqlQuery.addFrom(innerSqlQuery, "dummyname", true);
+        outerQueryBuilder.sqlQuery.addFrom(
+            innerQueryBuilder.sqlQuery, "dummyname", true);
         return groupingSetsAliases;
     }
 
     /**
      * Adds predicates not associated with columns.
      *
-     * @param sqlQuery Query
+     * @param queryBuilder Query
      */
-    protected void extraPredicates(SqlQuery sqlQuery) {
-        List<StarPredicate> predicateList = getPredicateList();
-        for (StarPredicate predicate : predicateList) {
-            for (RolapStar.Column column
-                : predicate.getConstrainedColumnList())
-            {
-                final RolapStar.Table table = column.getTable();
-                table.addToFrom(sqlQuery, false, true);
+    protected void extraPredicates(SqlQueryBuilder queryBuilder) {
+        for (StarPredicate predicate : getPredicateList()) {
+            for (PredicateColumn pair : predicate.getColumnList()) {
+                queryBuilder.addColumn(
+                    queryBuilder.column(pair.physColumn, pair.router),
+                    Clause.FROM);
             }
             StringBuilder buf = new StringBuilder();
-            predicate.toSql(sqlQuery, buf);
+            predicate.toSql(queryBuilder.getDialect(), buf);
             final String where = buf.toString();
             if (!where.equals("true")) {
-                sqlQuery.addWhere(where);
+                queryBuilder.sqlQuery.addWhere(where);
             }
         }
     }

@@ -167,7 +167,7 @@ public class PropertiesTest extends FoodMartTestCase {
 
     public void testGetChildCardinalityPropertyValue() {
         Cube salesCube = getConnection().getSchema().lookupCube("Sales", true);
-        SchemaReader scr = salesCube.getSchemaReader(null);
+        SchemaReader scr = salesCube.getSchemaReader(null).withLocus();
         Member memberForCardinalityTest =
             scr.getMemberByUniqueName(
                 Id.Segment.toList("Marital Status", "All Marital Status"),
@@ -225,7 +225,7 @@ public class PropertiesTest extends FoodMartTestCase {
      */
     public void testMemberProperties() {
         Result result = executeQuery(
-            "SELECT {[Store].Children} DIMENSION PROPERTIES\n"
+            "SELECT {[Stores].Children} DIMENSION PROPERTIES\n"
             + " CATALOG_NAME, PARENT_UNIQUE_NAME, [Store Type], FORMAT_EXP\n"
             + " ON COLUMNS\n"
             + "FROM [Sales]");
@@ -240,7 +240,7 @@ public class PropertiesTest extends FoodMartTestCase {
      */
     public void testMemberPropertiesBad() {
         Result result = executeQuery(
-            "SELECT {[Store].Children} DIMENSION PROPERTIES\n"
+            "SELECT {[Stores].Children} DIMENSION PROPERTIES\n"
             + " CATALOG_NAME, PARENT_UNIQUE_NAME, [Store Type], BAD\n"
             + " ON COLUMNS\n"
             + "FROM [Sales]");
@@ -304,7 +304,7 @@ public class PropertiesTest extends FoodMartTestCase {
     }
 
     public void testPropertyDescription() throws Exception {
-        TestContext context = getTestContext().create(
+        TestContext context = getTestContext().legacy().create(
             null,
             "<Cube name=\"Foo\" defaultMeasure=\"Unit Sales\">\n"
             + "  <Table name=\"sales_fact_1997\"/>\n"

@@ -4,15 +4,15 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2008-2010 Pentaho and others
+// Copyright (C) 2008-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
+import mondrian.calc.Calc;
 import mondrian.olap.*;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Implementation of {@link mondrian.rolap.RolapMember} that delegates all calls
@@ -21,27 +21,38 @@ import java.util.Map;
  * @author jhyde
  * @since Mar 16, 2010
  */
-public class DelegatingRolapMember extends RolapMemberBase {
+public class DelegatingRolapMember implements RolapMember {
     protected final RolapMember member;
 
     protected DelegatingRolapMember(RolapMember member) {
-        super();
         this.member = member;
     }
 
-    public RolapLevel getLevel() {
+    public RolapCubeLevel getLevel() {
         return member.getLevel();
     }
 
-    public Object getKey() {
+    public Comparable getKey() {
         return member.getKey();
+    }
+
+    public List<Comparable> getKeyAsList() {
+        return member.getKeyAsList();
+    }
+
+    public Object[] getKeyAsArray() {
+        return member.getKeyAsArray();
+    }
+
+    public Comparable getKeyCompact() {
+        return member.getKeyCompact();
     }
 
     public RolapMember getParentMember() {
         return member.getParentMember();
     }
 
-    public RolapHierarchy getHierarchy() {
+    public RolapCubeHierarchy getHierarchy() {
         return member.getHierarchy();
     }
 
@@ -101,20 +112,16 @@ public class DelegatingRolapMember extends RolapMemberBase {
         return member.isCalculatedInQuery();
     }
 
-    public Object getPropertyValue(String propertyName) {
-        return member.getPropertyValue(propertyName);
+    public Object getPropertyValue(Property property) {
+        return member.getPropertyValue(property);
     }
 
-    public Object getPropertyValue(String propertyName, boolean matchCase) {
-        return member.getPropertyValue(propertyName, matchCase);
+    public String getPropertyFormattedValue(Property property) {
+        return member.getPropertyFormattedValue(property);
     }
 
-    public String getPropertyFormattedValue(String propertyName) {
-        return member.getPropertyFormattedValue(propertyName);
-    }
-
-    public void setProperty(String name, Object value) {
-        member.setProperty(name, value);
+    public void setProperty(Property property, Object value) {
+        member.setProperty(property, value);
     }
 
     public Property[] getProperties() {
@@ -137,7 +144,7 @@ public class DelegatingRolapMember extends RolapMemberBase {
         return member.getDepth();
     }
 
-    public Member getDataMember() {
+    public RolapMember getDataMember() {
         return member.getDataMember();
     }
 
@@ -164,24 +171,68 @@ public class DelegatingRolapMember extends RolapMemberBase {
         return member.lookupChild(schemaReader, s, matchType);
     }
 
-    public Map<String, Annotation> getAnnotationMap() {
-        return member.getAnnotationMap();
+    public Larder getLarder() {
+        return member.getLarder();
     }
 
     public String getQualifiedName() {
         return member.getQualifiedName();
     }
 
+    public RolapCubeDimension getDimension() {
+        return member.getDimension();
+    }
+
+    public RolapCube getCube() {
+        return member.getCube();
+    }
+
+    public Object getPropertyValue(String propertyName) {
+        return member.getPropertyValue(propertyName);
+    }
+
+    public Object getPropertyValue(String propertyName, boolean matchCase) {
+        return member.getPropertyValue(propertyName, matchCase);
+    }
+
+    public String getPropertyFormattedValue(String propertyName) {
+        return member.getPropertyFormattedValue(propertyName);
+    }
+
+    public void setProperty(String propertyName, Object value) {
+        member.setProperty(propertyName, value);
+    }
+
+    public Map<String, Annotation> getAnnotationMap() {
+        return member.getAnnotationMap();
+    }
+
     public String getCaption() {
         return member.getCaption();
     }
 
-    public Dimension getDimension() {
-        return member.getDimension();
+    public String getLocalized(LocalizedProperty prop, Locale locale) {
+        return member.getLocalized(prop, locale);
     }
 
-    public boolean isAllMember() {
-        return member.isAllMember();
+    public boolean isVisible() {
+        return member.isVisible();
+    }
+
+    public void setContextIn(RolapEvaluator evaluator) {
+        member.setContextIn(evaluator);
+    }
+
+    public int getHierarchyOrdinal() {
+        return member.getHierarchyOrdinal();
+    }
+
+    public Calc getCompiledExpression(RolapEvaluatorRoot root) {
+        return member.getCompiledExpression(root);
+    }
+
+    public boolean containsAggregateFunction() {
+        return member.containsAggregateFunction();
     }
 }
 

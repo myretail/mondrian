@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2014 Pentaho and others
 // All Rights Reserved.
 //
 // jhyde, 22 December, 2001
@@ -14,11 +14,11 @@ package mondrian.rolap;
 
 import mondrian.calc.ExpCompiler;
 import mondrian.olap.*;
-import mondrian.olap.Member;
 import mondrian.olap.fun.FunUtil;
 import mondrian.resource.MondrianResource;
 import mondrian.server.*;
 import mondrian.spi.Dialect;
+import mondrian.util.ClassResolver;
 
 import org.apache.log4j.Logger;
 
@@ -30,6 +30,8 @@ import java.sql.SQLException;
 import java.util.*;
 
 import javax.sql.DataSource;
+
+import static mondrian.olap.fun.FunUtil.*;
 
 /**
  * Utility methods for classes in the <code>mondrian.rolap</code> package.
@@ -50,19 +52,22 @@ public class RolapUtil {
     /**
      * Special cell value indicates that the value is not in cache yet.
      */
-    public static final Object valueNotReadyException = new Double(0);
+    public static final Object valueNotReadyException = 0d;
 
-    /*
+    /**
      * Hook to run when a query is executed. This should not be
      * used at runtime but only for testing.
      */
     private static ExecuteQueryHook queryHook = null;
 
     /**
-     * Special value represents a null key.
+     * Special value that represents a null key.
      */
     public static final Comparable<?> sqlNullValue =
         RolapUtilComparable.INSTANCE;
+
+    /** Name of member that has null key. */
+    public static final String NULL_NAME = "#null";
 
     /**
      * Wraps a schema reader in a proxy so that each call to schema reader
@@ -124,6 +129,8 @@ public class RolapUtil {
     /**
      * Comparable value, equal only to itself. Used to represent the NULL value,
      * as returned from a SQL query.
+     *
+     * @see #mdxNullLiteral()
      */
     private static final class RolapUtilComparable
         implements Comparable, Serializable
@@ -140,7 +147,7 @@ public class RolapUtil {
         // do not override equals and hashCode -- use identity
 
         public String toString() {
-            return "#null";
+            return NULL_NAME;
         }
 
         public int compareTo(Object o) {
@@ -176,7 +183,8 @@ public class RolapUtil {
      * consideration
      */
     private static String mdxNullLiteral = null;
-    public static final String sqlNullLiteral = "null";
+
+    public static final String SQL_FALSE_LITERAL = "FALSE";
 
     public static String mdxNullLiteral() {
         if (mdxNullLiteral == null) {
@@ -323,7 +331,11 @@ public class RolapUtil {
         Locus locus,
         int resultSetType,
         int resultSetConcurrency,
+<<<<<<< HEAD
         Util.Functor1<Void, java.sql.Statement> callback)
+=======
+        Util.Function1<java.sql.Statement, Void> callback)
+>>>>>>> upstream/4.0
     {
         SqlStatement stmt =
             new SqlStatement(
@@ -385,7 +397,7 @@ public class RolapUtil {
             String jdbcDriver = tok.nextToken();
             if (loadedDrivers.add(jdbcDriver)) {
                 try {
-                    Class.forName(jdbcDriver);
+                    ClassResolver.INSTANCE.forName(jdbcDriver, true);
                     LOGGER.info(
                         "Mondrian: JDBC driver "
                         + jdbcDriver + " loaded successfully");
@@ -414,25 +426,23 @@ public class RolapUtil {
      * members.  If an exact match isn't found, but a matchType of BEFORE
      * or AFTER is specified, then the closest matching member is returned.
      *
+     *
      * @param members array of members to search from
      * @param parent parent member corresponding to the member being searched
      * for
      * @param level level of the member
      * @param searchName member name
      * @param matchType match type
-     * @param caseInsensitive if true, use case insensitive search (if
-     * applicable) when when doing exact searches
      *
      * @return matching member (if it exists) or the closest matching one
      * in the case of a BEFORE or AFTER search
      */
-    public static Member findBestMemberMatch(
-        List<? extends Member> members,
+    public static RolapMember findBestMemberMatch(
+        List<RolapMember> members,
         RolapMember parent,
-        RolapLevel level,
+        RolapCubeLevel level,
         Id.Segment searchName,
-        MatchType matchType,
-        boolean caseInsensitive)
+        MatchType matchType)
     {
         if (!(searchName instanceof Id.NameSegment)) {
             return null;
@@ -449,30 +459,27 @@ public class RolapUtil {
         // create a member corresponding to the member we're trying
         // to locate so we can use it to hierarchically compare against
         // the members array
-        Member searchMember =
-            level.getHierarchy().createMember(
-                parent, level, nameSegment.name, null);
-        Member bestMatch = null;
-        for (Member member : members) {
+        RolapMember searchMember = null;
+        RolapMember bestMatch = null;
+        for (RolapMember member : members) {
             int rc;
-            if (searchName.quoting == Id.Quoting.KEY
+            if (nameSegment.quoting == Id.Quoting.KEY
                 && member instanceof RolapMember)
             {
-                if (((RolapMember) member).getKey().toString().equals(
-                        nameSegment.name))
-                {
+                if (member.getKey().toString().equals(nameSegment.name)) {
                     return member;
                 }
             }
             if (matchType.isExact()) {
-                if (caseInsensitive) {
-                    rc = Util.compareName(member.getName(), nameSegment.name);
-                } else {
-                    rc = member.getName().compareTo(nameSegment.name);
-                }
+                rc = Util.compareName(member.getName(), nameSegment.name);
             } else {
+                if (searchMember == null) {
+                    searchMember =
+                        level.getHierarchy().createMember(
+                            parent, level, nameSegment.name, null);
+                }
                 rc =
-                    FunUtil.compareSiblingMembers(
+                    compareSiblingMembersByName(
                         member,
                         searchMember);
             }
@@ -482,7 +489,7 @@ public class RolapUtil {
             if (matchType == MatchType.BEFORE) {
                 if (rc < 0
                     && (bestMatch == null
-                        || FunUtil.compareSiblingMembers(member, bestMatch)
+                        || compareSiblingMembersByName(member, bestMatch)
                         > 0))
                 {
                     bestMatch = member;
@@ -490,7 +497,7 @@ public class RolapUtil {
             } else if (matchType == MatchType.AFTER) {
                 if (rc > 0
                     && (bestMatch == null
-                        || FunUtil.compareSiblingMembers(member, bestMatch)
+                        || compareSiblingMembersByName(member, bestMatch)
                         < 0))
                 {
                     bestMatch = member;
@@ -503,38 +510,26 @@ public class RolapUtil {
         return bestMatch;
     }
 
-    public static MondrianDef.Relation convertInlineTableToRelation(
-        MondrianDef.InlineTable inlineTable,
+    public static ExpCompiler createProfilingCompiler(ExpCompiler compiler) {
+        return new RolapProfilingEvaluator.ProfilingEvaluatorCompiler(
+            compiler);
+    }
+
+    public static RolapSchema.PhysView convertInlineTableToRelation(
+        RolapSchema.PhysInlineTable inlineTable,
         final Dialect dialect)
     {
-        MondrianDef.View view = new MondrianDef.View();
-        view.alias = inlineTable.alias;
-
-        final int columnCount = inlineTable.columnDefs.array.length;
         List<String> columnNames = new ArrayList<String>();
         List<String> columnTypes = new ArrayList<String>();
-        for (int i = 0; i < columnCount; i++) {
-            columnNames.add(inlineTable.columnDefs.array[i].name);
-            columnTypes.add(inlineTable.columnDefs.array[i].type);
+        for (RolapSchema.PhysColumn col : inlineTable.columnsByName.values()) {
+            columnNames.add(col.name);
+            columnTypes.add(col.datatype.name());
         }
-        List<String[]> valueList = new ArrayList<String[]>();
-        for (MondrianDef.Row row : inlineTable.rows.array) {
-            String[] values = new String[columnCount];
-            for (MondrianDef.Value value : row.values) {
-                final int columnOrdinal = columnNames.indexOf(value.column);
-                if (columnOrdinal < 0) {
-                    throw Util.newError(
-                        "Unknown column '" + value.column + "'");
-                }
-                values[columnOrdinal] = value.cdata;
-            }
-            valueList.add(values);
-        }
-        view.addCode(
-            "generic",
+        final String sql =
             dialect.generateInline(
                 columnNames,
                 columnTypes,
+<<<<<<< HEAD
                 valueList));
         return view;
     }
@@ -612,6 +607,13 @@ public class RolapUtil {
 
         public void close() throws IOException {
         }
+=======
+                inlineTable.rowList);
+        return new RolapSchema.PhysView(
+            inlineTable.physSchema,
+            inlineTable.alias,
+            sql);
+>>>>>>> upstream/4.0
     }
 
     /**
@@ -625,7 +627,11 @@ public class RolapUtil {
         return result.getRootEvaluator();
     }
 
+<<<<<<< HEAD
     static interface ExecuteQueryHook {
+=======
+    public static interface ExecuteQueryHook {
+>>>>>>> upstream/4.0
         void onExecuteQuery(String sql);
     }
 

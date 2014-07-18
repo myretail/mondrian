@@ -10,7 +10,7 @@
   == You must accept the terms of that agreement to use this software.
   ==
   == Copyright (C) 2000-2005 Julian Hyde
-  == Copyright (C) 2005-2012 Pentaho and others
+  == Copyright (C) 2005-2013 Pentaho and others
   == All Rights Reserved.
   ==
   == This file contains the text for all messages used by the mondrian
@@ -283,6 +283,17 @@
 <exception id="350650" name="DrillthroughDisabled">
     <text>Can''t perform drillthrough operations because ''{0}'' is set to false.</text>
 </exception>
+<<<<<<< HEAD
+=======
+
+<exception id="350660" name="DrillthroughUnknownMemberInReturnClause">
+    <text>Can''t perform drillthrough operation on unknown member ''{0}'' in RETURN clause.</text>
+</exception>
+
+<exception id="350670" name="DrillthroughInvalidMemberInReturnClause">
+    <text>The RETURN clause can only contain dimensions, hierarchies, levels and measures. The expression ''{0}'' is of type ''{1}''.</text>
+</exception>
+>>>>>>> upstream/4.0
 
 <exception id="350660" name="DrillthroughCalculatedMember">
     <text>Can''t perform drillthrough operations because ''{0}'' is a calculated member.</text>
@@ -318,7 +329,7 @@
 </exception>
 
 <exception id="400070" name="LevelMustHaveNameExpression">
-    <text>Level ''{0}'' must have a name expression (a ''column'' attribute or an &lt;Expression&gt; child</text>
+    <text>Level ''{0}'' must have a name expression (a ''column'' attribute or an &lt;Expression&gt; child)</text>
 </exception>
 
 <!-- The 'foreignKey' attribute of is only applicable to private dimensions
@@ -404,7 +415,7 @@
 </exception>
 
 <exception id="40230" name="UnknownNamedSetHasBadFormula">
-    <text>Named set in cube ''{0}'' has bad formula</text>
+    <text>Calculated member or named set in cube ''{0}'' has bad formula</text>
 </exception>
 
 <exception id="40240" name="NamedSetHasBadFormula">
@@ -417,6 +428,10 @@
 
 <exception id="40260" name="BadMeasureSource">
     <text>Cube ''{0}'': Measure ''{1}'' must contain either a source column or a source expression, but not both</text>
+</exception>
+
+<exception id="40265" name="MeasureWithColumnMustHaveTable">
+    <text>Cube ''{0}'': Measure ''{1}'' with source column must also have source table</text>
 </exception>
 
 <exception id="40270" name="DuplicateSchemaParameter">
@@ -439,7 +454,11 @@
     <text>Argument to Descendants function must be a member or set of members, not a set of tuples</text>
 </exception>
 
-<exception id="40330" name="CannotDeduceTypeOfSet">
+<exception id="40330" name="FirstLevelMustHaveUniqueMembers">
+    <text>First level of a hierarchy must have unique members</text>
+</exception>
+
+<exception id="40340" name="CannotDeduceTypeOfSet">
     <text>Cannot deduce type of set</text>
 </exception>
 
@@ -462,6 +481,12 @@
 <message id="40380" name="LevelTableParentNotFound">
     <text>The level {0} makes use of the ''parentColumn'' attribute, but a parent member for key {1} is missing. This can be due to the usage of the NativizeSet MDX function with a list of members form a parent-child hierarchy that doesn''t include all parent members in its definition. Using NativizeSet with a parent-child hierarchy requires the parent members to be included in the set, or the hierarchy cannot be properly built natively.</text>
 </message>
+
+<exception id="40390" name="DimensionKeyOmitted">
+  <text>
+    Dimension ''{0}'' omits a defined key, which is only valid for degenerate dimensions with a single attribute.
+  </text>
+</exception>
 
 <!-- ====================================================================== -->
 <!-- Loader -->
@@ -880,7 +905,11 @@
 
 <exception id="8500100" name="QueryLimitReached">
     <text>
+<<<<<<< HEAD
         The number of concurrent MDX statements that can be processed simultaneously by this Mondrian server instance ({0,number}) has been reached. To change the limit, set the ''{1}'' property.
+=======
+        The number of concurrent MDX statements which can be processed simultaneously by this Mondrian server instance has been reached. Set ''mondrian.rolap.maxQueryThreads'' to change the current limit.
+>>>>>>> upstream/4.0
     </text>
 </exception>
 

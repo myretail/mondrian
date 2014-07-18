@@ -80,26 +80,26 @@ public class ExplicitRules {
          */
         public static ExplicitRules.Group make(
             final RolapCube cube,
-            final MondrianDef.Cube xmlCube)
+            final Mondrian3Def.Cube xmlCube)
         {
             Group group = new Group(cube);
 
-            MondrianDef.Relation relation = xmlCube.fact;
+            Mondrian3Def.Relation relation = xmlCube.fact;
 
-            if (relation instanceof MondrianDef.Table) {
-                MondrianDef.AggExclude[] aggExcludes =
-                    ((MondrianDef.Table) relation).getAggExcludes();
+            if (relation instanceof Mondrian3Def.Table) {
+                Mondrian3Def.AggExclude[] aggExcludes =
+                    ((Mondrian3Def.Table) relation).getAggExcludes();
                 if (aggExcludes != null) {
-                    for (MondrianDef.AggExclude aggExclude : aggExcludes) {
+                    for (Mondrian3Def.AggExclude aggExclude : aggExcludes) {
                         Exclude exclude =
                             ExplicitRules.make(aggExclude);
                         group.addExclude(exclude);
                     }
                 }
-                MondrianDef.AggTable[] aggTables =
-                    ((MondrianDef.Table) relation).getAggTables();
+                Mondrian3Def.AggTable[] aggTables =
+                    ((Mondrian3Def.Table) relation).getAggTables();
                 if (aggTables != null) {
-                    for (MondrianDef.AggTable aggTable : aggTables) {
+                    for (Mondrian3Def.AggTable aggTable : aggTables) {
                         TableDef tableDef = TableDef.make(aggTable, group);
                         group.addTableDef(tableDef);
                     }
@@ -222,7 +222,7 @@ public class ExplicitRules {
          */
         public String getTableName() {
             RolapStar.Table table = getStar().getFactTable();
-            MondrianDef.Relation relation = table.getRelation();
+            RolapSchema.PhysRelation relation = table.getRelation();
             return relation.getAlias();
         }
 
@@ -234,11 +234,12 @@ public class ExplicitRules {
             String schema = null;
 
             RolapStar.Table table = getStar().getFactTable();
-            MondrianDef.Relation relation = table.getRelation();
+            RolapSchema.PhysRelation relation = table.getRelation();
 
-            if (relation instanceof MondrianDef.Table) {
-                MondrianDef.Table mtable = (MondrianDef.Table) relation;
-                schema = mtable.schema;
+            if (relation instanceof RolapSchema.PhysTable) {
+                RolapSchema.PhysTable mtable =
+                    (RolapSchema.PhysTable) relation;
+                schema = mtable.getSchemaName();
             }
             return schema;
         }
@@ -293,7 +294,7 @@ public class ExplicitRules {
         }
     }
 
-    private static Exclude make(final MondrianDef.AggExclude aggExclude) {
+    private static Exclude make(final Mondrian3Def.AggExclude aggExclude) {
         return (aggExclude.getNameAttribute() != null)
             ? new ExcludeName(
                 aggExclude.getNameAttribute(),
@@ -482,15 +483,15 @@ public class ExplicitRules {
          * which is either a NameTableDef or PatternTableDef.
          */
         static ExplicitRules.TableDef make(
-            final MondrianDef.AggTable aggTable,
+            final Mondrian3Def.AggTable aggTable,
             final ExplicitRules.Group group)
         {
-            return (aggTable instanceof MondrianDef.AggName)
+            return (aggTable instanceof Mondrian3Def.AggName)
                 ? ExplicitRules.NameTableDef.make(
-                    (MondrianDef.AggName) aggTable, group)
+                    (Mondrian3Def.AggName) aggTable, group)
                 : (ExplicitRules.TableDef)
                 ExplicitRules.PatternTableDef.make(
-                    (MondrianDef.AggPattern) aggTable, group);
+                    (Mondrian3Def.AggPattern) aggTable, group);
         }
 
         /**
@@ -501,38 +502,38 @@ public class ExplicitRules {
          */
         private static void add(
             final ExplicitRules.TableDef tableDef,
-            final MondrianDef.AggTable aggTable)
+            final Mondrian3Def.AggTable aggTable)
         {
             if (aggTable.getAggFactCount() != null) {
                 tableDef.setFactCountName(
                     aggTable.getAggFactCount().getColumnName());
             }
 
-            MondrianDef.AggIgnoreColumn[] ignores =
+            Mondrian3Def.AggIgnoreColumn[] ignores =
                 aggTable.getAggIgnoreColumns();
 
             if (ignores != null) {
-                for (MondrianDef.AggIgnoreColumn ignore : ignores) {
+                for (Mondrian3Def.AggIgnoreColumn ignore : ignores) {
                     tableDef.addIgnoreColumnName(ignore.getColumnName());
                 }
             }
 
-            MondrianDef.AggForeignKey[] fks = aggTable.getAggForeignKeys();
+            Mondrian3Def.AggForeignKey[] fks = aggTable.getAggForeignKeys();
             if (fks != null) {
-                for (MondrianDef.AggForeignKey fk : fks) {
+                for (Mondrian3Def.AggForeignKey fk : fks) {
                     tableDef.addFK(fk);
                 }
             }
-            MondrianDef.AggMeasure[] measures = aggTable.getAggMeasures();
+            Mondrian3Def.AggMeasure[] measures = aggTable.getAggMeasures();
             if (measures != null) {
-                for (MondrianDef.AggMeasure measure : measures) {
+                for (Mondrian3Def.AggMeasure measure : measures) {
                     addTo(tableDef, measure);
                 }
             }
 
-            MondrianDef.AggLevel[] levels = aggTable.getAggLevels();
+            Mondrian3Def.AggLevel[] levels = aggTable.getAggLevels();
             if (levels != null) {
-                for (MondrianDef.AggLevel level : levels) {
+                for (Mondrian3Def.AggLevel level : levels) {
                     addTo(tableDef, level);
                 }
             }
@@ -540,7 +541,7 @@ public class ExplicitRules {
 
         private static void addTo(
             final ExplicitRules.TableDef tableDef,
-            final MondrianDef.AggLevel aggLevel)
+            final Mondrian3Def.AggLevel aggLevel)
         {
             addLevelTo(
                 tableDef,
@@ -551,7 +552,7 @@ public class ExplicitRules {
 
         private static void addTo(
             final ExplicitRules.TableDef tableDef,
-            final MondrianDef.AggMeasure aggMeasure)
+            final Mondrian3Def.AggMeasure aggMeasure)
         {
             addMeasureTo(
                 tableDef,
@@ -1023,7 +1024,7 @@ public class ExplicitRules {
          * Add foreign key mapping entry (maps from fact table foreign key
          * column name to aggregate table foreign key column name).
          */
-        protected void addFK(final MondrianDef.AggForeignKey fk) {
+        protected void addFK(final Mondrian3Def.AggForeignKey fk) {
             if (this.foreignKeyMap == Collections.EMPTY_MAP) {
                 this.foreignKeyMap = new HashMap<String, String>();
             }
@@ -1180,8 +1181,8 @@ public class ExplicitRules {
                         columnsToObjects.put(aggFKName, baseFKName);
                     }
 
-                    MondrianDef.Column c =
-                        new MondrianDef.Column(tableName, baseFKName);
+                    RolapSchema.PhysColumn c =
+                        factTable.getRelation().getColumn(baseFKName, false);
                     if (factTable.findTableWithLeftCondition(c) == null) {
                         msgRecorder.reportError(
                             mres.UnknownLeftJoinCondition.str(
@@ -1238,7 +1239,7 @@ public class ExplicitRules {
          * Makes a NameTableDef from the catalog schema.
          */
         static ExplicitRules.NameTableDef make(
-            final MondrianDef.AggName aggName,
+            final Mondrian3Def.AggName aggName,
             final ExplicitRules.Group group)
         {
             ExplicitRules.NameTableDef name =
@@ -1324,7 +1325,7 @@ public class ExplicitRules {
          * Make a PatternTableDef from the catalog schema.
          */
         static ExplicitRules.PatternTableDef make(
-            final MondrianDef.AggPattern aggPattern,
+            final Mondrian3Def.AggPattern aggPattern,
             final ExplicitRules.Group group)
         {
             ExplicitRules.PatternTableDef pattern =
@@ -1333,9 +1334,9 @@ public class ExplicitRules {
                     aggPattern.isIgnoreCase(),
                     group);
 
-            MondrianDef.AggExclude[] excludes = aggPattern.getAggExcludes();
+            Mondrian3Def.AggExclude[] excludes = aggPattern.getAggExcludes();
             if (excludes != null) {
-                for (MondrianDef.AggExclude exclude1 : excludes) {
+                for (Mondrian3Def.AggExclude exclude1 : excludes) {
                     Exclude exclude = ExplicitRules.make(exclude1);
                     pattern.add(exclude);
                 }

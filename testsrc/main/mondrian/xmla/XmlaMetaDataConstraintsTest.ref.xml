@@ -362,6 +362,7 @@
                     <row>
                         <CATALOG_NAME>${catalog.name}</CATALOG_NAME>
                         <SCHEMA_NAME>${catalog.name}schema</SCHEMA_NAME>
+<<<<<<< HEAD
                         <CUBE_NAME>Sales Ragged</CUBE_NAME>
                         <CUBE_TYPE>CUBE</CUBE_TYPE>
                         <LAST_SCHEMA_UPDATE>xxxx-xx-xxTxx:xx:xx</LAST_SCHEMA_UPDATE>
@@ -375,6 +376,8 @@
                     <row>
                         <CATALOG_NAME>${catalog.name}</CATALOG_NAME>
                         <SCHEMA_NAME>${catalog.name}schema</SCHEMA_NAME>
+=======
+>>>>>>> upstream/4.0
                         <CUBE_NAME>Store</CUBE_NAME>
                         <CUBE_TYPE>CUBE</CUBE_TYPE>
                         <LAST_SCHEMA_UPDATE>xxxx-xx-xxTxx:xx:xx</LAST_SCHEMA_UPDATE>
@@ -402,7 +405,11 @@
                         <CATALOG_NAME>${catalog.name}</CATALOG_NAME>
                         <SCHEMA_NAME>${catalog.name}schema</SCHEMA_NAME>
                         <CUBE_NAME>Warehouse and Sales</CUBE_NAME>
+<<<<<<< HEAD
                         <CUBE_TYPE>VIRTUAL CUBE</CUBE_TYPE>
+=======
+                        <CUBE_TYPE>CUBE</CUBE_TYPE>
+>>>>>>> upstream/4.0
                         <LAST_SCHEMA_UPDATE>xxxx-xx-xxTxx:xx:xx</LAST_SCHEMA_UPDATE>
                         <IS_DRILLTHROUGH_ENABLED>true</IS_DRILLTHROUGH_ENABLED>
                         <IS_WRITE_ENABLED>false</IS_WRITE_ENABLED>
@@ -532,6 +539,7 @@
                     <row>
                         <CATALOG_NAME>${catalog.name}</CATALOG_NAME>
                         <SCHEMA_NAME>${catalog.name}schema</SCHEMA_NAME>
+<<<<<<< HEAD
                         <CUBE_NAME>Sales Ragged</CUBE_NAME>
                         <CUBE_TYPE>CUBE</CUBE_TYPE>
                         <LAST_SCHEMA_UPDATE>xxxx-xx-xxTxx:xx:xx</LAST_SCHEMA_UPDATE>
@@ -545,6 +553,8 @@
                     <row>
                         <CATALOG_NAME>${catalog.name}</CATALOG_NAME>
                         <SCHEMA_NAME>${catalog.name}schema</SCHEMA_NAME>
+=======
+>>>>>>> upstream/4.0
                         <CUBE_NAME>Store</CUBE_NAME>
                         <CUBE_TYPE>CUBE</CUBE_TYPE>
                         <LAST_SCHEMA_UPDATE>xxxx-xx-xxTxx:xx:xx</LAST_SCHEMA_UPDATE>
@@ -572,7 +582,11 @@
                         <CATALOG_NAME>${catalog.name}</CATALOG_NAME>
                         <SCHEMA_NAME>${catalog.name}schema</SCHEMA_NAME>
                         <CUBE_NAME>Warehouse and Sales</CUBE_NAME>
+<<<<<<< HEAD
                         <CUBE_TYPE>VIRTUAL CUBE</CUBE_TYPE>
+=======
+                        <CUBE_TYPE>CUBE</CUBE_TYPE>
+>>>>>>> upstream/4.0
                         <LAST_SCHEMA_UPDATE>xxxx-xx-xxTxx:xx:xx</LAST_SCHEMA_UPDATE>
                         <IS_DRILLTHROUGH_ENABLED>true</IS_DRILLTHROUGH_ENABLED>
                         <IS_WRITE_ENABLED>false</IS_WRITE_ENABLED>

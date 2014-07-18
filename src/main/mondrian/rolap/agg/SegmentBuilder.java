@@ -4,7 +4,12 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (c) 2002-2013 Pentaho Corporation..  All rights reserved.
+=======
+// Copyright (C) 2011-2014 Pentaho and others
+// All Rights Reserved.
+>>>>>>> upstream/4.0
 */
 package mondrian.rolap.agg;
 
@@ -12,15 +17,21 @@ import mondrian.olap.Aggregator;
 import mondrian.olap.Util;
 import mondrian.rolap.*;
 import mondrian.rolap.agg.Segment.ExcludedRegion;
-import mondrian.rolap.sql.SqlQuery;
 import mondrian.spi.*;
 import mondrian.spi.Dialect.Datatype;
 import mondrian.util.ArraySortedSet;
 import mondrian.util.Pair;
 
+<<<<<<< HEAD
 import org.olap4j.impl.UnmodifiableArrayList;
 
 import java.lang.ref.WeakReference;
+=======
+import org.apache.log4j.Logger;
+
+import org.olap4j.impl.UnmodifiableArrayList;
+
+>>>>>>> upstream/4.0
 import java.math.BigInteger;
 import java.util.*;
 import java.util.Map.Entry;
@@ -33,6 +44,8 @@ import java.util.Map.Entry;
  * @author LBoudreau
  */
 public class SegmentBuilder {
+    private static final Logger LOGGER =
+        Logger.getLogger(SegmentBuilder.class);
     /**
      * Converts a segment plus a {@link SegmentBody} into a
      * {@link mondrian.rolap.agg.SegmentWithData}.
@@ -125,26 +138,34 @@ public class SegmentBuilder {
             StarColumnPredicate predicate;
             if (values == null) {
                 predicate =
-                    new LiteralStarPredicate(
-                        constrainedColumn,
+                    new LiteralColumnPredicate(
+                        new PredicateColumn(
+                            RolapSchema.BadRouter.INSTANCE,
+                            constrainedColumn.getExpression()),
                         true);
             } else if (values.size() == 1) {
                 predicate =
                     new ValueColumnPredicate(
-                        constrainedColumn,
+                        new PredicateColumn(
+                            RolapSchema.BadRouter.INSTANCE,
+                            constrainedColumn.getExpression()),
                         values.first());
             } else {
                 final List<StarColumnPredicate> valuePredicateList =
                     new ArrayList<StarColumnPredicate>();
-                for (Object value : values) {
+                for (Comparable value : values) {
                     valuePredicateList.add(
                         new ValueColumnPredicate(
-                            constrainedColumn,
+                            new PredicateColumn(
+                                RolapSchema.BadRouter.INSTANCE,
+                                constrainedColumn.getExpression()),
                             value));
                 }
                 predicate =
                     new ListColumnPredicate(
-                        constrainedColumn,
+                        new PredicateColumn(
+                            RolapSchema.BadRouter.INSTANCE,
+                            constrainedColumn.getExpression()),
                         valuePredicateList);
             }
             predicateList.add(predicate);
@@ -159,6 +180,25 @@ public class SegmentBuilder {
                 new StarColumnPredicate[predicateList.size()]),
             new ExcludedRegionList(header),
             compoundPredicates);
+    }
+
+    private static List<Comparable> getColumnValsAtCellKey(
+        SegmentBody body, CellKey cellKey)
+    {
+        List<Comparable> columnValues = new ArrayList<Comparable>();
+        for (int i = 0; i < body.getAxisValueSets().length; i++) {
+            List<Comparable> columnVals = new ArrayList<Comparable>();
+            columnVals.addAll(body.getAxisValueSets()[i]);
+            int valCoord = body.getNullAxisFlags()[i]
+                ? cellKey.getAxis(i) - 1
+                : cellKey.getAxis(i);
+            if (valCoord >= 0) {
+                columnValues.add(columnVals.get(valCoord));
+            } else {
+                columnValues.add(null);
+            }
+        }
+        return columnValues;
     }
 
     /**
@@ -230,7 +270,17 @@ public class SegmentBuilder {
                 } else {
                     final SortedSet<Comparable> filteredValues;
                     final boolean filteredHasNull;
-                    if (axis.requestedValues == null) {
+                    if (axis.requestedValues == null
+                        && requestedValues == null)
+                    {
+                        // there are 2+ segments that are unconstrained for
+                        // this axis.  While unconstrained, individually
+                        // they may not have all values present.
+                        // Make sure we don't lose any values.
+                        filteredValues = axis.valueSet;
+                        filteredValues.addAll(new TreeSet<Comparable>(values));
+                        filteredHasNull = hasNull || axis.hasNull;
+                    } else if (axis.requestedValues == null) {
                         filteredValues = values;
                         filteredHasNull = hasNull;
                         axis.column = headerColumn;
@@ -283,6 +333,9 @@ public class SegmentBuilder {
         // a stripe of values from the and add them up into a single cell.
         final Map<CellKey, List<Object>> cellValues =
             new HashMap<CellKey, List<Object>>();
+        List<List<Comparable>> addedIntersections =
+            new ArrayList<List<Comparable>>();
+
         for (Map.Entry<SegmentHeader, SegmentBody> entry : map.entrySet()) {
             final int[] pos = new int[axes.length];
             final Comparable[][] valueArrays =
@@ -295,8 +348,8 @@ public class SegmentBuilder {
             for (SortedSet<Comparable> set : body.getAxisValueSets()) {
                 valueArrays[z] = keepColumns.contains(
                     firstHeader.getConstrainedColumns().get(z).columnExpression)
-                        ? set.toArray(new Comparable[set.size()])
-                        : null;
+                    ? set.toArray(new Comparable[set.size()])
+                    : null;
                 ++z;
             }
             Map<CellKey, Object> v = body.getValueMap();
@@ -336,20 +389,34 @@ public class SegmentBuilder {
                 if (!cellValues.containsKey(ck)) {
                     cellValues.put(ck, new ArrayList<Object>());
                 }
-                cellValues.get(ck).add(vEntry.getValue());
+                List<Comparable> colValues =  getColumnValsAtCellKey(
+                    body, vEntry.getKey());
+                if (!addedIntersections.contains(colValues)) {
+                    // only add the cell value if we haven't already.
+                    // there is a potential double add if segments overlap
+                    cellValues.get(ck).add(vEntry.getValue());
+                    addedIntersections.add(colValues);
+                }
             }
         }
 
         // Build the axis list.
         final List<Pair<SortedSet<Comparable>, Boolean>> axisList =
             new ArrayList<Pair<SortedSet<Comparable>, Boolean>>();
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/4.0
         BigInteger bigValueCount = BigInteger.ONE;
         for (AxisInfo axis : axes) {
             axisList.add(Pair.of(axis.valueSet, axis.hasNull));
             int size = axis.values.length;
+<<<<<<< HEAD
             if (axis.hasNull) {
                 ++size;
             }
+=======
+>>>>>>> upstream/4.0
             bigValueCount = bigValueCount.multiply(
                 BigInteger.valueOf(axis.hasNull ? size + 1 : size));
         }
@@ -359,11 +426,20 @@ public class SegmentBuilder {
         // The two methods use different data structures (AxisInfo/SegmentAxis)
         // so combining logic is probably more trouble than it's worth.
         final boolean sparse =
+<<<<<<< HEAD
             bigValueCount.compareTo
                 (BigInteger.valueOf(Integer.MAX_VALUE)) > 0
                 || SegmentLoader.useSparse(
                     bigValueCount.doubleValue(),
                     cellValues.size());
+=======
+            bigValueCount.compareTo(
+                BigInteger.valueOf(Integer.MAX_VALUE)) > 0
+                || SegmentLoader.useSparse(
+                    bigValueCount.doubleValue(),
+                    cellValues.size());
+
+>>>>>>> upstream/4.0
         final int[] axisMultipliers =
             computeAxisMultipliers(axisList);
 
@@ -421,7 +497,11 @@ public class SegmentBuilder {
                         nullValues,
                         ints,
                         axisList);
+<<<<<<< HEAD
                   break;
+=======
+                break;
+>>>>>>> upstream/4.0
             case Numeric:
                 final double[] doubles = new double[valueCount];
                 nullValues = Util.bitSetBetween(0, valueCount);
@@ -490,7 +570,47 @@ public class SegmentBuilder {
                 firstHeader.rolapStarFactTableName,
                 targetBitkey,
                 Collections.<SegmentColumn>emptyList());
-
+        if (LOGGER.isDebugEnabled()) {
+            StringBuilder builder = new StringBuilder();
+            builder.append("Rolling up segments with parameters: \n");
+            builder.append("keepColumns=" + keepColumns + "\n");
+            builder.append("aggregator=" + rollupAggregator + "\n");
+            builder.append("datatype=" + datatype + "\n");
+            for (Map.Entry<SegmentHeader, SegmentBody > segment : segments) {
+                builder.append(segment.getKey() + "\n");
+                builder.append(segment.getValue().toString());
+            }
+            builder.append("AxisInfos constructed:");
+            for (AxisInfo axis : axes) {
+                SortedSet<Comparable> colVals = axis.column.getValues();
+                builder.append(
+                    String.format(
+                        "column.columnExpression=%s\n"
+                        + "column.valueCount=%s\n"
+                        + "column.values=%s\n"
+                        + "requestedValues=%s\n"
+                        + "valueSet=%s\n"
+                        + "values=%s\n"
+                        + "hasNull=%b\n"
+                        + "src=%d\n"
+                        + "lostPredicate=%b\n",
+                        axis.column.columnExpression,
+                        axis.column.getValueCount(),
+                        Arrays.toString(
+                            colVals == null ? null
+                                : colVals.toArray()),
+                        axis.requestedValues,
+                        axis.valueSet,
+                        Arrays.asList(axis.values),
+                        axis.hasNull,
+                        axis.src,
+                        axis.lostPredicate));
+            }
+            builder.append("Resulted in Segment:  \n");
+            builder.append(header);
+            builder.append(body.toString());
+            LOGGER.debug(builder.toString());
+        }
         return Pair.of(header, body);
     }
 
@@ -516,7 +636,9 @@ public class SegmentBuilder {
         int multiplier = 1;
         for (int i = axes.size() - 1; i >= 0; --i) {
             axisMultipliers[i] = multiplier;
-            multiplier *= axes.get(i).left.size();
+            // if the nullAxisFlag is set we need to offset by 1.
+            int nullAxisAdjustment = axes.get(i).right ? 1 : 0;
+            multiplier *= (axes.get(i).left.size() + nullAxisAdjustment);
         }
         return axisMultipliers;
     }
@@ -613,41 +735,36 @@ public class SegmentBuilder {
     }
 
     public static List<SegmentColumn> toConstrainedColumns(
-        StarColumnPredicate[] predicates)
-    {
-        return toConstrainedColumns(
-            Arrays.asList(predicates));
-    }
-
-    public static List<SegmentColumn> toConstrainedColumns(
-        Collection<StarColumnPredicate> predicates)
+        RolapSchema.PhysStatistic statistic,
+        StarColumnPredicate[] predicates,
+        RolapStar.Column[] baseColumns)
     {
         List<SegmentColumn> ccs =
             new ArrayList<SegmentColumn>();
-        for (StarColumnPredicate predicate : predicates) {
+        for (int i = 0; i < predicates.length; i++) {
+            StarColumnPredicate predicate = predicates[i];
             final List<Comparable> values =
                 new ArrayList<Comparable>();
             predicate.values(Util.cast(values));
             final Comparable[] valuesArray =
                 values.toArray(new Comparable[values.size()]);
+            final ArraySortedSet<Comparable> valueList;
             if (valuesArray.length == 1 && valuesArray[0].equals(true)) {
-                ccs.add(
-                    new SegmentColumn(
-                        predicate.getConstrainedColumn()
-                            .getExpression().getGenericExpression(),
-                        predicate.getConstrainedColumn().getCardinality(),
-                        null));
+                valueList = null;
             } else {
                 Arrays.sort(
                     valuesArray,
                     Util.SqlNullSafeComparator.instance);
-                ccs.add(
-                    new SegmentColumn(
-                        predicate.getConstrainedColumn()
-                            .getExpression().getGenericExpression(),
-                        predicate.getConstrainedColumn().getCardinality(),
-                        new ArraySortedSet(valuesArray)));
+                valueList = new ArraySortedSet<Comparable>(valuesArray);
             }
+            ccs.add(
+                new SegmentColumn(
+                    baseColumns[i].getExpression().toSql(),
+                    statistic.getColumnCardinality(
+                        predicate.getColumn().physColumn.relation,
+                        predicate.getColumn().physColumn,
+                        -1),
+                    valueList));
         }
         return ccs;
     }
@@ -656,23 +773,24 @@ public class SegmentBuilder {
      * Creates a SegmentHeader object describing the supplied
      * Segment object.
      *
+     * @param statistic Source of statistics about columns
      * @param segment A segment object for which we want to generate
      * a SegmentHeader.
      * @return A SegmentHeader describing the supplied Segment object.
      */
-    public static SegmentHeader toHeader(Segment segment) {
+    public static SegmentHeader toHeader(
+        RolapSchema.PhysStatistic statistic,
+        Segment segment)
+    {
         final List<SegmentColumn> cc =
-            SegmentBuilder.toConstrainedColumns(segment.predicates);
+            SegmentBuilder.toConstrainedColumns(
+                statistic, segment.predicates, segment.columns);
         final List<String> cp = new ArrayList<String>();
 
         StringBuilder buf = new StringBuilder();
-
         for (StarPredicate compoundPredicate : segment.compoundPredicateList) {
             buf.setLength(0);
-            SqlQuery query =
-                new SqlQuery(
-                    segment.star.getSqlQueryDialect());
-            compoundPredicate.toSql(query, buf);
+            compoundPredicate.toSql(segment.star.getSqlQueryDialect(), buf);
             cp.add(buf.toString());
         }
         final RolapSchema schema = segment.star.getSchema();

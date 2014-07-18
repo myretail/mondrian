@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 //
 // jng, 16 April, 2004
@@ -13,7 +13,8 @@
 package mondrian.rolap;
 
 import mondrian.olap.*;
-import mondrian.spi.Dialect;
+import mondrian.spi.*;
+import mondrian.spi.impl.*;
 import mondrian.test.TestContext;
 import mondrian.util.Pair;
 
@@ -35,6 +36,7 @@ import javax.sql.DataSource;
 public class RolapConnectionTest extends TestCase {
     private static final ThreadLocal<InitialContext> THREAD_INITIAL_CONTEXT =
         new ThreadLocal<InitialContext>();
+    private DataServicesProvider dataServicesProvider;
 
     public RolapConnectionTest(String name) {
         super(name);
@@ -62,6 +64,7 @@ public class RolapConnectionTest extends TestCase {
                 }
            );
         }
+        dataServicesProvider = DataServicesLocator.getDataServicesProvider("");
     }
 
     public void testPooledConnectionWithProperties() throws SQLException {
@@ -84,7 +87,7 @@ public class RolapConnectionTest extends TestCase {
 
         final StringBuilder buf = new StringBuilder();
         DataSource dataSource =
-            RolapConnection.createDataSource(null, properties, buf);
+            dataServicesProvider.createDataSource(null, properties, buf);
         final String desc = buf.toString();
         assertTrue(desc.startsWith("Jdbc="));
 
@@ -136,7 +139,7 @@ public class RolapConnectionTest extends TestCase {
 
         final StringBuilder buf = new StringBuilder();
         DataSource dataSource =
-            RolapConnection.createDataSource(null, properties, buf);
+            dataServicesProvider.createDataSource(null, properties, buf);
         final String desc = buf.toString();
         assertTrue(desc.startsWith("Jdbc="));
 
@@ -176,7 +179,7 @@ public class RolapConnectionTest extends TestCase {
 
             final StringBuilder buf = new StringBuilder();
             DataSource dataSource =
-                RolapConnection.createDataSource(null, properties, buf);
+                dataServicesProvider.createDataSource(null, properties, buf);
             final String desc = buf.toString();
             assertTrue(desc.startsWith("Jdbc="));
 
@@ -278,7 +281,7 @@ public class RolapConnectionTest extends TestCase {
             TestContext.instance().getConnectionProperties().clone();
         final StringBuilder buf = new StringBuilder();
         final DataSource dataSource =
-            RolapConnection.createDataSource(null, properties, buf);
+            dataServicesProvider.createDataSource(null, properties, buf);
         // Don't know what the connect string is - it differs with database
         // and with the user's set up - but we know that it contains a JDBC
         // connect string. Best we can do is check that createDataSource is
@@ -350,7 +353,7 @@ public class RolapConnectionTest extends TestCase {
             "false");
         final StringBuilder buf = new StringBuilder();
         final DataSource dataSource =
-            RolapConnection.createDataSource(null, properties, buf);
+            dataServicesProvider.createDataSource(null, properties, buf);
         final String desc = buf.toString();
         assertTrue(desc, desc.startsWith("Jdbc="));
         assertTrue(
@@ -463,6 +466,70 @@ public class RolapConnectionTest extends TestCase {
                 }
             }
         }
+    }
+
+    public void testExplicitDialect() {
+        TestContext testContext = TestContext.instance();
+        switch (testContext.getDialect().getDatabaseProduct()) {
+        case MYSQL:
+            break;
+        default:
+            return;
+        }
+        Util.PropertyList properties =
+            testContext.getConnectionProperties().clone();
+
+        // Explicit bad dialect. Class does not exist.
+        properties.put(
+            RolapConnectionProperties.Dialect.name(),
+            "com.example.ClassDoesNotExist");
+        try {
+            RolapConnection connection =
+                (RolapConnection) DriverManager.getConnection(
+                    properties, null);
+            Query query = connection.parseQuery("select from [Sales]");
+            fail("expected failure, got " + query);
+        } catch (Exception e) {
+            // ok
+        }
+
+        // Explicit bad dialect. Class does not implement Dialect.
+        properties.put(
+            RolapConnectionProperties.Dialect.name(),
+            "java.lang.String");
+        try {
+            RolapConnection connection =
+                (RolapConnection) DriverManager.getConnection(
+                    properties, null);
+            Query query = connection.parseQuery("select from [Sales]");
+            fail("expected failure, got " + query);
+        } catch (Exception e) {
+            // ok
+        }
+
+        // Explicit bad dialect.
+        properties.put(
+            RolapConnectionProperties.Dialect.name(),
+            OracleDialect.class.getName());
+        try {
+            RolapConnection connection =
+                (RolapConnection) DriverManager.getConnection(
+                    properties, null);
+            Query query = connection.parseQuery("select from [Sales]");
+            fail("expected failure, got " + query);
+        } catch (Exception e) {
+            // ok
+        }
+
+        // Explicit good dialect.
+        properties.put(
+            RolapConnectionProperties.Dialect.name(),
+            MySqlDialect.class.getName());
+        final RolapConnection connection =
+            (RolapConnection) DriverManager.getConnection(
+                properties, null);
+        final Query query = connection.parseQuery("select from [Sales]");
+        assertNotNull(query);
     }
 }
 

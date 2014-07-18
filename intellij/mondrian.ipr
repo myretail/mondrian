@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="AntConfiguration">
-    <defaultAnt bundledAnt="true" />
-  </component>
   <component name="BuildJarProjectSettings">
     <option name="BUILD_JARS_ON_MAKE" value="false" />
   </component>
@@ -43,6 +40,7 @@
       <file url="file://$PROJECT_DIR$/../../olap4j/src/mondrian/olap4j/FactoryJdbc3Impl.java" />
       <file url="file://$PROJECT_DIR$/../../olap4j/src/org/olap4j/driver/xmla/FactoryJdbc3Impl.java" />
       <file url="file://$PROJECT_DIR$/../src/main/mondrian/olap4j/FactoryJdbc3Impl.java" />
+      <file url="file://$PROJECT_DIR$/../src/main/mondrian/olap4j/FactoryJdbc4Impl.java" />
     </excludeFromCompile>
     <resourceExtensions>
       <entry name=".+\.(properties|xml|html|dtd|tld)" />
@@ -59,7 +57,11 @@
       <entry name="?*.dtd" />
       <entry name="?*.tld" />
     </wildcardResourcePatterns>
-    <annotationProcessing enabled="false" useClasspath="true" />
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="false">
+        <processorPath useClasspath="true" />
+      </profile>
+    </annotationProcessing>
   </component>
   <component name="CopyrightManager" default="">
     <module2copyright />
@@ -101,6 +103,18 @@
     </autodetection-disabled>
   </component>
   <component name="IdProvider" IDEtalkID="56AEB67D7DB6A080C3C46E677522A8E5" />
+  <component name="InspectionProjectProfileManager">
+    <profiles>
+      <profile version="1.0" is_locked="false">
+        <option name="myName" value="Project Default" />
+        <option name="myLocal" value="false" />
+        <inspection_tool class="UNCHECKED_WARNING" enabled="false" level="WARNING" enabled_by_default="false" />
+      </profile>
+    </profiles>
+    <option name="PROJECT_PROFILE" value="Project Default" />
+    <option name="USE_PROJECT_PROFILE" value="true" />
+    <version value="1.0" />
+  </component>
   <component name="JavadocGenerationManager">
     <option name="OUTPUT_DIRECTORY" />
     <option name="OPTION_SCOPE" value="protected" />
@@ -277,6 +291,13 @@
   <component name="ProjectDetails">
     <option name="projectName" value="mondrian" />
   </component>
+  <component name="ProjectDictionaryState">
+    <dictionary name="jhyde">
+      <words>
+        <w>hierarchize</w>
+      </words>
+    </dictionary>
+  </component>
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/mondrian.iml" filepath="$PROJECT_DIR$/mondrian.iml" />
@@ -286,7 +307,7 @@
   <component name="ProjectResources">
     <default-html-doctype>http://www.w3.org/1999/xhtml</default-html-doctype>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_5" assert-keyword="true" jdk-15="true" project-jdk-name="1.6" project-jdk-type="JavaSDK" />
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_5" assert-keyword="true" jdk-15="true" project-jdk-name="1.7" project-jdk-type="JavaSDK" />
   <component name="ResourceManagerContainer">
     <option name="myResourceBundles">
       <value>
@@ -338,7 +359,6 @@
         <root url="jar://$PROJECT_DIR$/../lib/xercesImpl.jar!/" />
         <root url="jar://$PROJECT_DIR$/../lib/jsp-api.jar!/" />
         <root url="jar://$PROJECT_DIR$/../lib/xalan.jar!/" />
-        <root url="jar://$PROJECT_DIR$/../lib/javacup.jar!/" />
         <root url="jar://$PROJECT_DIR$/../lib/eigenbase-xom.jar!/" />
         <root url="jar://$PROJECT_DIR$/../lib/eigenbase-resgen.jar!/" />
         <root url="jar://$PROJECT_DIR$/../lib/commons-vfs.jar!/" />
@@ -348,6 +368,7 @@
         <root url="jar://$PROJECT_DIR$/../lib/jlfgr.jar!/" />
         <root url="jar://$PROJECT_DIR$/../lib/servlet-api.jar!/" />
         <root url="jar://$PROJECT_DIR$/../lib/commons-io.jar!/" />
+        <root url="jar://$PROJECT_DIR$/../lib/commons-vfs2.jar!/" />
       </CLASSES>
       <JAVADOC>
         <root url="jar://$PROJECT_DIR$/../lib/commons-math-javadoc.jar!/" />
@@ -394,6 +415,15 @@
         <root url="jar://$PROJECT_DIR$/../lib/junit-source.jar!/" />
       </SOURCES>
     </library>
+    <library name="mockito-all-1.8.5">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/../test-lib/mockito-all-1.8.5.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/../test-lib/mockito-all-1.8.5.jar!/" />
+      </SOURCES>
+    </library>
     <library name="olap4j">
       <CLASSES>
         <root url="jar://$PROJECT_DIR$/../lib/olap4j.jar!/" />
@@ -411,7 +441,7 @@
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="file://$USER_HOME$/open1/olap4j/testsrc" />
+        <root url="file://$PROJECT_DIR$/../../olap4j/testsrc" />
       </SOURCES>
     </library>
     <library name="olap4j-xmla">
@@ -421,18 +451,14 @@
       <JAVADOC />
       <SOURCES />
     </library>
-    <library name="pentaho">
+    <library name="olap4j-xmlaserver">
       <CLASSES>
-        <root url="jar://$PROJECT_DIR$/../workbench/plugins/pentaho-mondrianschemaworkbench-plugins.jar!/" />
-        <root url="jar://$PROJECT_DIR$/../workbench/plugins/kettle-db.jar!/" />
-        <root url="jar://$PROJECT_DIR$/../workbench/plugins/pentaho-xul-swing.jar!/" />
-        <root url="jar://$PROJECT_DIR$/../workbench/plugins/kettle-engine.jar!/" />
-        <root url="jar://$PROJECT_DIR$/../workbench/plugins/kettle-core.jar!/" />
-        <root url="jar://$PROJECT_DIR$/../workbench/plugins/pentaho-xul-core.jar!/" />
-        <root url="jar://$PROJECT_DIR$/../workbench/plugins/kettle-dbdialog.jar!/" />
+        <root url="jar://$PROJECT_DIR$/../lib/olap4j-xmlaserver.jar!/" />
       </CLASSES>
       <JAVADOC />
-      <SOURCES />
+      <SOURCES>
+        <root url="file://$PROJECT_DIR$/../../olap4j-xmlaserver/src/main/java" />
+      </SOURCES>
     </library>
     <library name="xmlunit">
       <CLASSES>

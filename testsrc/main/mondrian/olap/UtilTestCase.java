@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -18,7 +18,11 @@ import junit.framework.TestCase;
 
 import java.sql.Driver;
 import java.util.*;
+<<<<<<< HEAD
 import java.util.concurrent.TimeUnit;
+=======
+import java.util.concurrent.*;
+>>>>>>> upstream/4.0
 
 /**
  * Tests for methods in {@link mondrian.olap.Util} and, sometimes, classes in
@@ -139,6 +143,10 @@ public class UtilTestCase extends TestCase {
     /**
      * Checks that <code>connectString</code> contains a property called
      * <code>name</code>, whose value is <code>value</code>.
+     *
+     * @param connectString Connect string
+     * @param name Name
+     * @param expectedValue Expected value
      */
     void p(String connectString, String name, String expectedValue) {
         Util.PropertyList list = Util.parseConnectString(connectString);
@@ -301,10 +309,10 @@ public class UtilTestCase extends TestCase {
     public void testConvertConnectString() {
         assertEquals(
             "Provider=Mondrian; Datasource=jdbc/SampleData;"
-            + "Catalog=foodmart/FoodMart.xml;",
+            + "Catalog=foodmart/FoodMart.mondrian.xml;",
             Util.convertOlap4jConnectStringToNativeMondrian(
                 "jdbc:mondrian:Datasource=jdbc/SampleData;"
-                + "Catalog=foodmart/FoodMart.xml;"));
+                + "Catalog=foodmart/FoodMart.mondrian.xml;"));
     }
 
     public void testQuoteMdxIdentifier() {
@@ -549,6 +557,18 @@ public class UtilTestCase extends TestCase {
         assertEquals(Arrays.asList("x", "y,"), Util.parseCommaList("x,y,,"));
     }
 
+    /**
+     * Unit test for {@link Util#bit}.
+     */
+    public void testBit() {
+        assertEquals(1, Util.bit(0, 0, true)); // set unset bit
+        assertEquals(0, Util.bit(0, 0, false)); // clear unset bit
+        assertEquals(5, Util.bit(1, 2, true)); // set unset bit, keep other
+        assertEquals(1, Util.bit(1, 2, false)); // clear unset bit, keep other
+        assertEquals(5, Util.bit(5, 2, true)); // set set bit, keep other
+        assertEquals(1, Util.bit(5, 2, false)); // clear set bit, keep other
+    }
+
     public void testUnionIterator() {
         final List<String> xyList = Arrays.asList("x", "y");
         final List<String> abcList = Arrays.asList("a", "b", "c");
@@ -598,6 +618,91 @@ public class UtilTestCase extends TestCase {
             total += s + ";";
         }
         assertEquals("x;y;a;b;c;", total);
+    }
+
+    /**
+     * Unit test for
+     * {@link Util#filter(Iterable, mondrian.olap.Util.Predicate1[])}.
+     */
+    public void testFilter() {
+        class NotMultiple extends Util.Predicate1<Integer> {
+            private final int n;
+
+            public NotMultiple(int n) {
+                this.n = n;
+            }
+
+            public boolean test(Integer integer) {
+                return integer % n != 0;
+            }
+        }
+
+        class IntegersLessThan implements Iterable<Integer> {
+            private final int n;
+
+            public IntegersLessThan(int n) {
+                this.n = n;
+            }
+
+            public Iterator<Integer> iterator() {
+                return new Iterator<Integer>() {
+                    int i;
+
+                    public boolean hasNext() {
+                        return i < n;
+                    }
+
+                    public Integer next() {
+                        return i++;
+                    }
+
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                };
+            }
+        }
+
+        final StringBuilder buf = new StringBuilder();
+
+        // list the natural numbers < 20 that are not multiples of 2, 3 or 5.
+        final Iterable<Integer> filter =
+            Util.filter(
+                new IntegersLessThan(20),
+                new NotMultiple(2),
+                new NotMultiple(3),
+                new NotMultiple(5));
+        for (Integer integer : filter) {
+            buf.append(integer).append(";");
+        }
+        assertEquals("1;7;11;13;17;19;", buf.toString());
+        buf.setLength(0);
+
+        // underlying iterable is empty
+        final Iterable<Integer> filter0 =
+            Util.filter(
+                new IntegersLessThan(0),
+                new NotMultiple(2),
+                new NotMultiple(5));
+        for (Integer integer : filter0) {
+            buf.append(integer).append(";");
+        }
+        assertEquals("", buf.toString());
+        buf.setLength(0);
+
+        // some "always true" predicates to be eliminated
+        final Iterable<Integer> filter8 =
+            Util.filter(
+                new IntegersLessThan(8),
+                Util.<Integer>truePredicate1(),
+                new NotMultiple(2),
+                Util.<Integer>truePredicate1(),
+                new NotMultiple(5));
+        for (Integer integer : filter8) {
+            buf.append(integer).append(";");
+        }
+        assertEquals("1;3;7;", buf.toString());
+        buf.setLength(0);
     }
 
     public void testAreOccurrencesEqual() {
@@ -1086,63 +1191,6 @@ public class UtilTestCase extends TestCase {
     }
 
     /**
-     * Unit test for {@link CombiningGenerator}.
-     */
-    public void testCombiningGenerator() {
-        assertEquals(
-            1,
-            new CombiningGenerator<String>(Collections.<String>emptyList())
-                .size());
-        assertEquals(
-            1,
-            CombiningGenerator.of(Collections.<String>emptyList())
-                .size());
-        assertEquals(
-            "[[]]",
-            CombiningGenerator.of(Collections.<String>emptyList()).toString());
-        assertEquals(
-            "[[], [a]]",
-            CombiningGenerator.of(Collections.singletonList("a")).toString());
-        assertEquals(
-            "[[], [a], [b], [a, b]]",
-            CombiningGenerator.of(Arrays.asList("a", "b")).toString());
-        assertEquals(
-            "[[], [a], [b], [a, b], [c], [a, c], [b, c], [a, b, c]]",
-            CombiningGenerator.of(Arrays.asList("a", "b", "c")).toString());
-
-        final List<Integer> integerList =
-            Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8);
-        int i = 0;
-        for (List<Integer> integers : CombiningGenerator.of(integerList)) {
-            switch (i++) {
-            case 0:
-                assertTrue(integers.isEmpty());
-                break;
-            case 1:
-                assertEquals(Arrays.asList(0), integers);
-                break;
-            case 6:
-                assertEquals(Arrays.asList(1, 2), integers);
-                break;
-            case 131:
-                assertEquals(Arrays.asList(0, 1, 7), integers);
-                break;
-            }
-        }
-        assertEquals(512, i);
-
-        // Check that can iterate over 2^20 (~ 1m) elements in reasonable time.
-        i = 0;
-        for (List<String> xx
-            : CombiningGenerator.of(Collections.nCopies(20, "x")))
-        {
-            Util.discard(xx);
-            i++;
-        }
-        assertEquals(1 << 20, i);
-    }
-
-    /**
      * Unit test for {@link ByteString}.
      */
     public void testByteString() {
@@ -1228,6 +1276,7 @@ public class UtilTestCase extends TestCase {
             new ArraySortedSet<String>(empty);
         int n = 0;
         for (String s : emptySet) {
+            Util.discard(s);
             ++n;
         }
         assertEquals(0, n);
@@ -1331,18 +1380,17 @@ public class UtilTestCase extends TestCase {
         assertEquals(expected, list.toString());
     }
 
-
     public void testIntersectSortedSet() {
         final ArraySortedSet<String> ace =
-            new ArraySortedSet(new String[]{ "a", "c", "e"});
+            new ArraySortedSet<String>(new String[]{ "a", "c", "e"});
         final ArraySortedSet<String> cd =
-            new ArraySortedSet(new String[]{ "c", "d"});
+            new ArraySortedSet<String>(new String[]{ "c", "d"});
         final ArraySortedSet<String> bdf =
-            new ArraySortedSet(new String[]{ "b", "d", "f"});
+            new ArraySortedSet<String>(new String[]{ "b", "d", "f"});
         final ArraySortedSet<String> bde =
-            new ArraySortedSet(new String[]{ "b", "d", "e"});
+            new ArraySortedSet<String>(new String[]{ "b", "d", "e"});
         final ArraySortedSet<String> empty =
-            new ArraySortedSet(new String[]{});
+            new ArraySortedSet<String>(new String[]{});
         checkToString("[a, c, e]", Util.intersect(ace, ace));
         checkToString("[c]", Util.intersect(ace, cd));
         checkToString("[]", Util.intersect(ace, empty));
@@ -1353,46 +1401,111 @@ public class UtilTestCase extends TestCase {
     }
 
     /**
-     * Unit test for {@link Triple}.
+     * Unit test for {@link mondrian.olap.Util#newIdentityHashSet()}.
      */
-    public void testTriple() {
+    @SuppressWarnings("UnnecessaryBoxing")
+    public void _testIdentityHashSet() {
+        final Set<Integer> set = Util.newIdentityHashSet();
+        assertTrue(set.isEmpty());
+        assertEquals(0, set.size());
+
+        final Integer oneA = new Integer(1);
+        assertTrue(set.add(oneA));
+        assertEquals(1, set.size());
+
+        Integer twoA = new Integer(2);
+        assertTrue(set.add(twoA));
+        assertEquals(2, set.size());
+
+        assertFalse(set.add(oneA));
+        assertEquals(2, set.size());
+
+        final Integer oneB = new Integer(1);
+        assertTrue(set.add(oneB));
+        assertEquals(3, set.size());
+
+        assertTrue(set.contains(oneA));
+        assertTrue(set.contains(oneA));
+        final Integer oneC = new Integer(1);
+        assertFalse(set.contains(oneC));
+        assertTrue(set.contains(twoA));
+
+        final List<Integer> list = new ArrayList<Integer>(set);
+        Collections.sort(list);
+        assertEquals("[1, 1, 2]", list.toString());
+
+        // add via iterator
+        list.clear();
+        for (Integer integer : set) {
+            list.add(integer);
+        }
+        Collections.sort(list);
+        assertEquals("[1, 1, 2]", list.toString());
+
+        set.clear();
+        assertTrue(set.isEmpty());
+
+        set.addAll(list);
+        assertFalse(set.isEmpty());
+        assertEquals(3, set.size());
+
+        assertTrue(set.remove(oneA));
+        assertFalse(set.remove(oneC));
+        assertTrue(set.remove(oneB));
+        assertTrue(set.remove(twoA));
+        assertTrue(set.isEmpty());
+    }
+
+    /**
+     * Unit test for {@link Tuple3}.
+     */
+    public void testTuple3() {
         if (Util.PreJdk15) {
-            // Boolean is not Comparable until JDK 1.5. Triple works, but this
+            // Boolean is not Comparable until JDK 1.5. Tuple3 works, but this
             // test does not.
             return;
         }
-        final Triple<Integer, String, Boolean> triple0 =
-            Triple.of(5, "foo", true);
-        final Triple<Integer, String, Boolean> triple1 =
-            Triple.of(5, "foo", false);
-        final Triple<Integer, String, Boolean> triple2 =
-            Triple.of(5, "foo", true);
-        final Triple<Integer, String, Boolean> triple3 =
-            Triple.of(null, "foo", true);
+        final Tuple3<Integer, String, Boolean> tuple0 =
+            Tuple3.of(5, "foo", true);
+        final Tuple3<Integer, String, Boolean> tuple1 =
+            Tuple3.of(5, "foo", false);
+        final Tuple3<Integer, String, Boolean> tuple2 =
+            Tuple3.of(5, "foo", true);
+        final Tuple3<Integer, String, Boolean> tuple3 =
+            Tuple3.of(null, "foo", true);
 
-        assertEquals(triple0,  triple0);
-        assertFalse(triple0.equals(triple1));
-        assertFalse(triple1.equals(triple0));
-        assertFalse(triple0.hashCode() == triple1.hashCode());
-        assertEquals(triple0, triple2);
-        assertEquals(triple0.hashCode(), triple2.hashCode());
-        assertEquals(triple3, triple3);
-        assertFalse(triple0.equals(triple3));
-        assertFalse(triple3.equals(triple0));
-        assertFalse(triple0.hashCode() == triple3.hashCode());
+        assertEquals(tuple0, tuple0);
+        assertFalse(tuple0.equals(tuple1));
+        assertFalse(tuple1.equals(tuple0));
+        assertFalse(tuple0.hashCode() == tuple1.hashCode());
+        assertEquals(tuple0, tuple2);
+        assertEquals(tuple0.hashCode(), tuple2.hashCode());
+        assertEquals(tuple3, tuple3);
+        assertFalse(tuple0.equals(tuple3));
+        assertFalse(tuple3.equals(tuple0));
+        assertFalse(tuple0.hashCode() == tuple3.hashCode());
 
-        final SortedSet<Triple<Integer, String, Boolean>> set =
-            new TreeSet<Triple<Integer, String, Boolean>>(
-                Arrays.asList(triple0, triple1, triple2, triple3, triple1));
+        final SortedSet<Tuple3<Integer, String, Boolean>> set =
+            new TreeSet<Tuple3<Integer, String, Boolean>>(
+                Arrays.asList(tuple0, tuple1, tuple2, tuple3, tuple1));
         assertEquals(3, set.size());
         assertEquals(
             "[<null, foo, true>, <5, foo, false>, <5, foo, true>]",
             set.toString());
 
-        assertEquals("<5, foo, true>", triple0.toString());
-        assertEquals("<5, foo, false>", triple1.toString());
-        assertEquals("<5, foo, true>", triple2.toString());
-        assertEquals("<null, foo, true>", triple3.toString());
+        assertEquals("<5, foo, true>", tuple0.toString());
+        assertEquals("<5, foo, false>", tuple1.toString());
+        assertEquals("<5, foo, true>", tuple2.toString());
+        assertEquals("<null, foo, true>", tuple3.toString());
+
+        // Unzip and zip.
+        assertEquals(
+            Util.toList(
+                Tuple3.iterate(
+                    Tuple3.slice0(set),
+                    Tuple3.slice1(set),
+                    Tuple3.slice2(set))),
+            Util.toList(set));
     }
 
     public void testRolapUtilComparator() throws Exception {
@@ -1409,6 +1522,7 @@ public class UtilTestCase extends TestCase {
             RolapUtil.sqlNullValue);
     }
 
+<<<<<<< HEAD
     public void testByteMatcher() throws Exception {
         final ByteMatcher bm = new ByteMatcher(new byte[] {(byte)0x2A});
         final byte[] bytesNotPresent =
@@ -1460,6 +1574,154 @@ public class UtilTestCase extends TestCase {
         assertTrue(nullValuesMap.containsValue(null));
         assertFalse(nullValuesMap.containsKey(null));
         assertFalse(nullValuesMap.keySet().contains("Something"));
+=======
+    public void testDirectedGraph() {
+        final DirectedGraph<String, EdgeImpl<String>> graph =
+            new DirectedGraph<String, EdgeImpl<String>>();
+
+        // empty graph has no paths
+        assertEquals(
+            "[]",
+            graph.findAllPaths("C", "Z").toString());
+        // there is one path of length 0 from C to C, even in the empty graph
+        assertEquals(
+            "[[]]",
+            graph.findAllPaths("C", "C").toString());
+
+        graph.addEdge(new EdgeImpl<String>("A", "B"));
+        graph.addEdge(new EdgeImpl<String>("B", "C"));
+
+        // there is one path of length 0 from A to A
+        assertEquals(
+            "[[]]",
+            graph.findAllPaths("A", "A").toString());
+        assertEquals(
+            "[[]]",
+            graph.findAllPathsUndirected("A", "A").toString());
+        assertEquals(
+            "[[A-B]]",
+            graph.findAllPaths("A", "B").toString());
+        assertEquals(
+            "[[<A-B, true>]]",
+            graph.findAllPathsUndirected("A", "B").toString());
+        assertEquals(
+            "[[A-B, B-C]]",
+            graph.findAllPaths("A", "C").toString());
+        assertEquals(
+            "[[<A-B, true>, <B-C, true>]]",
+            graph.findAllPathsUndirected("A", "C").toString());
+
+        // there are no paths C to A
+        assertEquals(
+            "[]",
+            graph.findAllPaths("C", "A").toString());
+
+        // undirected, there is a path from C to A
+        assertEquals(
+            "[[<B-C, false>, <A-B, false>]]",
+            graph.findAllPathsUndirected("C", "A").toString());
+
+        // no paths to nodes outside graph
+        assertEquals(
+            "[]",
+            graph.findAllPaths("C", "Z").toString());
+        assertEquals(
+            "[]",
+            graph.findAllPaths("A", "Z").toString());
+
+        // add alternative path from A-C
+        graph.addEdge(new EdgeImpl<String>("A", "C"));
+        assertEquals(
+            "[[A-B, B-C], [A-C]]",
+            graph.findAllPaths("A", "C").toString());
+
+        graph.addEdge(new EdgeImpl<String>("C", "B"));
+        try {
+            final List<List<EdgeImpl<String>>> pathList =
+                graph.findAllPaths("A", "B");
+            fail("expected error, got " + pathList);
+        } catch (RuntimeException e) {
+            assertEquals(
+                "Graph contains cycle: [A-B, B-C, C-B]",
+                e.getMessage());
+        }
+    }
+
+    public void testLazy() {
+        final int[] calls = {0};
+        final Lazy<Integer> integerLazy =
+            new Lazy<Integer>(
+                new Util.Function0<Integer>() {
+                    public Integer apply() {
+                        return calls[0]++;
+                    }
+                }
+            );
+        assertEquals(0, calls[0]); // constructor does not call factory
+        assertEquals(0, (int) integerLazy.get());
+        assertEquals(1, calls[0]); // first call to get calls factory
+        assertEquals(0, (int) integerLazy.get());
+        assertEquals(1, calls[0]); // factory not used again
+
+        final Lazy<String> nullLazy =
+            new Lazy<String>(
+                new Util.Function0<String>() {
+                    public String apply() {
+                        calls[0]++;
+                        return null;
+                    }
+                }
+            );
+        assertEquals(1, calls[0]); // constructor does not call factory
+        assertEquals(null, nullLazy.get());
+        assertEquals(2, calls[0]); // first call to get calls factory
+        assertEquals(null, nullLazy.get());
+        assertEquals(2, calls[0]); // factory not used again
+    }
+
+    /**
+     * Unit test for {@link Util.PropertyList}.
+     */
+    public void testPropertyList() {
+        final Util.PropertyList list = new Util.PropertyList();
+        list.put("x", "1");
+        list.put("y", "2");
+        list.put("x", "3");
+        assertEquals("x=3; y=2", list.toString());
+
+        // modifying the clone does not affect the original
+        final Util.PropertyList list2 = list.clone();
+        assertEquals("x=3; y=2", list.toString());
+        list2.put("x", "4");
+        assertEquals("x=4; y=2", list2.toString());
+        assertEquals("x=3; y=2", list.toString());
+
+        // modifying the original does not affect the clone
+        list.remove("y");
+        list.put("z", "foo bar");
+        assertEquals("x=4; y=2", list2.toString());
+        assertEquals("x=3; z=foo bar", list.toString());
+    }
+
+    /**
+     * Unit test for {@link Util#first}.
+     */
+    public void testFirst() {
+        assertEquals("x", Util.first("x", "y"));
+        assertEquals("y", Util.first(null, "y"));
+        assertEquals(null, Util.first(null, null));
+    }
+
+    /**
+     * Unit test for {@link Util#julian(long, long, long)}.
+     */
+    public void testJulian() {
+        assertEquals(-327, Util.julian(-4713, 1, 1)); // should be 0?
+        assertEquals(-32044, Util.julian(-4800, 3, 1));
+        assertEquals(1721426, Util.julian(1, 1, 1));
+        assertEquals(2454115, Util.julian(2007, 1, 14));
+        assertEquals(2455976, Util.julian(2012, 2, 18));
+>>>>>>> upstream/4.0
     }
 
     /**
@@ -1564,6 +1826,105 @@ public class UtilTestCase extends TestCase {
             // ok
         }
     }
+<<<<<<< HEAD
+=======
+
+    /** Unit test for {@link IteratorIterable}. */
+    public static void testIterableIterator() {
+        final List<String> list = Arrays.asList("a", "b", "c", "d");
+
+        // Full through.
+        final List<String> list2 = new ArrayList<String>();
+        for (String s : new IteratorIterable<String>(list.iterator())) {
+            list2.add(s);
+        }
+        assertEquals(list2, list);
+
+        // On empty list.
+        final IteratorIterable<Object> iterable =
+            new IteratorIterable<Object>(Collections.emptyList().iterator());
+        assertFalse(iterable.iterator().hasNext());
+        assertFalse(iterable.iterator().hasNext());
+
+        // Part way through on iterator 1.
+        final Iterable<String> iterable1 =
+            new IteratorIterable<String>(list.iterator());
+        final Iterator<String> iterator1 = iterable1.iterator();
+        assertTrue(iterator1.hasNext());
+        assertEquals("a", iterator1.next());
+        assertTrue(iterator1.hasNext());
+        assertEquals("b", iterator1.next());
+
+        // Start another iterator 2.
+        final Iterator<String> iterator2 = iterable1.iterator();
+        assertTrue(iterator2.hasNext());
+        assertEquals("a", iterator2.next());
+
+        // A bit more on 1.
+        assertTrue(iterator1.hasNext());
+        assertEquals("c", iterator1.next());
+
+        // Finish on 2.
+        assertTrue(iterator2.hasNext());
+        assertEquals("b", iterator2.next());
+        assertTrue(iterator2.hasNext());
+        assertEquals("c", iterator2.next());
+        assertTrue(iterator2.hasNext());
+        assertEquals("d", iterator2.next());
+        assertFalse(iterator2.hasNext());
+
+        // Finish on 1.
+        assertTrue(iterator1.hasNext());
+        assertEquals("d", iterator1.next());
+        assertFalse(iterator1.hasNext());
+
+        // Start on 3.
+        final Iterator<String> iterator3 = iterable1.iterator();
+        assertTrue(iterator3.hasNext());
+        assertEquals("a", iterator3.next());
+    }
+
+    /**
+     * Simple implementation of {@link mondrian.util.DirectedGraph.Edge}.
+     */
+    static class EdgeImpl<E> implements DirectedGraph.Edge<E> {
+        final E from;
+        final E to;
+
+        public EdgeImpl(E from, E to) {
+            this.from = from;
+            this.to = to;
+        }
+
+        public E getFrom() {
+            return from;
+        }
+
+        public E getTo() {
+            return to;
+        }
+
+        public String toString() {
+            return from + "-" + to;
+        }
+    }
+
+    public void testByteMatcher() throws Exception {
+        final ByteMatcher bm = new ByteMatcher(new byte[] {(byte)0x2A});
+        final byte[] bytesNotPresent =
+            new byte[] {(byte)0x2B, (byte)0x2C};
+        final byte[] bytesPresent =
+            new byte[] {(byte)0x2B, (byte)0x2A, (byte)0x2C};
+        final byte[] bytesPresentLast =
+            new byte[] {(byte)0x2B, (byte)0x2C, (byte)0x2A};
+        final byte[] bytesPresentFirst =
+                new byte[] {(byte)0x2A, (byte)0x2C, (byte)0x2B};
+        assertEquals(-1, bm.match(bytesNotPresent));
+        assertEquals(1, bm.match(bytesPresent));
+        assertEquals(2, bm.match(bytesPresentLast));
+        assertEquals(0, bm.match(bytesPresentFirst));
+    }
+>>>>>>> upstream/4.0
 }
 
 // End UtilTestCase.java

@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2011 Pentaho
+// Copyright (C) 2006-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -12,6 +12,8 @@ package mondrian.test;
 import mondrian.olap.Util;
 
 import junit.framework.*;
+
+import org.apache.commons.collections.map.ReferenceMap;
 
 import org.eigenbase.xom.XMLOutput;
 
@@ -96,7 +98,7 @@ public class DiffRepository
     private final File refFile;
     private final File logFile;
 
-    /*
+/*
     Example XML document:
 
     <Root>
@@ -117,7 +119,8 @@ public class DiffRepository
             </Resource>
         </TestCase>
     </Root>
-    */
+*/
+
     private static final String RootTag = "Root";
     private static final String TestCaseTag = "TestCase";
     private static final String TestCaseNameAttr = "name";
@@ -134,7 +137,7 @@ public class DiffRepository
      * repos gets loaded once per testcase, then only one diff is recorded.
      */
     private static final Map<Class, DiffRepository> mapClassToRepos =
-        new HashMap<Class, DiffRepository>();
+        new ReferenceMap(ReferenceMap.SOFT, ReferenceMap.SOFT);
 
     /**
      * Default prefix directories.
@@ -491,7 +494,25 @@ public class DiffRepository
         }
     }
 
-    public void assertEquals(String tag, String expected, String actual)
+    /**
+     * Calls {@link #assertEquals(String, String, String, mondrian.olap.Util.Function1)}
+     * with a null filter.
+     *
+     * @param tag Tag
+     * @param expected Expected value (may contain a "${tag}")
+     * @param actual Actual value
+     */
+    public final void assertEquals(
+        String tag, String expected, String actual)
+    {
+        assertEquals(tag, expected, actual, null);
+    }
+
+    public void assertEquals(
+        String tag,
+        String expected,
+        String actual,
+        Util.Function1<String, String> filter)
     {
         final String testCaseName = getCurrentTestCaseName(true);
         String expected2 = expand(tag, expected);
@@ -501,6 +522,12 @@ public class DiffRepository
                 "reference file does not contain resource '" + expected
                 + "' for testcase '" + testCaseName + "'");
         } else {
+            final String expected3;
+            if (filter != null) {
+                expected3 = filter.apply(expected2);
+            } else {
+                expected3 = expected2;
+            }
             try {
                 // TODO jvs 25-Apr-2006:  reuse bulk of
                 // DiffTestCase.diffTestLog here; besides newline
@@ -508,7 +535,7 @@ public class DiffRepository
                 // at which the first diff occurs, which is useful
                 // for largish snippets
                 String expected2Canonical =
-                    Util.replace(expected2, Util.nl, "\n");
+                    Util.replace(expected3, Util.nl, "\n");
                 String actualCanonical = Util.replace(actual, Util.nl, "\n");
                 Assert.assertEquals(
                     expected2Canonical,

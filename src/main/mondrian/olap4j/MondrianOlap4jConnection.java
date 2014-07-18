@@ -14,6 +14,7 @@ import mondrian.olap.*;
 import mondrian.olap.Member;
 import mondrian.olap.fun.MondrianEvaluationException;
 import mondrian.rolap.*;
+import mondrian.util.Bug;
 import mondrian.xmla.XmlaHandler;
 
 import org.olap4j.Axis;
@@ -45,10 +46,22 @@ import java.util.*;
  * it is instantiated using
  * {@link Factory#newConnection(MondrianOlap4jDriver, String, java.util.Properties)}.</p>
  *
+ * <p>This class is public, to allow access to the
+ * {@link #setRoleNames(java.util.List)} method before it is added to olap4j
+ * version 2.0. <b>This may change without notice</b>. Code should not rely on
+ * this class being public.</p>
+ *
  * @author jhyde
  * @since May 23, 2007
  */
-abstract class MondrianOlap4jConnection implements OlapConnection {
+public abstract class MondrianOlap4jConnection implements OlapConnection {
+    static {
+        Bug.olap4jUpgrade(
+            "Make this class package-protected when we upgrade to olap4j 2.0. "
+            + "The setRoleNames method will then be available through the "
+            + "olap4j API");
+    }
+
     /**
      * Handler for errors.
      */
@@ -181,11 +194,11 @@ abstract class MondrianOlap4jConnection implements OlapConnection {
             new MondrianOlap4jDatabase(
                 this,
                 olap4jCatalogs,
-                String.valueOf(dbpropsMap.get("DataSourceName")),
-                String.valueOf(dbpropsMap.get("DataSourceDescription")),
-                String.valueOf(dbpropsMap.get("ProviderName")),
-                String.valueOf(dbpropsMap.get("URL")),
-                String.valueOf(dbpropsMap.get("DataSourceInfo")),
+                toString(dbpropsMap.get("DataSourceName")),
+                toString(dbpropsMap.get("DataSourceDescription")),
+                toString(dbpropsMap.get("ProviderName")),
+                toString(dbpropsMap.get("URL")),
+                toString(dbpropsMap.get("DataSourceInfo")),
                 pTypes,
                 aModes);
         this.olap4jDatabases.add(database);
@@ -206,6 +219,10 @@ abstract class MondrianOlap4jConnection implements OlapConnection {
         }
 
         this.olap4jSchema = toOlap4j(mondrianConnection.getSchema());
+    }
+
+    static String toString(Object o) {
+        return o == null ? null : o.toString();
     }
 
     static boolean acceptsURL(String url) {
@@ -822,11 +839,7 @@ abstract class MondrianOlap4jConnection implements OlapConnection {
             String msg, Throwable cause)
         {
             String sqlState = deduceSqlState(cause);
-            assert !mondrian.util.Bug.olap4jUpgrade(
-                "use OlapException(String, String, Throwable) ctor");
-            final OlapException e = new OlapException(msg, sqlState);
-            e.initCause(cause);
-            return e;
+            return new OlapException(msg, sqlState, cause);
         }
 
         private String deduceSqlState(Throwable cause) {

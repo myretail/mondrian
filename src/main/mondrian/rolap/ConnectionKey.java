@@ -33,6 +33,10 @@ class ConnectionKey extends StringKey {
         final String connectionUuidStr,
         final DataSource dataSource,
         final String catalogUrl,
+<<<<<<< HEAD
+=======
+        final String dialectClassName,
+>>>>>>> upstream/4.0
         final String connectionKey,
         final String jdbcUser,
         final String dataSourceStr)
@@ -51,6 +55,10 @@ class ConnectionKey extends StringKey {
             } else {
                 attributeValue(buf, "connectionKey", connectionKey);
                 attributeValue(buf, "catalogUrl", catalogUrl);
+<<<<<<< HEAD
+=======
+                attributeValue(buf, "dialect", dialectClassName);
+>>>>>>> upstream/4.0
                 attributeValue(buf, "jdbcUser", jdbcUser);
                 attributeValue(buf, "dataSourceStr", dataSourceStr);
             }

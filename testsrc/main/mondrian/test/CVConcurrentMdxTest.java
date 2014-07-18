@@ -5,13 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2010 Pentaho and others
+// Copyright (C) 2005-2012 Pentaho and others
 // All Rights Reserved.
-//
 */
 package mondrian.test;
 
-import mondrian.olap.MondrianProperties;
 import mondrian.olap.Util;
 import mondrian.test.clearview.*;
 
@@ -32,22 +30,14 @@ import java.util.*;
  * @author Khanh Vu
  */
 public class CVConcurrentMdxTest extends FoodMartTestCase {
-    private MondrianProperties props;
-
     public CVConcurrentMdxTest() {
         super();
-        props = MondrianProperties.instance();
     }
 
-    public CVConcurrentMdxTest(String name) {
-        super(name);
-        props = MondrianProperties.instance();
-    }
-
-    public void testConcurrentQueriesInRandomOrder() {
-        propSaver.set(props.UseAggregates, false);
-        propSaver.set(props.ReadAggregates, false);
-        propSaver.set(props.DisableCaching, false);
+    public void testConcurrentQueriesInRandomOrder() throws Exception {
+        propSaver.set(propSaver.props.DisableCaching, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
+        propSaver.set(propSaver.props.ReadAggregates, false);
 
         // test partially filled aggregation cache
         // add test classes
@@ -69,14 +59,18 @@ public class CVConcurrentMdxTest extends FoodMartTestCase {
         // generate list of queries and results
         QueryAndResult[] queryList = generateQueryArray(testList);
 
-        assertTrue(ConcurrentValidatingQueryRunner.runTest(
-            3, 100, true, true, true, queryList).size() == 0);
+        final List<Throwable> throwables =
+            ConcurrentValidatingQueryRunner.runTest(
+                3, 100, true, true, true, queryList);
+        assertEquals(0, throwables.size());
     }
 
-    public void testConcurrentQueriesInRandomOrderOnVirtualCube() {
-        propSaver.set(props.UseAggregates, false);
-        propSaver.set(props.ReadAggregates, false);
-        propSaver.set(props.DisableCaching, false);
+    public void testConcurrentQueriesInRandomOrderOnVirtualCube()
+        throws Exception
+    {
+        propSaver.set(propSaver.props.DisableCaching, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
+        propSaver.set(propSaver.props.ReadAggregates, false);
 
         // test partially filled aggregation cache
         // add test classes
@@ -98,14 +92,16 @@ public class CVConcurrentMdxTest extends FoodMartTestCase {
         // generate list of queries and results
         QueryAndResult[] queryList = generateQueryArray(testList);
 
-        assertTrue(ConcurrentValidatingQueryRunner.runTest(
-            3, 100, true, true, true, queryList).size() == 0);
+        final List<Throwable> throwables =
+            ConcurrentValidatingQueryRunner.runTest(
+                3, 100, true, true, true, queryList);
+        assertEquals(0, throwables.size());
     }
 
-    public void testConcurrentCVQueriesInRandomOrder() {
-        propSaver.set(props.UseAggregates, false);
-        propSaver.set(props.ReadAggregates, false);
-        propSaver.set(props.DisableCaching, false);
+    public void testConcurrentCVQueriesInRandomOrder() throws Exception {
+        propSaver.set(propSaver.props.DisableCaching, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
+        propSaver.set(propSaver.props.ReadAggregates, false);
 
         // test partially filled aggregation cache
         // add test classes
@@ -147,8 +143,8 @@ public class CVConcurrentMdxTest extends FoodMartTestCase {
     private boolean sanityCheck(List<TestSuite> suiteList) {
         TestSuite suite = new TestSuite();
 
-        for (int i = 0; i < suiteList.size(); i++) {
-            suite.addTest(suiteList.get(i));
+        for (TestSuite suite1 : suiteList) {
+            suite.addTest(suite1);
         }
 
         TestResult tres = new TestResult();
@@ -162,45 +158,41 @@ public class CVConcurrentMdxTest extends FoodMartTestCase {
      * test classes
      * @param testList list of test classes
      * @return array of QueryAndResult
+     * @throws Exception on error
      */
-    private QueryAndResult[] generateQueryArray(List<Class> testList) {
+    private QueryAndResult[] generateQueryArray(List<Class> testList)
+        throws Exception
+    {
         List<QueryAndResult> queryList = new ArrayList<QueryAndResult>();
-        for (int i = 0; i < testList.size(); i++) {
-            Class testClass = testList.get(i);
-            Class[] types = new Class[] { String.class };
-            try {
-                Constructor cons = testClass.getConstructor(types);
-                Object[] args = new Object[] { "" };
-                Test newCon = (Test) cons.newInstance(args);
-                DiffRepository diffRepos =
-                    ((ClearViewBase) newCon).getDiffRepos();
+        for (Class testClass : testList) {
+            Class[] types = {String.class};
+            Constructor cons = testClass.getConstructor(types);
+            Object[] args = {""};
+            Test newCon = (Test) cons.newInstance(args);
+            DiffRepository diffRepos =
+                ((ClearViewBase) newCon).getDiffRepos();
 
-                List<String> testCaseNames = diffRepos.getTestCaseNames();
-                for (int j = 0; j < testCaseNames.size(); j++) {
-                    String testCaseName = testCaseNames.get(j);
-                    String query = diffRepos.get(testCaseName, "mdx");
-                    String result = diffRepos.get(testCaseName, "result");
+            List<String> testCaseNames = diffRepos.getTestCaseNames();
+            for (String testCaseName : testCaseNames) {
+                String query = diffRepos.get(testCaseName, "mdx");
+                String result = diffRepos.get(testCaseName, "result");
 
-                    // current limitation: only run queries if
-                    // calculated members are not specified
-                    if (diffRepos.get(testCaseName, "calculatedMembers")
-                        == null)
-                    {
-                        // trim the starting newline char only
-                        if (result.startsWith(Util.nl)) {
-                            result = result.replaceFirst(Util.nl, "");
-                        }
-                        QueryAndResult queryResult =
-                            new QueryAndResult(query, result);
-                        queryList.add(queryResult);
+                // current limitation: only run queries if
+                // calculated members are not specified
+                if (diffRepos.get(testCaseName, "calculatedMembers")
+                    == null)
+                {
+                    // trim the starting newline char only
+                    if (result.startsWith(Util.nl)) {
+                        result = result.replaceFirst(Util.nl, "");
                     }
+                    QueryAndResult queryResult =
+                        new QueryAndResult(query, result);
+                    queryList.add(queryResult);
                 }
-            } catch (Exception e) {
-                throw new Error(e.getMessage());
             }
         }
-        QueryAndResult[] queryArray = new QueryAndResult[queryList.size()];
-        return queryList.toArray(queryArray);
+        return queryList.toArray(new QueryAndResult[queryList.size()]);
     }
 }
 

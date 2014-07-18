@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2009-2010 Pentaho
+// Copyright (C) 2009-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.spi;
@@ -12,7 +12,7 @@ package mondrian.spi;
 import mondrian.olap.Util;
 import mondrian.spi.impl.JdbcDialectFactory;
 import mondrian.spi.impl.JdbcDialectImpl;
-import mondrian.util.ServiceDiscovery;
+import mondrian.util.*;
 
 import java.lang.reflect.*;
 import java.sql.Connection;
@@ -77,7 +77,34 @@ public abstract class DialectManager {
         DataSource dataSource,
         Connection connection)
     {
-        return IMPL.createDialect(dataSource, connection);
+        return createDialect(dataSource, connection, null);
+    }
+
+    /**
+     * Creates a Dialect from a JDBC connection, optionally specifying
+     * the name of the dialect class.
+     *
+     * <p>If the dialect cannot handle this connection, throws. Never returns
+     * null.
+     *
+     * @param dataSource Data source
+     *
+     * @param connection JDBC connection
+     *
+     * @param dialectClassName Name of class that implements {@link Dialect},
+     * or null
+     *
+     * @return dialect for this connection
+     *
+     * @throws RuntimeException if underlying systems give an error,
+     * or if cannot create dialect
+     */
+    public static Dialect createDialect(
+        DataSource dataSource,
+        Connection connection,
+        String dialectClassName)
+    {
+        return IMPL.createDialect(dataSource, connection, dialectClassName);
     }
 
     /**
@@ -119,7 +146,17 @@ public abstract class DialectManager {
                 return new ConstructorDialectFactory(constructor);
             }
         } catch (NoSuchMethodException e) {
-            // ignore
+            // if <init>(Connection) does not exist, go for the default
+            // constructor.
+            try {
+                final Constructor<? extends Dialect> constructor =
+                    dialectClass.getConstructor();
+                if (Modifier.isPublic(constructor.getModifiers())) {
+                    return new ConstructorDialectFactory(constructor);
+                }
+            } catch (NoSuchMethodException e2) {
+                // ignore
+            }
         }
 
         // No suitable constructor or factory.
@@ -218,21 +255,47 @@ public abstract class DialectManager {
         }
 
         /**
-         * Implements {@link DialectManager#createDialect(javax.sql.DataSource,java.sql.Connection)}.
+         * Implements {@link DialectManager#createDialect(javax.sql.DataSource,java.sql.Connection,String)}.
          *
          * <p>The method synchronizes on a singleton class, so prevents two
          * threads from accessing any dialect factory simultaneously.
          *
+         *
          * @param dataSource Data source
          * @param connection Connection
+         * @param dialectClassName Name of class that implements
+         *     {@link Dialect}, or null
          * @return Dialect, never null
          */
         synchronized Dialect createDialect(
             DataSource dataSource,
-            Connection connection)
+            Connection connection,
+            String dialectClassName)
         {
             if (dataSource == null && connection == null) {
                 throw new IllegalArgumentException();
+            }
+            final DialectFactory factory;
+            if (dialectClassName != null) {
+                // Instantiate explicit dialect class.
+                try {
+                    Class<? extends Dialect> dialectClass =
+                        ClassResolver.INSTANCE.forName(dialectClassName, true)
+                            .asSubclass(Dialect.class);
+                    factory = createFactoryForDialect(dialectClass);
+                } catch (ClassCastException e) {
+                    throw new RuntimeException(
+                        "Dialect class " + dialectClassName
+                        + " does not implement interface " + Dialect.class);
+                } catch (Exception e) {
+                    throw new RuntimeException(
+                        "Cannot instantiate dialect class '"
+                        + dialectClassName + "'",
+                        e);
+                }
+            } else {
+                // Use factory of dialects registered in services file.
+                factory = this.factory;
             }
             final Dialect dialect =
                 factory.createDialect(dataSource, connection);
@@ -318,6 +381,27 @@ public abstract class DialectManager {
             if (connection == null) {
                 return JdbcDialectFactory.createDialectHelper(
                     this, dataSource);
+            }
+
+            if (constructor.getParameterTypes().length == 0) {
+                try {
+                    return constructor.newInstance();
+                } catch (InstantiationException e) {
+                    throw Util.newError(
+                        e,
+                        "Error while instantiating dialect of class "
+                        + constructor.getClass());
+                } catch (IllegalAccessException e) {
+                    throw Util.newError(
+                        e,
+                        "Error while instantiating dialect of class "
+                        + constructor.getClass());
+                } catch (InvocationTargetException e) {
+                    throw Util.newError(
+                        e,
+                        "Error while instantiating dialect of class "
+                        + constructor.getClass());
+                }
             }
 
             // Connection is not null. Invoke the constructor.

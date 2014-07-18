@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2010 Pentaho
+// Copyright (C) 2006-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -46,12 +46,13 @@ public interface Schema extends Annotated {
     /**
      * Returns a list of shared dimensions in this schema.
      */
-    Hierarchy[] getSharedHierarchies();
+    Dimension[] getSharedDimensions();
 
     /**
      * Creates a dimension in the given cube by parsing an XML string. The XML
      * string must be either a &lt;Dimension&gt; or a &lt;DimensionUsage&gt;.
      * Returns the dimension created.
+     * * @deprecated This method is not implemented in Mondrian 4.0
      */
     Dimension createDimension(Cube cube, String xml);
 
@@ -75,6 +76,10 @@ public interface Schema extends Annotated {
     /**
      * Finds a role with a given name in the current catalog, or returns
      * <code>null</code> if no such role exists.
+     *
+     * @deprecated Does not tell the whole picture; roles which are really
+     * "role factories" (i.e. implement {@link mondrian.spi.RoleGenerator})
+     * do not appear.
      */
     Role lookupRole(String role);
 

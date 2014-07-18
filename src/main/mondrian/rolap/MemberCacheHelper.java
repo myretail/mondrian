@@ -6,18 +6,20 @@
 //
 // Copyright (C) 2001-2005 Julian Hyde
 // Copyright (C) 2004-2005 TONBELLER AG
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho and others
+=======
+// Copyright (C) 2005-2013 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
-import mondrian.olap.Level;
 import mondrian.olap.Util;
 import mondrian.rolap.cache.SmartCache;
 import mondrian.rolap.cache.SoftSmartCache;
 import mondrian.rolap.sql.MemberChildrenConstraint;
 import mondrian.rolap.sql.TupleConstraint;
-import mondrian.spi.DataSourceChangeListener;
 import mondrian.util.Pair;
 
 import java.util.*;
@@ -38,9 +40,8 @@ public class MemberCacheHelper implements MemberCache {
         mapMemberToChildren;
 
     /** a cache for all members to ensure uniqueness */
-    SmartCache<Object, RolapMember> mapKeyToMember;
-    RolapHierarchy rolapHierarchy;
-    DataSourceChangeListener changeListener;
+    SmartCache<Pair<RolapCubeLevel, Object>, RolapMember> mapKeyToMember;
+    RolapCubeHierarchy rolapHierarchy;
 
     /** maps a level to its members */
     final SmartMemberListCache<RolapLevel, List<RolapMember>>
@@ -51,23 +52,17 @@ public class MemberCacheHelper implements MemberCache {
      *
      * @param rolapHierarchy Hierarchy
      */
-    public MemberCacheHelper(RolapHierarchy rolapHierarchy) {
+    public MemberCacheHelper(RolapCubeHierarchy rolapHierarchy) {
         this.rolapHierarchy = rolapHierarchy;
         this.mapLevelToMembers =
             new SmartMemberListCache<RolapLevel, List<RolapMember>>();
         this.mapKeyToMember =
-            new SoftSmartCache<Object, RolapMember>();
+            new SoftSmartCache<Pair<RolapCubeLevel, Object>, RolapMember>();
         this.mapMemberToChildren =
             new SmartMemberListCache<RolapMember, List<RolapMember>>();
-
-        if (rolapHierarchy != null) {
-            changeListener =
-                rolapHierarchy.getRolapSchema().getDataSourceChangeListener();
-        } else {
-            changeListener = null;
-        }
     }
 
+<<<<<<< HEAD
     public RolapMember getMember(
         Object key,
         boolean mustCheckCacheStatus)
@@ -82,14 +77,19 @@ public class MemberCacheHelper implements MemberCache {
     // implement MemberCache
     public Object putMember(Object key, RolapMember value) {
         return mapKeyToMember.put(key, value);
+=======
+    // implement MemberCache
+    public RolapMember getMember(
+        RolapCubeLevel level,
+        Object key)
+    {
+        return mapKeyToMember.get(Pair.of(level, key));
+>>>>>>> upstream/4.0
     }
 
-    // implement MemberCache
-    public Object makeKey(RolapMember parent, Object key) {
-        return new MemberKey(parent, key);
-    }
 
     // implement MemberCache
+<<<<<<< HEAD
     public RolapMember getMember(Object key) {
         return getMember(key, true);
     }
@@ -100,11 +100,19 @@ public class MemberCacheHelper implements MemberCache {
                 flushCache();
             }
         }
+=======
+    public Object putMember(
+        RolapCubeLevel level,
+        Object key,
+        RolapMember value)
+    {
+        return mapKeyToMember.put(Pair.of(level, key), value);
+>>>>>>> upstream/4.0
     }
 
     /**
      * Deprecated in favor of
-     * {@link #putChildren(RolapLevel, TupleConstraint, List)}
+     * {@link MemberCache#putChildren(RolapCubeLevel, mondrian.rolap.sql.TupleConstraint, java.util.List)}
      */
     @Deprecated
     public void putLevelMembersInCache(
@@ -112,11 +120,15 @@ public class MemberCacheHelper implements MemberCache {
         TupleConstraint constraint,
         List<RolapMember> members)
     {
-        putChildren(level, constraint, members);
+        putChildren((RolapCubeLevel) level, constraint, members);
     }
 
     public void putChildren(
+<<<<<<< HEAD
         RolapLevel level,
+=======
+        RolapCubeLevel level,
+>>>>>>> upstream/4.0
         TupleConstraint constraint,
         List<RolapMember> members)
     {
@@ -147,7 +159,11 @@ public class MemberCacheHelper implements MemberCache {
     }
 
     public List<RolapMember> getLevelMembersFromCache(
+<<<<<<< HEAD
         RolapLevel level,
+=======
+        RolapCubeLevel level,
+>>>>>>> upstream/4.0
         TupleConstraint constraint)
     {
         if (constraint == null) {
@@ -162,17 +178,9 @@ public class MemberCacheHelper implements MemberCache {
         mapKeyToMember.clear();
         mapLevelToMembers.clear();
         // We also need to clear the approxRowCount of each level.
-        for (Level level : rolapHierarchy.getLevels()) {
-            ((RolapLevel)level).setApproxRowCount(Integer.MIN_VALUE);
+        for (RolapCubeLevel level : rolapHierarchy.getLevelList()) {
+            level.setApproxRowCount(Integer.MIN_VALUE);
         }
-    }
-
-    public DataSourceChangeListener getChangeListener() {
-        return changeListener;
-    }
-
-    public void setChangeListener(DataSourceChangeListener listener) {
-        changeListener = listener;
     }
 
     public boolean isMutable()
@@ -180,14 +188,13 @@ public class MemberCacheHelper implements MemberCache {
         return true;
     }
 
-    public synchronized RolapMember removeMember(Object key)
+    public RolapMember removeMember(RolapCubeLevel level, Object key)
     {
         // Flush entries from the level-to-members map
         // for member's level and all child levels.
         // Important: Do this even if the member is apparently not in the cache.
-        RolapLevel level = ((MemberKey) key).getLevel();
         if (level == null) {
-            level = (RolapLevel) this.rolapHierarchy.getLevels()[0];
+            level = this.rolapHierarchy.getLevelList().get(0);
         }
         final RolapLevel levelRef = level;
         mapLevelToMembers.getCache().execute(
@@ -199,6 +206,7 @@ public class MemberCacheHelper implements MemberCache {
                         <RolapLevel, Object>, List<RolapMember>>> iterator)
                 {
                     while (iterator.hasNext()) {
+<<<<<<< HEAD
                         Map.Entry<Pair
                             <RolapLevel, Object>, List<RolapMember>> entry =
                             iterator.next();
@@ -216,6 +224,26 @@ public class MemberCacheHelper implements MemberCache {
             });
 
         final RolapMember member = getMember(key);
+=======
+                       Map.Entry<Pair
+                           <RolapLevel, Object>, List<RolapMember>> entry =
+                               iterator.next();
+                       final RolapLevel cacheLevel = entry.getKey().left;
+                       if (cacheLevel.equals(levelRef)
+                           || (cacheLevel.getHierarchy()
+                               .equals(levelRef.getHierarchy())
+                               && cacheLevel.getDepth()
+                                   >= levelRef.getDepth()))
+                       {
+                           iterator.remove();
+                       }
+                   }
+                }
+            });
+
+        final RolapMember member = getMember(level, key);
+
+>>>>>>> upstream/4.0
         if (member == null) {
             // not in cache
             return null;
@@ -249,8 +277,12 @@ public class MemberCacheHelper implements MemberCache {
                                 == DefaultMemberChildrenConstraint.instance())
                             {
                                 List<RolapMember> siblings = entry.getValue();
+<<<<<<< HEAD
                                 boolean removedIt = siblings.remove(member);
                                 Util.discard(removedIt);
+=======
+                                siblings.remove(member);
+>>>>>>> upstream/4.0
                             } else {
                                 iter.remove();
                             }
@@ -267,6 +299,7 @@ public class MemberCacheHelper implements MemberCache {
             });
 
         // drop it from the lookup-cache
+<<<<<<< HEAD
         return mapKeyToMember.put(key, null);
     }
 
@@ -274,8 +307,10 @@ public class MemberCacheHelper implements MemberCache {
         // Can use mapMemberToChildren recursively. No need to update inferior
         // lists of children. Do need to update inferior lists of level-peers.
         return null; // STUB
+=======
+        return mapKeyToMember.put(Pair.of(level, key), null);
+>>>>>>> upstream/4.0
     }
 }
 
 // End MemberCacheHelper.java
-

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -26,12 +26,9 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
 {
     protected void setUp() throws Exception {
         super.setUp();
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, true);
         propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis,
-            true);
-        propSaver.set(
-            MondrianProperties.instance().IgnoreMeasureForNonJoiningDimension,
-            true);
+            propSaver.props.IgnoreMeasureForNonJoiningDimension, true);
         getTestContext().getConnection().getCacheControl(null)
             .flushSchemaCache();
     }
@@ -49,30 +46,30 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[x]}\n"
+            + "{[Product].[Products].[x]}\n"
             + "Row #0: 7,913,333.82\n");
     }
 
     public void testNonJoiningDimsWhenAggFunctionIsUsedOrNotUsed() {
-        final String query = "WITH\n"
-                             + "MEMBER [Measures].[Total Sales] AS "
-                             + "'[Measures].[Store Sales] + [Measures].[Warehouse Sales]'\n"
-                             + "MEMBER [Warehouse].[AggSP1] AS\n"
-                             + "'IIF([Measures].CURRENTMEMBER IS [Measures].[Total Sales],\n"
-                             + "([Warehouse].[All Warehouses], [Measures].[Total Sales]),\n"
-                             + "([Product].[All Products], [Warehouse].[All Warehouses]))'\n"
-                             + "MEMBER [Warehouse].[AggPreSP] AS\n"
-                             + "'IIF([Measures].CURRENTMEMBER IS [Measures].[Total Sales],\n"
-                             + "([Warehouse].[All Warehouses], [Measures].[Total Sales]),\n"
-                             + "Aggregate({([Product].[All Products], [Warehouse].[All Warehouses])}))'\n"
-                             + "\n"
-                             + "SELECT\n"
-                             + "{[Measures].[Total Sales]} ON AXIS(0),\n"
-                             + "{{([Warehouse].[AggPreSP])},\n"
-                             + "{([Warehouse].[AggSP1])}} ON AXIS(1)\n"
-                             + "FROM\n"
-                             + "[Warehouse and Sales]";
-
+        final String query =
+            "WITH\n"
+            + "MEMBER [Measures].[Total Sales] AS "
+            + "'[Measures].[Store Sales] + [Measures].[Warehouse Sales]'\n"
+            + "MEMBER [Warehouses].[AggSP1] AS\n"
+            + "'IIF([Measures].CURRENTMEMBER IS [Measures].[Total Sales],\n"
+            + "([Warehouse].[All Warehouses], [Measures].[Total Sales]),\n"
+            + "([Product].[All Products], [Warehouse].[All Warehouses]))'\n"
+            + "MEMBER [Warehouses].[AggPreSP] AS\n"
+            + "'IIF([Measures].CURRENTMEMBER IS [Measures].[Total Sales],\n"
+            + "([Warehouse].[All Warehouses], [Measures].[Total Sales]),\n"
+            + "Aggregate({([Product].[All Products], [Warehouse].[All Warehouses])}))'\n"
+            + "\n"
+            + "SELECT\n"
+            + "{[Measures].[Total Sales]} ON AXIS(0),\n"
+            + "{{([Warehouse].[AggPreSP])},\n"
+            + "{([Warehouse].[AggSP1])}} ON AXIS(1)\n"
+            + "FROM\n"
+            + "[Warehouse and Sales]";
         assertQueryReturns(
             query,
             "Axis #0:\n"
@@ -80,13 +77,12 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Warehouse].[AggPreSP]}\n"
-            + "{[Warehouse].[AggSP1]}\n"
+            + "{[Warehouse].[Warehouses].[AggPreSP]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1]}\n"
             + "Row #0: 196,770.89\n"
             + "Row #1: 196,770.89\n");
         propSaver.set(
-            MondrianProperties.instance().IgnoreMeasureForNonJoiningDimension,
-            false);
+            propSaver.props.IgnoreMeasureForNonJoiningDimension, false);
         assertQueryReturns(
             query,
             "Axis #0:\n"
@@ -94,8 +90,8 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Warehouse].[AggPreSP]}\n"
-            + "{[Warehouse].[AggSP1]}\n"
+            + "{[Warehouse].[Warehouses].[AggPreSP]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1]}\n"
             + "Row #0: 762,009.02\n"
             + "Row #1: 762,009.02\n");
     }
@@ -120,7 +116,7 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[AggSP1]}\n"
+            + "{[Product].[Products].[AggSP1]}\n"
             + "Row #0: 196,770.89\n");
     }
 
@@ -129,11 +125,11 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             "WITH\n"
             + "MEMBER [Measures].[Total Sales] AS "
             + "'[Measures].[Store Sales] + [Measures].[Warehouse Sales]'\n"
-            + "MEMBER [Warehouse].[AggSP1_1] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_1] AS\n"
             + "'IIF(1=0,\n"
             + "([Warehouse].[All Warehouses], [Measures].[Total Sales]),\n"
             + "([Warehouse].[All Warehouses]))'\n"
-            + "MEMBER [Warehouse].[AggSP1_2] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_2] AS\n"
             + "'IIF(1=0,\n"
             + "111,\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]))'\n"
@@ -148,8 +144,8 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Warehouse].[AggSP1_1]}\n"
-            + "{[Warehouse].[AggSP1_2]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_1]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_2]}\n"
             + "Row #0: 196,770.89\n"
             + "Row #1: 196,770.89\n");
     }
@@ -159,19 +155,19 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             "WITH\n"
             + "MEMBER [Measures].[Total Sales] AS "
             + "'[Measures].[Store Sales] + [Measures].[Warehouse Sales]'\n"
-            + "MEMBER [Warehouse].[AggSP1_1] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_1] AS\n"
             + "'IIF(1=0,\n"
             + "([Warehouse].[All Warehouses]),\n"
             + "([Warehouse].[All Warehouses]))'\n"
-            + "MEMBER [Warehouse].[AggSP1_2] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_2] AS\n"
             + "'IIF(1=0,\n"
             + "[Warehouse].[All Warehouses],\n"
             + "([Warehouse].[All Warehouses]))'\n"
-            + "MEMBER [Warehouse].[AggSP1_3] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_3] AS\n"
             + "'IIF(1=0,\n"
             + "([Warehouse].[All Warehouses]),\n"
             + "[Warehouse].[All Warehouses])'\n"
-            + "MEMBER [Warehouse].[AggSP1_4] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_4] AS\n"
             + "'IIF(1=0,\n"
             + "StrToMember(\"[Warehouse].[All Warehouses]\"),\n"
             + "[Warehouse].[All Warehouses])'\n"
@@ -187,10 +183,10 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Warehouse].[AggSP1_1]}\n"
-            + "{[Warehouse].[AggSP1_2]}\n"
-            + "{[Warehouse].[AggSP1_3]}\n"
-            + "{[Warehouse].[AggSP1_4]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_1]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_2]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_3]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_4]}\n"
             + "Row #0: 196,770.89\n"
             + "Row #1: 196,770.89\n"
             + "Row #2: 196,770.89\n"
@@ -202,27 +198,27 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             "WITH\n"
             + "MEMBER [Measures].[Total Sales] AS "
             + "'[Measures].[Store Sales] + [Measures].[Warehouse Sales]'\n"
-            + "MEMBER [Warehouse].[AggSP1_1] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_1] AS\n"
             + "'IIF(1=0,\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]),\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]))'\n"
-            + "MEMBER [Warehouse].[AggSP1_2] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_2] AS\n"
             + "'IIF(1=0,\n"
             + "([Warehouse].[All Warehouses]),\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]))'\n"
-            + "MEMBER [Warehouse].[AggSP1_3] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_3] AS\n"
             + "'IIF(1=0,\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]),\n"
             + "([Warehouse].[All Warehouses]))'\n"
-            + "MEMBER [Warehouse].[AggSP1_4] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_4] AS\n"
             + "'IIF(1=0,\n"
             + "StrToTuple(\"([Warehouse].[All Warehouses])\", [Warehouse]),\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]))'\n"
-            + "MEMBER [Warehouse].[AggSP1_5] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_5] AS\n"
             + "'IIF(1=0,\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]),\n"
             + "[Warehouse].[All Warehouses])'\n"
-            + "MEMBER [Warehouse].[AggSP1_6] AS\n"
+            + "MEMBER [Warehouses].[AggSP1_6] AS\n"
             + "'IIF(1=0,\n"
             + "[Warehouse].[All Warehouses],\n"
             + "([Warehouse].[All Warehouses], [Store].[All Stores]))'\n"
@@ -239,12 +235,12 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Warehouse].[AggSP1_1]}\n"
-            + "{[Warehouse].[AggSP1_2]}\n"
-            + "{[Warehouse].[AggSP1_3]}\n"
-            + "{[Warehouse].[AggSP1_4]}\n"
-            + "{[Warehouse].[AggSP1_5]}\n"
-            + "{[Warehouse].[AggSP1_6]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_1]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_2]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_3]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_4]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_5]}\n"
+            + "{[Warehouse].[Warehouses].[AggSP1_6]}\n"
             + "Row #0: 196,770.89\n"
             + "Row #1: 196,770.89\n"
             + "Row #2: 196,770.89\n"
@@ -266,7 +262,7 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Total Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[x]}\n"
+            + "{[Product].[Products].[x]}\n"
             + "Row #0: 3,956,666.91\n");
     }
 
@@ -295,7 +291,7 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[Warehouse Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[x]}\n"
+            + "{[Product].[Products].[x]}\n"
             + "Row #0: 1,377,396.213\n");
     }
 
@@ -326,7 +322,7 @@ public class IgnoreMeasureForNonJoiningDimensionInAggregationTest
             + "Axis #1:\n"
             + "{[Measures].[My Profit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[G]}\n"
+            + "{[Customer].[Gender].[G]}\n"
             + "Row #0: $14,652.70\n");
     }
 

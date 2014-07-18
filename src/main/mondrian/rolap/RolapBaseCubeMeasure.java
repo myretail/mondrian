@@ -4,93 +4,85 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2012 Pentaho
+// Copyright (C) 2006-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.olap.*;
-import mondrian.resource.MondrianResource;
 import mondrian.spi.CellFormatter;
 import mondrian.spi.Dialect;
 
-import java.util.*;
-
 /**
- * Measure which is computed from a SQL column (or expression) and which is
- * defined in a non-virtual cube.
- *
- * @see RolapVirtualCubeMeasure
- *
- * @author jhyde
- * @since 24 August, 2006
+ * Measure which is computed from a SQL column (or expression).
  */
 public class RolapBaseCubeMeasure
     extends RolapMemberBase
     implements RolapStoredMeasure
 {
+<<<<<<< HEAD
     static enum DataType {
         Integer,
         Numeric,
         String
     }
 
+=======
+>>>>>>> upstream/4.0
     /**
      * For SQL generator. Column which holds the value of the measure.
      */
-    private final MondrianDef.Expression expression;
+    private final RolapSchema.PhysColumn expression;
 
     /**
      * For SQL generator. Has values "SUM", "COUNT", etc.
      */
     private final RolapAggregator aggregator;
 
-    private final RolapCube cube;
-    private final Map<String, Annotation> annotationMap;
-
     /**
      * Holds the {@link mondrian.rolap.RolapStar.Measure} from which this
-     * member is computed. Untyped, because another implementation might store
-     * it somewhere else.
+     * member is computed.
      */
-    private Object starMeasure;
+    private RolapStar.Measure starMeasure;
 
     private RolapResult.ValueFormatter formatter;
+
+    private final RolapMeasureGroup measureGroup;
+    private final Dialect.Datatype datatype;
 
     /**
      * Creates a RolapBaseCubeMeasure.
      *
-     * @param cube Cube
-     * @param parentMember Parent member
+     * @param measureGroup Measure group that this measure belongs to
      * @param level Level this member belongs to
-     * @param name Name of this member
-     * @param caption Caption
-     * @param description Description
-     * @param formatString Format string
-     * @param expression Expression
-     * @param aggregatorName Aggregator
+     * @param key Name of this member
+     * @param expression Expression (or null if not calculated)
+     * @param aggregator Aggregator
      * @param datatype Data type
-     * @param annotationMap Annotations
+     * @param larder Larder
+     * @param uniqueName Unique name
      */
     RolapBaseCubeMeasure(
-        RolapCube cube,
-        RolapMember parentMember,
-        RolapLevel level,
-        String name,
-        String caption,
-        String description,
-        String formatString,
-        MondrianDef.Expression expression,
-        String aggregatorName,
-        String datatype,
-        Map<String, Annotation> annotationMap)
+        RolapMeasureGroup measureGroup,
+        RolapCubeLevel level,
+        String key,
+        String uniqueName,
+        RolapSchema.PhysColumn expression,
+        final RolapAggregator aggregator,
+        Dialect.Datatype datatype,
+        Larder larder)
     {
-        super(parentMember, level, name, null, MemberType.MEASURE);
-        assert annotationMap != null;
-        this.cube = cube;
-        this.annotationMap = annotationMap;
-        this.caption = caption;
+        super(null, level, key, MemberType.MEASURE, uniqueName, larder);
+        assert larder != null;
+        this.larder = larder;
+        this.measureGroup = measureGroup;
+        assert measureGroup.getCube() == level.cube;
+        RolapSchema.PhysRelation factRelation = measureGroup.getFactRelation();
+        assert factRelation != null;
+        assert expression == null || (expression.relation == factRelation)
+            : "inconsistent fact: " + expression + " vs. " + factRelation;
         this.expression = expression;
+<<<<<<< HEAD
         if (description != null) {
             setProperty(
                 Property.DESCRIPTION.name,
@@ -138,9 +130,13 @@ public class RolapBaseCubeMeasure
             throw MondrianResource.instance().CastInvalidType.ex(datatype);
         }
         setProperty(Property.DATATYPE.name, datatype);
+=======
+        this.aggregator = aggregator;
+        this.datatype = datatype;
+>>>>>>> upstream/4.0
     }
 
-    public MondrianDef.Expression getMondrianDefExpression() {
+    public RolapSchema.PhysColumn getExpr() {
         return expression;
     }
 
@@ -148,8 +144,8 @@ public class RolapBaseCubeMeasure
         return aggregator;
     }
 
-    public RolapCube getCube() {
-        return cube;
+    public RolapMeasureGroup getMeasureGroup() {
+        return measureGroup;
     }
 
     public RolapResult.ValueFormatter getFormatter() {
@@ -161,28 +157,16 @@ public class RolapBaseCubeMeasure
             new RolapResult.CellFormatterValueFormatter(cellFormatter);
     }
 
-    public Object getStarMeasure() {
+    public RolapStar.Measure getStarMeasure() {
         return starMeasure;
     }
 
-    void setStarMeasure(Object starMeasure) {
+    void setStarMeasure(RolapStar.Measure starMeasure) {
         this.starMeasure = starMeasure;
     }
 
-    @Override
-    public Map<String, Annotation> getAnnotationMap() {
-        return annotationMap;
-    }
-
     public Dialect.Datatype getDatatype() {
-        Object datatype = getPropertyValue(Property.DATATYPE.name);
-        try {
-            return Dialect.Datatype.valueOf((String) datatype);
-        } catch (ClassCastException e) {
-            return Dialect.Datatype.String;
-        } catch (IllegalArgumentException e) {
-            return Dialect.Datatype.String;
-        }
+        return datatype;
     }
 }
 

@@ -5,16 +5,16 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2003-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2014 Pentaho
+=======
+// Copyright (C) 2005-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
-//
-// jhyde, Feb 14, 2003
 */
 package mondrian.test;
 
 import mondrian.olap.*;
-import mondrian.resource.MondrianResource;
-import mondrian.rolap.*;
 import mondrian.spi.Dialect;
 
 import java.sql.*;
@@ -31,8 +31,25 @@ public class DrillThroughTest extends FoodMartTestCase {
     public DrillThroughTest() {
         super();
     }
-    public DrillThroughTest(String name) {
-        super(name);
+
+    @Override
+    public TestContext getTestContext() {
+        return super.getTestContext().legacy();
+    }
+
+    private String getDrillThroughSql(
+        Cell cell, boolean extendedContext, boolean formatted)
+    {
+        propSaver.set(propSaver.props.GenerateFormattedSql, formatted);
+        return cell.getDrillThroughSQL(extendedContext);
+    }
+
+    /**
+     * Returns the repository of result strings.
+     * @return repository of result strings
+     */
+    DiffRepository getDiffRepos() {
+        return DiffRepository.lookup(DrillThroughTest.class);
     }
 
     // ~ Tests ================================================================
@@ -71,54 +88,19 @@ public class DrillThroughTest extends FoodMartTestCase {
         // can not drill through [Foo]
         assertFalse(result.getCell(new int[]{4, 0}).canDrillThrough());
         // can drill through [Unit Sales Percentage]
-        assertTrue(result.getCell(new int[]{5, 0}).canDrillThrough());
-        assertNotNull(
-            result.getCell(
-                new int[]{
-                    5, 0
-                }).getDrillThroughSQL(false));
+        final Cell cell50 = result.getCell(new int[]{5, 0});
+        assertTrue(cell50.canDrillThrough());
+        assertNotNull(getDrillThroughSql(cell50, false, false));
 
-        String sql = cell.getDrillThroughSQL(false);
-        String expectedSql =
-            "select `time_by_day`.`the_year` as `Year`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales` "
-            + "from `time_by_day` =as= `time_by_day`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `product_class` =as= `product_class`,"
-            + " `product` =as= `product` "
-            + "where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`"
-            + " and `time_by_day`.`the_year` = 1997"
-            + " and `sales_fact_1997`.`product_id` = `product`.`product_id`"
-            + " and `product`.`product_class_id` = `product_class`.`product_class_id`"
-            + " and `product_class`.`product_family` = 'Drink' "
-            + "order by `time_by_day`.`the_year` ASC,"
-            + " `product_class`.`product_family` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 7978);
+        String sql = getDrillThroughSql(cell, true, true);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 1718);
 
         // Can drill through a trivial calc member.
         final Cell calcCell = result.getCell(new int[]{1, 0});
         assertTrue(calcCell.canDrillThrough());
-        sql = calcCell.getDrillThroughSQL(false);
+        sql = getDrillThroughSql(calcCell, true, true);
         assertNotNull(sql);
-        expectedSql =
-            "select `time_by_day`.`the_year` as `Year`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales` "
-            + "from `time_by_day` =as= `time_by_day`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `product_class` =as= `product_class`,"
-            + " `product` =as= `product` "
-            + "where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`"
-            + " and `time_by_day`.`the_year` = 1997"
-            + " and `sales_fact_1997`.`product_id` = `product`.`product_id`"
-            + " and `product`.`product_class_id` = `product_class`.`product_class_id`"
-            + " and `product_class`.`product_family` = 'Drink' "
-            + "order by `time_by_day`.`the_year` ASC,"
-            + " `product_class`.`product_family` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 7978);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql2", sql, 1718);
 
         assertEquals(calcCell.getDrillThroughCount(), 7978);
     }
@@ -191,8 +173,12 @@ public class DrillThroughTest extends FoodMartTestCase {
         // http://jira.pentaho.com/browse/MONDRIAN-1587
         // hsqldb was failing with SQL that included redundant parentheses
         // around IN list items.
+<<<<<<< HEAD
 
         propSaver.set(propSaver.properties.GenerateFormattedSql, true);
+=======
+        propSaver.set(propSaver.props.GenerateFormattedSql, true);
+>>>>>>> upstream/4.0
         Result result = executeQuery(
             "select from sales where "
             + "{[Promotion Media].[Bulk Mail],[Promotion Media].[Cash Register Handout]}");
@@ -200,6 +186,7 @@ public class DrillThroughTest extends FoodMartTestCase {
         assertTrue(cell.canDrillThrough());
         assertEquals(3584, cell.getDrillThroughCount());
         getTestContext().assertSqlEquals(
+<<<<<<< HEAD
             "select\n"
             + "    time_by_day.the_year as Year,\n"
             + "    promotion.media_type as Media Type,\n"
@@ -220,6 +207,10 @@ public class DrillThroughTest extends FoodMartTestCase {
             + "order by\n"
             + "    time_by_day.the_year ASC",
             cell.getDrillThroughSQL(false), 3584);
+=======
+            getDiffRepos(), "sql",
+            cell.getDrillThroughSQL(false), 1);
+>>>>>>> upstream/4.0
     }
 
     public void testDrillThrough() {
@@ -230,56 +221,15 @@ public class DrillThroughTest extends FoodMartTestCase {
             + "from Sales");
         final Cell cell = result.getCell(new int[]{0, 0});
         assertTrue(cell.canDrillThrough());
-        String sql = cell.getDrillThroughSQL(false);
+        String sql = getDrillThroughSql(cell, true, true);
 
-        String expectedSql =
-            "select `time_by_day`.`the_year` as `Year`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales` "
-            + "from `time_by_day` =as= `time_by_day`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `product_class` =as= `product_class`,"
-            + " `product` =as= `product` "
-            + "where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`"
-            + " and `time_by_day`.`the_year` = 1997"
-            + " and `sales_fact_1997`.`product_id` = `product`.`product_id`"
-            + " and `product`.`product_class_id` = `product_class`.`product_class_id`"
-            + " and `product_class`.`product_family` = 'Drink' "
-            + "order by `time_by_day`.`the_year` ASC,"
-            + " `product_class`.`product_family` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 7978);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 1718);
 
         // Cannot drill through a calc member.
         final Cell calcCell = result.getCell(new int[]{1, 1});
         assertFalse(calcCell.canDrillThrough());
-        sql = calcCell.getDrillThroughSQL(false);
+        sql = getDrillThroughSql(calcCell, false, false);
         assertNull(sql);
-    }
-
-    private String getNameExp(
-        Result result,
-        String hierName,
-        String levelName)
-    {
-        final Cube cube = result.getQuery().getCube();
-        RolapStar star = ((RolapCube) cube).getStar();
-
-        Hierarchy h =
-            cube.lookupHierarchy(
-                new Id.NameSegment(hierName, Id.Quoting.UNQUOTED), false);
-        if (h == null) {
-            return null;
-        }
-        for (Level l : h.getLevels()) {
-            if (l.getName().equals(levelName)) {
-                MondrianDef.Expression exp = ((RolapLevel) l).getNameExp();
-                String nameExpStr = exp.getExpression(star.getSqlQuery());
-                nameExpStr = nameExpStr.replace('"', '`') ;
-                return nameExpStr;
-            }
-        }
-        return null;
     }
 
     public void testDrillThrough2() {
@@ -288,187 +238,35 @@ public class DrillThroughTest extends FoodMartTestCase {
             + "SELECT {[Measures].[Unit Sales], [Measures].[Price]} on columns,\n"
             + " {[Product].Children} on rows\n"
             + "from Sales");
-        String sql = result.getCell(new int[]{0, 0}).getDrillThroughSQL(true);
-
-        String nameExpStr = getNameExp(result, "Customers", "Name");
-
-        String expectedSql =
-            "select `store`.`store_country` as `Store Country`,"
-            + " `store`.`store_state` as `Store State`,"
-            + " `store`.`store_city` as `Store City`,"
-            + " `store`.`store_name` as `Store Name`,"
-            + " `store`.`store_sqft` as `Store Sqft`,"
-            + " `store`.`store_type` as `Store Type`,"
-            + " `time_by_day`.`the_year` as `Year`,"
-            + " `time_by_day`.`quarter` as `Quarter`,"
-            + " `time_by_day`.`month_of_year` as `Month`,"
-            + " `time_by_day`.`week_of_year` as `Week`,"
-            + " `time_by_day`.`day_of_month` as `Day`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " `product_class`.`product_department` as `Product Department`,"
-            + " `product_class`.`product_category` as `Product Category`,"
-            + " `product_class`.`product_subcategory` as `Product Subcategory`,"
-            + " `product`.`brand_name` as `Brand Name`,"
-            + " `product`.`product_name` as `Product Name`,"
-            + " `promotion`.`media_type` as `Media Type`,"
-            + " `promotion`.`promotion_name` as `Promotion Name`,"
-            + " `customer`.`country` as `Country`,"
-            + " `customer`.`state_province` as `State Province`,"
-            + " `customer`.`city` as `City`, "
-            + nameExpStr
-            + " as `Name`,"
-            + " `customer`.`customer_id` as `Name (Key)`,"
-            + " `customer`.`education` as `Education Level`,"
-            + " `customer`.`gender` as `Gender`,"
-            + " `customer`.`marital_status` as `Marital Status`,"
-            + " `customer`.`yearly_income` as `Yearly Income`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales` "
-            + "from `store` =as= `store`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `time_by_day` =as= `time_by_day`,"
-            + " `product_class` =as= `product_class`,"
-            + " `product` =as= `product`,"
-            + " `promotion` =as= `promotion`,"
-            + " `customer` =as= `customer` "
-            + "where `sales_fact_1997`.`store_id` = `store`.`store_id`"
-            + " and `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`"
-            + " and `time_by_day`.`the_year` = 1997"
-            + " and `sales_fact_1997`.`product_id` = `product`.`product_id`"
-            + " and `product`.`product_class_id` = `product_class`.`product_class_id`"
-            + " and `product_class`.`product_family` = 'Drink'"
-            + " and `sales_fact_1997`.`promotion_id` = `promotion`.`promotion_id`"
-            + " and `sales_fact_1997`.`customer_id` = `customer`.`customer_id` "
-            + "order by `store`.`store_country` ASC,"
-            + " `store`.`store_state` ASC,"
-            + " `store`.`store_city` ASC,"
-            + " `store`.`store_name` ASC,"
-            + " `store`.`store_sqft` ASC,"
-            + " `store`.`store_type` ASC,"
-            + " `time_by_day`.`the_year` ASC,"
-            + " `time_by_day`.`quarter` ASC,"
-            + " `time_by_day`.`month_of_year` ASC,"
-            + " `time_by_day`.`week_of_year` ASC,"
-            + " `time_by_day`.`day_of_month` ASC,"
-            + " `product_class`.`product_family` ASC,"
-            + " `product_class`.`product_department` ASC,"
-            + " `product_class`.`product_category` ASC,"
-            + " `product_class`.`product_subcategory` ASC,"
-            + " `product`.`brand_name` ASC,"
-            + " `product`.`product_name` ASC,"
-            + " `promotion`.`media_type` ASC,"
-            + " `promotion`.`promotion_name` ASC,"
-            + " `customer`.`country` ASC,"
-            + " `customer`.`state_province` ASC,"
-            + " `customer`.`city` ASC, "
-            + nameExpStr
-            + " ASC,"
-            + " `customer`.`customer_id` ASC,"
-            + " `customer`.`education` ASC,"
-            + " `customer`.`gender` ASC,"
-            + " `customer`.`marital_status` ASC,"
-            + " `customer`.`yearly_income` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 7978);
+        final Cell cell00 = result.getCell(new int[]{0, 0});
+        String sql = getDrillThroughSql(cell00, true, true);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 1718);
 
         // Drillthrough SQL is null for cell based on calc member
-        sql = result.getCell(new int[]{1, 1}).getDrillThroughSQL(true);
+        sql = getDrillThroughSql(result.getCell(new int[]{1, 1}), true, false);
         assertNull(sql);
     }
 
     public void testDrillThrough3() {
-        Result result = executeQuery(
-            "select {[Measures].[Unit Sales], [Measures].[Store Cost], [Measures].[Store Sales]} ON COLUMNS, \n"
-            + "Hierarchize(Union(Union(Crossjoin({[Promotion Media].[All Media]}, {[Product].[All Products]}), \n"
-            + "Crossjoin({[Promotion Media].[All Media]}, [Product].[All Products].Children)), Crossjoin({[Promotion Media].[All Media]}, [Product].[All Products].[Drink].Children))) ON ROWS \n"
+        Result result = getTestContext().modern().executeQuery(
+            "select {[Measures].[Unit Sales],"
+            + " [Measures].[Store Cost],"
+            + " [Measures].[Store Sales]} ON COLUMNS, \n"
+            + "Hierarchize(Union(Union(Crossjoin("
+            + "{[Promotion].[Media Type].[All Media]},"
+            + " {[Product].[All Products]}), \n"
+            + "Crossjoin({[Promotion].[Media Type].[All Media]},"
+            + " [Product].[All Products].Children)),"
+            + " Crossjoin({[Promotion].[Media Type].[All Media]},"
+            + " [Product].[All Products].[Drink].Children))) ON ROWS \n"
             + "from [Sales] where [Time].[1997].[Q4].[12]");
 
-        // [Promotion Media].[All Media], [Product].[All
+        // [Promotion].[Media Type].[All Media], [Product].[All
         // Products].[Drink].[Dairy], [Measures].[Store Cost]
         Cell cell = result.getCell(new int[]{0, 4});
 
-        String sql = cell.getDrillThroughSQL(true);
-
-        String nameExpStr = getNameExp(result, "Customers", "Name");
-
-        String expectedSql =
-            "select"
-            + " `store`.`store_country` as `Store Country`,"
-            + " `store`.`store_state` as `Store State`,"
-            + " `store`.`store_city` as `Store City`,"
-            + " `store`.`store_name` as `Store Name`,"
-            + " `store`.`store_sqft` as `Store Sqft`,"
-            + " `store`.`store_type` as `Store Type`,"
-            + " `time_by_day`.`the_year` as `Year`,"
-            + " `time_by_day`.`quarter` as `Quarter`,"
-            + " `time_by_day`.`month_of_year` as `Month`,"
-            + " `time_by_day`.`week_of_year` as `Week`,"
-            + " `time_by_day`.`day_of_month` as `Day`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " `product_class`.`product_department` as `Product Department`,"
-            + " `product_class`.`product_category` as `Product Category`,"
-            + " `product_class`.`product_subcategory` as `Product Subcategory`,"
-            + " `product`.`brand_name` as `Brand Name`,"
-            + " `product`.`product_name` as `Product Name`,"
-            + " `promotion`.`media_type` as `Media Type`,"
-            + " `promotion`.`promotion_name` as `Promotion Name`,"
-            + " `customer`.`country` as `Country`,"
-            + " `customer`.`state_province` as `State Province`,"
-            + " `customer`.`city` as `City`,"
-            + " " + nameExpStr + " as `Name`,"
-            + " `customer`.`customer_id` as `Name (Key)`,"
-            + " `customer`.`education` as `Education Level`,"
-            + " `customer`.`gender` as `Gender`,"
-            + " `customer`.`marital_status` as `Marital Status`,"
-            + " `customer`.`yearly_income` as `Yearly Income`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales` "
-            + "from `store =as= `store`, "
-            + "`sales_fact_1997` =as= `sales_fact_1997`, "
-            + "`time_by_day` =as= `time_by_day`, "
-            + "`product_class` =as= `product_class`, "
-            + "`product` =as= `product`, "
-            + "`promotion` =as= `promotion`, "
-            + "`customer` =as= `customer` "
-            + "where `sales_fact_1997`.`store_id` = `store`.`store_id` and "
-            + "`sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and "
-            + "`time_by_day`.`the_year` = 1997 and "
-            + "`time_by_day`.`quarter` = 'Q4' and "
-            + "`time_by_day`.`month_of_year` = 12 and "
-            + "`sales_fact_1997`.`product_id` = `product`.`product_id` and "
-            + "`product`.`product_class_id` = `product_class`.`product_class_id` and "
-            + "`product_class`.`product_family` = 'Drink' and "
-            + "`product_class`.`product_department` = 'Dairy' and "
-            + "`sales_fact_1997`.`promotion_id` = `promotion`.`promotion_id` and "
-            + "`sales_fact_1997`.`customer_id` = `customer`.`customer_id` "
-            + "order by `store`.`store_country` ASC,"
-            + " `store`.`store_state` ASC,"
-            + " `store`.`store_city` ASC,"
-            + " `store`.`store_name` ASC,"
-            + " `store`.`store_sqft` ASC,"
-            + " `store`.`store_type` ASC,"
-            + " `time_by_day`.`the_year` ASC,"
-            + " `time_by_day`.`quarter` ASC,"
-            + " `time_by_day`.`month_of_year` ASC,"
-            + " `time_by_day`.`week_of_year` ASC,"
-            + " `time_by_day`.`day_of_month` ASC,"
-            + " `product_class`.`product_family` ASC,"
-            + " `product_class`.`product_department` ASC,"
-            + " `product_class`.`product_category` ASC,"
-            + " `product_class`.`product_subcategory` ASC,"
-            + " `product`.`brand_name` ASC,"
-            + " `product`.`product_name` ASC,"
-            + " `promotion.media_type` ASC,"
-            + " `promotion`.`promotion_name` ASC,"
-            + " `customer`.`country` ASC,"
-            + " `customer`.`state_province` ASC,"
-            + " `customer`.`city` ASC,"
-            + " " + nameExpStr + " ASC,"
-            + " `customer`.`customer_id` ASC,"
-            + " `customer`.`education` ASC,"
-            + " `customer`.gender` ASC,"
-            + " `customer`.`marital_status` ASC,"
-            + " `customer`.`yearly_income` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 141);
+        String sql = getDrillThroughSql(cell, true, true);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 25);
     }
 
     /**
@@ -484,7 +282,10 @@ public class DrillThroughTest extends FoodMartTestCase {
             "with set [Date Range] as '{[Time].[1997].[Q1], [Time].[1997].[Q2]}'\n"
             + "member [Time].[Time].[Date Range] as 'Aggregate([Date Range])'\n"
             + "select {[Measures].[Unit Sales]} ON COLUMNS,\n"
-            + "Hierarchize(Union(Union(Union({[Store].[All Stores]}, [Store].[All Stores].Children), [Store].[All Stores].[USA].Children), [Store].[All Stores].[USA].[CA].Children)) ON ROWS\n"
+            + "Hierarchize(Union(Union(Union({[Store].[All Stores]},"
+            + " [Store].[All Stores].Children),"
+            + " [Store].[All Stores].[USA].Children),"
+            + " [Store].[All Stores].[USA].[CA].Children)) ON ROWS\n"
             + "from [Sales]\n"
             + "where [Time].[Date Range]");
 
@@ -496,87 +297,8 @@ public class DrillThroughTest extends FoodMartTestCase {
 
         // For backwards compatibility, generate drill-through SQL (ignoring
         // calculated members) even though we said we could not drill through.
-        String sql = cell.getDrillThroughSQL(true);
-
-        String nameExpStr = getNameExp(result, "Customers", "Name");
-
-        final String expectedSql =
-            "select"
-            + " `store`.`store_state` as `Store State`,"
-            + " `store`.`store_city` as `Store City`,"
-            + " `store`.`store_name` as `Store Name`,"
-            + " `store`.`store_sqft` as `Store Sqft`,"
-            + " `store`.`store_type` as `Store Type`,"
-            + " `time_by_day`.`the_year` as `Year`,"
-            + " `time_by_day`.`quarter` as `Quarter`,"
-            + " `time_by_day`.`month_of_year` as `Month`,"
-            + " `time_by_day`.`week_of_year` as `Week`,"
-            + " `time_by_day`.`day_of_month` as `Day`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " `product_class`.`product_department` as `Product Department`,"
-            + " `product_class`.`product_category` as `Product Category`,"
-            + " `product_class`.`product_subcategory` as `Product Subcategory`,"
-            + " `product`.`brand_name` as `Brand Name`,"
-            + " `product`.`product_name` as `Product Name`,"
-            + " `promotion`.`media_type` as `Media Type`,"
-            + " `promotion`.`promotion_name` as `Promotion Name`,"
-            + " `customer`.`country` as `Country`,"
-            + " `customer`.`state_province` as `State Province`,"
-            + " `customer`.`city` as `City`, "
-            + nameExpStr
-            + " as `Name`,"
-            + " `customer`.`customer_id` as `Name (Key)`,"
-            + " `customer`.`education` as `Education Level`,"
-            + " `customer`.`gender` as `Gender`,"
-            + " `customer`.`marital_status` as `Marital Status`,"
-            + " `customer`.`yearly_income` as `Yearly Income`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales` "
-            + "from `store` =as= `store`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `time_by_day` =as= `time_by_day`,"
-            + " `product_class` =as= `product_class`,"
-            + " `product` =as= `product`,"
-            + " `promotion` =as= `promotion`,"
-            + " `customer` =as= `customer` "
-            + "where `sales_fact_1997`.`store_id` = `store`.`store_id` and"
-            + " `store`.`store_state` = 'CA' and"
-            + " `store`.`store_city` = 'Beverly Hills' and"
-            + " `sales_fact_1997`.time_id` = `time_by_day`.`time_id` and"
-            + " `sales_fact_1997`.`product_id` = `product`.`product_id` and"
-            + " `product`.`product_class_id` = `product_class`.`product_class_id` and"
-            + " `sales_fact_1997`.`promotion_id` = `promotion`.`promotion_id` and"
-            + " `sales_fact_1997`.`customer_id` = `customer`.`customer_id`"
-            + " order by"
-            + " `store`.`store_state` ASC,"
-            + " `store`.`store_city` ASC,"
-            + " `store`.`store_name` ASC,"
-            + " `store`.`store_sqft` ASC,"
-            + " `store`.`store_type` ASC,"
-            + " `time_by_day`.`the_year` ASC,"
-            + " `time_by_day`.`quarter` ASC,"
-            + " `time_by_day`.`month_of_year` ASC,"
-            + " `time_by_day`.`week_of_year` ASC,"
-            + " `time_by_day`.`day_of_month` ASC,"
-            + " `product_class`.`product_family` ASC,"
-            + " `product_class`.`product_department` ASC,"
-            + " `product_class`.`product_category` ASC,"
-            + " `product_class`.`product_subcategory` ASC,"
-            + " `product`.`brand_name` ASC,"
-            + " `product`.`product_name` ASC,"
-            + " `promotion`.`media_type` ASC,"
-            + " `promotion`.`promotion_name` ASC,"
-            + " `customer`.`country` ASC,"
-            + " `customer`.`state_province` ASC,"
-            + " `customer`.`city` ASC, "
-            + nameExpStr
-            + " ASC,"
-            + " `customer`.`customer_id` ASC,"
-            + " `customer`.`education` ASC,"
-            + " `customer`.`gender` ASC,"
-            + " `customer`.`marital_status` ASC,"
-            + " `customer`.`yearly_income` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 6815);
+        String sql = getDrillThroughSql(cell, true, true);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 12);
     }
 
     /**
@@ -588,48 +310,9 @@ public class DrillThroughTest extends FoodMartTestCase {
             "SELECT {[Measures].[Promotion Sales]} on columns,\n"
             + " {[Product].Children} on rows\n"
             + "from Sales");
-        String sql = result.getCell(new int[] {0, 0}).getDrillThroughSQL(false);
-
-        String expectedSql =
-            "select"
-            + " `time_by_day`.`the_year` as `Year`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " (case when `sales_fact_1997`.`promotion_id` = 0 then 0"
-            + " else `sales_fact_1997`.`store_sales` end)"
-            + " as `Promotion Sales` "
-            + "from `time_by_day` =as= `time_by_day`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `product_class` =as= `product_class`,"
-            + " `product` =as= `product` "
-            + "where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`"
-            + " and `time_by_day`.`the_year` = 1997"
-            + " and `sales_fact_1997`.`product_id` = `product`.`product_id`"
-            + " and `product`.`product_class_id` = `product_class`.`product_class_id`"
-            + " and `product_class`.`product_family` = 'Drink' "
-            + "order by `time_by_day`.`the_year` ASC, `product_class`.`product_family` ASC";
-
-        final Cube cube = result.getQuery().getCube();
-        RolapStar star = ((RolapCube) cube).getStar();
-
-        // Adjust expected SQL for dialect differences in FoodMart.xml.
-        Dialect dialect = star.getSqlQueryDialect();
-        final String caseStmt =
-            " \\(case when `sales_fact_1997`.`promotion_id` = 0 then 0"
-            + " else `sales_fact_1997`.`store_sales` end\\)";
-        switch (dialect.getDatabaseProduct()) {
-        case ACCESS:
-            expectedSql = expectedSql.replaceAll(
-                caseStmt,
-                " Iif(`sales_fact_1997`.`promotion_id` = 0, 0,"
-                + " `sales_fact_1997`.`store_sales`)");
-            break;
-        case INFOBRIGHT:
-            expectedSql = expectedSql.replaceAll(
-                caseStmt, " `sales_fact_1997`.`store_sales`");
-            break;
-        }
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 7978);
+        final Cell cell00 = result.getCell(new int[]{0, 0});
+        String sql = getDrillThroughSql(cell00, true, true);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 1718);
     }
 
     /**
@@ -638,6 +321,7 @@ public class DrillThroughTest extends FoodMartTestCase {
      * bug".
      */
     public void testDrillThroughDupKeys() {
+<<<<<<< HEAD
          // Note here that the type on the Store Id level is Integer or
          // Numeric. The default, of course, would be String.
          //
@@ -648,6 +332,18 @@ public class DrillThroughTest extends FoodMartTestCase {
          //
          //  and DB2 and Derby don't like converting from CHAR to INTEGER
         TestContext testContext = TestContext.instance().createSubstitutingCube(
+=======
+        // Note here that the type on the Store Id level is Integer or
+        // Numeric. The default, of course, would be String.
+        //
+        // For DB2 and Derby, we need the Integer type, otherwise the
+        // generated SQL will be something like:
+        //
+        //      `store_ragged`.`store_id` = '19'
+        //
+        //  and DB2 and Derby don't like converting from CHAR to INTEGER
+        TestContext testContext = getTestContext().createSubstitutingCube(
+>>>>>>> upstream/4.0
             "Sales",
             "  <Dimension name=\"Store2\" foreignKey=\"store_id\">\n"
             + "    <Hierarchy hasAll=\"true\" primaryKey=\"store_id\">\n"
@@ -667,26 +363,10 @@ public class DrillThroughTest extends FoodMartTestCase {
             "SELECT {[Store2].[Store Id].Members} on columns,\n"
             + " NON EMPTY([Store3].[Store Id].Members) on rows\n"
             + "from Sales");
-        String sql = result.getCell(new int[] {0, 0}).getDrillThroughSQL(false);
+        final Cell cell00 = result.getCell(new int[]{0, 0});
+        String sql = getDrillThroughSql(cell00, false, true);
 
-        String expectedSql =
-            "select `time_by_day`.`the_year` as `Year`,"
-            + " `store_ragged`.`store_id` as `Store Id`,"
-            + " `store`.`store_id` as `Store Id_0`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales` "
-            + "from `time_by_day` =as= `time_by_day`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `store_ragged` =as= `store_ragged`,"
-            + " `store` =as= `store` "
-            + "where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`"
-            + " and `time_by_day`.`the_year` = 1997"
-            + " and `sales_fact_1997`.`store_id` = `store_ragged`.`store_id`"
-            + " and `store_ragged`.`store_id` = 19"
-            + " and `sales_fact_1997`.`store_id` = `store`.`store_id`"
-            + " and `store`.`store_id` = 2 "
-            + "order by `time_by_day`.`the_year` ASC, `store_ragged`.`store_id` ASC, `store`.`store_id` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 0);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 0);
     }
 
     /**
@@ -694,40 +374,15 @@ public class DrillThroughTest extends FoodMartTestCase {
      */
     public void testDrillThroughVirtualCube() {
         Result result = executeQuery(
-            "select Crossjoin([Customers].[All Customers].[USA].[OR].Children, {[Measures].[Unit Sales]}) ON COLUMNS, "
+            "select Crossjoin([Customers].[All Customers].[USA].[OR].Children, "
+            + "{[Measures].[Unit Sales]}) ON COLUMNS, "
             + " [Gender].[All Gender].Children ON ROWS"
-            + " from [Warehouse and Sales]"
-            + " where [Time].[1997].[Q4].[12]");
+            + " from [Warehouse and Sales]" + " where [Time].[1997].[Q4].[12]");
 
-        String sql = result.getCell(new int[]{0, 0}).getDrillThroughSQL(false);
+        final Cell cell00 = result.getCell(new int[]{0, 0});
+        String sql = getDrillThroughSql(cell00, true, true);
 
-        String expectedSql =
-            "select `time_by_day`.`the_year` as `Year`,"
-            + " `time_by_day`.`quarter` as `Quarter`,"
-            + " `time_by_day`.month_of_year` as `Month`,"
-            + " `customer`.`state_province` as `State Province`,"
-            + " `customer`.`city` as `City`,"
-            + " `customer`.`gender` as `Gender`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales`"
-            + " from `time_by_day` =as= `time_by_day`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `customer` =as= `customer`"
-            + " where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and"
-            + " `time_by_day`.`the_year` = 1997 and"
-            + " `time_by_day`.`quarter` = 'Q4' and"
-            + " `time_by_day`.`month_of_year` = 12 and"
-            + " `sales_fact_1997`.`customer_id` = `customer`.customer_id` and"
-            + " `customer`.`state_province` = 'OR' and"
-            + " `customer`.`city` = 'Albany' and"
-            + " `customer`.`gender` = 'F'"
-            + " order by `time_by_day`.`the_year` ASC,"
-            + " `time_by_day`.`quarter` ASC,"
-            + " `time_by_day`.`month_of_year` ASC,"
-            + " `customer`.`state_province` ASC,"
-            + " `customer`.`city` ASC,"
-            + " `customer`.`gender` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 73);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 13);
     }
 
     /**
@@ -745,10 +400,10 @@ public class DrillThroughTest extends FoodMartTestCase {
         // Specify the column and nameColumn to be the same
         // in order to reproduce the problem
         final TestContext testContext =
-            TestContext.instance().createSubstitutingCube(
+            getTestContext().createSubstitutingCube(
                 "Sales",
                 "  <Dimension name=\"Store2\" foreignKey=\"store_id\">\n"
-                + "    <Hierarchy hasAll=\"true\" allMemberName=\"All Stores\" >\n"
+                + "    <Hierarchy hasAll=\"true\" primaryKey=\"store_id\" allMemberName=\"All Stores\" >\n"
                 + "      <Table name=\"store_ragged\"/>\n"
                 + "      <Level name=\"Store Id\" column=\"store_id\" nameColumn=\"store_id\" ordinalColumn=\"region_id\" uniqueMembers=\"true\">\n"
                 + "     </Level>"
@@ -757,92 +412,13 @@ public class DrillThroughTest extends FoodMartTestCase {
 
         Result result = testContext.executeQuery(
             "SELECT {[Measures].[Unit Sales]} on columns, "
-            + "{[Store2].members} on rows FROM [Sales]");
+            + "{[Store2].[Store Id].members} on rows FROM [Sales]");
 
         // Prior to fix the request for the drill through SQL would result in
         // an assertion error
-        String sql = result.getCell(new int[] {0, 0}).getDrillThroughSQL(true);
-        String nameExpStr = getNameExp(result, "Customers", "Name");
-        String expectedSql =
-            "select "
-            + "`store`.`store_country` as `Store Country`,"
-            + " `store`.`store_state` as `Store State`,"
-            + " `store`.`store_city` as `Store City`,"
-            + " `store`.`store_name` as `Store Name`,"
-            + " `store`.`store_sqft` as `Store Sqft`,"
-            + " `store`.`store_type` as `Store Type`,"
-            + " `time_by_day`.`the_year` as `Year`,"
-            + " `time_by_day`.`quarter` as `Quarter`,"
-            + " `time_by_day`.`month_of_year` as `Month`,"
-            + " `time_by_day`.`week_of_year` as `Week`,"
-            + " `time_by_day`.`day_of_month` as `Day`,"
-            + " `product_class`.`product_family` as `Product Family`,"
-            + " `product_class`.`product_department` as `Product Department`,"
-            + " `product_class`.`product_category` as `Product Category`,"
-            + " `product_class`.`product_subcategory` as `Product Subcategory`,"
-            + " `product`.`brand_name` as `Brand Name`,"
-            + " `product`.`product_name` as `Product Name`,"
-            + " `store_ragged`.`store_id` as `Store Id`,"
-            + " `store_ragged`.`store_id` as `Store Id (Key)`,"
-            + " `promotion`.`media_type` as `Media Type`,"
-            + " `promotion`.`promotion_name` as `Promotion Name`,"
-            + " `customer`.`country` as `Country`,"
-            + " `customer`.`state_province` as `State Province`,"
-            + " `customer`.`city` as `City`,"
-            + " " + nameExpStr + " as `Name`,"
-            + " `customer`.`customer_id` as `Name (Key)`,"
-            + " `customer`.`education` as `Education Level`,"
-            + " `customer`.`gender` as `Gender`,"
-            + " `customer`.`marital_status` as `Marital Status`,"
-            + " `customer`.`yearly_income` as `Yearly Income`,"
-            + " `sales_fact_1997`.`unit_sales` as `Unit Sales`"
-            + " from `store` =as= `store`,"
-            + " `sales_fact_1997` =as= `sales_fact_1997`,"
-            + " `time_by_day` =as= `time_by_day`,"
-            + " `product_class` =as= `product_class`,"
-            + " `product` =as= `product`,"
-            + " `store_ragged` =as= `store_ragged`,"
-            + " `promotion` =as= `promotion`,"
-            + " `customer` =as= `customer`"
-            + " where `sales_fact_1997`.`store_id` = `store`.`store_id`"
-            + " and `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`"
-            + " and `time_by_day`.`the_year` = 1997"
-            + " and `sales_fact_1997`.`product_id` = `product`.`product_id`"
-            + " and `product`.`product_class_id` = `product_class`.`product_class_id`"
-            + " and `sales_fact_1997`.`store_id` = `store_ragged`.`store_id`"
-            + " and `sales_fact_1997`.`promotion_id` = `promotion`.`promotion_id`"
-            + " and `sales_fact_1997`.`customer_id` = `customer`.`customer_id`"
-            + " order by `store`.`store_country` ASC,"
-            + " `store`.`store_state` ASC,"
-            + " `store`.`store_city` ASC,"
-            + " `store`.`store_name` ASC,"
-            + " `store`.`store_sqft` ASC,"
-            + " `store`.`store_type` ASC,"
-            + " `time_by_day`.`the_year` ASC,"
-            + " `time_by_day`.`quarter` ASC,"
-            + " `time_by_day`.`month_of_year` ASC,"
-            + " `time_by_day`.`week_of_year` ASC,"
-            + " `time_by_day`.`day_of_month` ASC,"
-            + " `product_class`.`product_family` ASC,"
-            + " `product_class`.`product_department` ASC,"
-            + " `product_class`.`product_category` ASC,"
-            + " `product_class`.`product_subcategory` ASC,"
-            + " `product`.`brand_name` ASC,"
-            + " `product`.`product_name` ASC,"
-            + " `store_ragged`.`store_id` ASC,"
-            + " `promotion`.`media_type` ASC,"
-            + " `promotion`.`promotion_name` ASC,"
-            + " `customer`.`country` ASC,"
-            + " `customer`.`state_province` ASC,"
-            + " `customer`.`city` ASC,"
-            + " " + nameExpStr + " ASC,"
-            + " `customer`.`customer_id` ASC,"
-            + " `customer`.`education` ASC,"
-            + " `customer`.`gender` ASC,"
-            + " `customer`.`marital_status` ASC,"
-            + " `customer`.`yearly_income` ASC";
-
-        getTestContext().assertSqlEquals(expectedSql, sql, 86837);
+        final Cell cell00 = result.getCell(new int[]{0, 7});
+        String sql = getDrillThroughSql(cell00, true, true);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql", sql, 12);
     }
 
     /**
@@ -856,7 +432,7 @@ public class DrillThroughTest extends FoodMartTestCase {
      * @throws Exception on error
      */
     public void testTruncateLevelName() throws Exception {
-        TestContext testContext = TestContext.instance().createSubstitutingCube(
+        TestContext testContext = getTestContext().createSubstitutingCube(
             "Sales",
             "  <Dimension name=\"Education Level2\" foreignKey=\"customer_id\">\n"
             + "    <Hierarchy hasAll=\"true\" primaryKey=\"customer_id\">\n"
@@ -872,7 +448,8 @@ public class DrillThroughTest extends FoodMartTestCase {
             + "FROM [Sales]\n"
             + "WHERE ([Time].[1997].[Q1].[1], [Product].[Non-Consumable].[Carousel].[Specialty].[Sunglasses].[ADJ].[ADJ Rosy Sunglasses]) ");
 
-        String sql = result.getCell(new int[] {0, 0}).getDrillThroughSQL(false);
+        final Cell cell00 = result.getCell(new int[]{0, 0});
+        String sql = getDrillThroughSql(cell00, false, false);
 
         // Check that SQL is valid.
         java.sql.Connection connection = null;
@@ -889,15 +466,18 @@ public class DrillThroughTest extends FoodMartTestCase {
             } else {
                 assertEquals(6, columnCount);
             }
-            final String columnName = resultSet.getMetaData().getColumnLabel(5);
+            final String columnName =
+                resultSet.getMetaData().getColumnLabel(5);
             assertTrue(
                 columnName,
-                columnName.startsWith("Education Level but with a"));
+                columnName.equals(
+                    "Education Level but with a very long name that will be too"
+                    + " long "));
             int n = 0;
             while (resultSet.next()) {
                 ++n;
             }
-            assertEquals(2, n);
+            assertEquals(1, n);
         } finally {
             if (connection != null) {
                 connection.close();
@@ -932,9 +512,9 @@ public class DrillThroughTest extends FoodMartTestCase {
             true,
             "Warehouse and Sales",
             "[Measures].[Unit Sales] * 2.0");
-        // in virtual cube, mixture of measures from two cubes is not drillable
+        // in virtual cube, mixture of measures from two cubes is drillable
         assertCanDrillThrough(
-            false,
+            true,
             "Warehouse and Sales",
             "[Measures].[Unit Sales] + [Measures].[Units Ordered]");
         // expr with measures both from [Sales] is drillable
@@ -1062,7 +642,7 @@ public class DrillThroughTest extends FoodMartTestCase {
             + "from [" + cubeName + "]");
         final Cell cell = result.getCell(new int[] {0, 0});
         assertEquals(canDrillThrough, cell.canDrillThrough());
-        final String sql = cell.getDrillThroughSQL(false);
+        final String sql = getDrillThroughSql(cell, false, false);
         if (canDrillThrough) {
             assertNotNull(sql);
         } else {
@@ -1107,6 +687,20 @@ public class DrillThroughTest extends FoodMartTestCase {
      * Test case for MONDRIAN-791.
      */
     public void testDrillThroughMultiPositionCompoundSlicer() {
+        // Only works for certain dialects. MySQL can generate composite IN
+        // expressions, e.g. (x, y) in ((1, 2), (3, 4)), but Oracle cannot.
+        String compound;
+        switch (getTestContext().getDialect().getDatabaseProduct()) {
+        case MYSQL:
+            compound = "-compound-in";
+            break;
+        case ORACLE:
+            compound = "";
+            break;
+        default:
+            return;
+        }
+
         // A query with a simple multi-position compound slicer
         Result result =
             executeQuery(
@@ -1116,6 +710,7 @@ public class DrillThroughTest extends FoodMartTestCase {
                 + "WHERE {[Time].[1997].[Q1], [Time].[1997].[Q2]}");
         Cell cell = result.getCell(new int[]{0, 0});
         assertTrue(cell.canDrillThrough());
+<<<<<<< HEAD
         String sql = cell.getDrillThroughSQL(false);
         String expectedSql;
         switch (getTestContext().getDialect().getDatabaseProduct()) {
@@ -1131,6 +726,12 @@ public class DrillThroughTest extends FoodMartTestCase {
             return;
         }
         getTestContext().assertSqlEquals(expectedSql, sql, 41956);
+=======
+        String sql = getDrillThroughSql(cell, true, true);
+        getTestContext().assertSqlEquals(
+            getDiffRepos(), "sql" + compound, sql, 1);
+        assertEquals(41956, cell.getDrillThroughCount());
+>>>>>>> upstream/4.0
 
         // A query with a slightly more complex multi-position compound slicer
         result =
@@ -1142,9 +743,10 @@ public class DrillThroughTest extends FoodMartTestCase {
                 + "                {[Time].[1997].[Q1], [Time].[1997].[Q2]})");
         cell = result.getCell(new int[]{0, 0});
         assertTrue(cell.canDrillThrough());
-        sql = cell.getDrillThroughSQL(false);
+        String sql2 = getDrillThroughSql(cell, true, true);
 
         // Note that gender and marital status get their own predicates,
+<<<<<<< HEAD
         // independent of the time portion of the slicer
         switch (getTestContext().getDialect().getDatabaseProduct()) {
         case MYSQL:
@@ -1159,21 +761,27 @@ public class DrillThroughTest extends FoodMartTestCase {
             return;
         }
         getTestContext().assertSqlEquals(expectedSql, sql, 10430);
+=======
+        // independent of the time portion of the slicer.
+        getTestContext().assertSqlEquals(
+            getDiffRepos(), "sql2" + compound, sql2, 1);
+        assertEquals(10430, cell.getDrillThroughCount());
+>>>>>>> upstream/4.0
 
         // A query with an even more complex multi-position compound slicer
         // (gender must be in the slicer predicate along with time)
-        result =
-            executeQuery(
-                "SELECT {[Measures].[Unit Sales]} ON COLUMNS,\n"
-                + " {[Product].[All Products]} ON ROWS\n"
-                + "FROM [Sales]\n"
-                + "WHERE Union(Crossjoin({[Gender].[F]}, {[Time].[1997].[Q1]}),"
-                + "            Crossjoin({[Gender].[M]}, {[Time].[1997].[Q2]}))");
+        result = executeQuery(
+            "SELECT {[Measures].[Unit Sales]} ON COLUMNS,\n"
+            + " {[Product].[All Products]} ON ROWS\n"
+            + "FROM [Sales]\n"
+            + "WHERE Union(Crossjoin({[Gender].[F]}, {[Time].[1997].[Q1]}),"
+            + "            Crossjoin({[Gender].[M]}, {[Time].[1997].[Q2]}))");
         cell = result.getCell(new int[]{0, 0});
         assertTrue(cell.canDrillThrough());
-        sql = cell.getDrillThroughSQL(false);
+        String sql3 = getDrillThroughSql(cell, false, true);
 
         // Note that gender and marital status get their own predicates,
+<<<<<<< HEAD
         // independent of the time portion of the slicer
         switch (getTestContext().getDialect().getDatabaseProduct()) {
         case MYSQL:
@@ -1188,6 +796,12 @@ public class DrillThroughTest extends FoodMartTestCase {
             return;
         }
         getTestContext().assertSqlEquals(expectedSql, sql, 20971);
+=======
+        // independent of the time portion of the slicer.
+        getTestContext().assertSqlEquals(
+            getDiffRepos(), "sql3" + compound, sql3, 1);
+        assertEquals(20971, cell.getDrillThroughCount());
+>>>>>>> upstream/4.0
 
         // A query with a simple multi-position compound slicer with
         // different levels (overlapping)
@@ -1199,10 +813,11 @@ public class DrillThroughTest extends FoodMartTestCase {
                 + "WHERE {[Time].[1997].[Q1], [Time].[1997].[Q1].[1]}");
         cell = result.getCell(new int[]{0, 0});
         assertTrue(cell.canDrillThrough());
-        sql = cell.getDrillThroughSQL(false);
+        String sql4 = getDrillThroughSql(cell, true, true);
 
         // With overlapping slicer members, the first slicer predicate is
         // redundant, but does not affect the query's results
+<<<<<<< HEAD
         switch (getTestContext().getDialect().getDatabaseProduct()) {
         case MYSQL:
             expectedSql =
@@ -1216,6 +831,10 @@ public class DrillThroughTest extends FoodMartTestCase {
             return;
         }
         getTestContext().assertSqlEquals(expectedSql, sql, 21588);
+=======
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql4", sql4, 1);
+        assertEquals(21588, cell.getDrillThroughCount());
+>>>>>>> upstream/4.0
 
         // A query with a simple multi-position compound slicer with
         // different levels (non-overlapping)
@@ -1227,6 +846,7 @@ public class DrillThroughTest extends FoodMartTestCase {
                 + "WHERE {[Time].[1997].[Q1].[1], [Time].[1997].[Q2]}");
         cell = result.getCell(new int[]{0, 0});
         assertTrue(cell.canDrillThrough());
+<<<<<<< HEAD
         sql = cell.getDrillThroughSQL(false);
         switch (getTestContext().getDialect().getDatabaseProduct()) {
         case MYSQL:
@@ -1241,12 +861,15 @@ public class DrillThroughTest extends FoodMartTestCase {
             return;
         }
         getTestContext().assertSqlEquals(expectedSql, sql, 27402);
+=======
+        String sql5 = getDrillThroughSql(cell, true, true);
+        getTestContext().assertSqlEquals(getDiffRepos(), "sql5", sql5, 1);
+        assertEquals(27402, cell.getDrillThroughCount());
+>>>>>>> upstream/4.0
     }
 
     public void testDrillthroughDisable() {
-        propSaver.set(
-            MondrianProperties.instance().EnableDrillThrough,
-            true);
+        propSaver.set(propSaver.props.EnableDrillThrough, true);
         Result result =
             executeQuery(
                 "SELECT {[Measures].[Unit Sales]} ON COLUMNS,\n"
@@ -1256,9 +879,7 @@ public class DrillThroughTest extends FoodMartTestCase {
         Cell cell = result.getCell(new int[]{0, 0});
         assertTrue(cell.canDrillThrough());
 
-        propSaver.set(
-            MondrianProperties.instance().EnableDrillThrough,
-            false);
+        propSaver.set(propSaver.props.EnableDrillThrough, false);
         result =
             executeQuery(
                 "SELECT {[Measures].[Unit Sales]} ON COLUMNS,\n"

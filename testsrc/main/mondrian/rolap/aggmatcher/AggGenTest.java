@@ -4,13 +4,14 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2005-2010 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.aggmatcher;
 
 import mondrian.olap.*;
 import mondrian.rolap.RolapConnection;
+import mondrian.spi.*;
 import mondrian.test.FoodMartTestCase;
 
 import org.apache.log4j.*;
@@ -23,7 +24,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
-
 /**
  * Test if lookup columns are there after loading them in
  * AggGen#addCollapsedColumn(...).
@@ -31,7 +31,6 @@ import javax.sql.DataSource;
  * @author Sherman Wood
  */
 public class AggGenTest extends FoodMartTestCase {
-
     public AggGenTest(String name) {
         super(name);
     }
@@ -49,12 +48,11 @@ public class AggGenTest extends FoodMartTestCase {
         // This modifies the MondrianProperties for the whole of the
         // test run
 
-        MondrianProperties props = MondrianProperties.instance();
         // If run in Ant and with mondrian.jar, please comment out this line:
-        propSaver.set(props.AggregateRules, "DefaultRules.xml");
-        propSaver.set(props.UseAggregates, true);
-        propSaver.set(props.ReadAggregates, true);
-        propSaver.set(props.GenerateAggregateSql, true);
+        propSaver.set(propSaver.props.AggregateRules, "DefaultRules.xml");
+        propSaver.set(propSaver.props.UseAggregates, true);
+        propSaver.set(propSaver.props.ReadAggregates, true);
+        propSaver.set(propSaver.props.GenerateAggregateSql, true);
 
         final RolapConnection rolapConn = (RolapConnection) getConnection();
         Query query =
@@ -69,7 +67,11 @@ public class AggGenTest extends FoodMartTestCase {
         try {
             sqlConnection = dataSource.getConnection();
             DatabaseMetaData dbmeta = sqlConnection.getMetaData();
-            JdbcSchema jdbcSchema = JdbcSchema.makeDB(dataSource);
+            DataServicesProvider provider =
+                DataServicesLocator.getDataServicesProvider(
+                    rolapConn.getSchema().getDataServiceProviderName());
+            JdbcSchema jdbcSchema = JdbcSchema.makeDB(
+                dataSource, provider.getJdbcSchemaFactory());
             final String catalogName = jdbcSchema.getCatalogName();
             final String schemaName = jdbcSchema.getSchemaName();
 

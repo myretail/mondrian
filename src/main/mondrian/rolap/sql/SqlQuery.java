@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho and others
+=======
+// Copyright (C) 2005-2014 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 //
 // jhyde, Mar 21, 2002
@@ -15,11 +19,9 @@ package mondrian.rolap.sql;
 import mondrian.olap.*;
 import mondrian.rolap.*;
 import mondrian.spi.Dialect;
-import mondrian.spi.DialectManager;
 import mondrian.util.Pair;
 
 import java.util.*;
-import javax.sql.DataSource;
 
 /**
  * <code>SqlQuery</code> allows us to build a <code>select</code>
@@ -99,25 +101,18 @@ public class SqlQuery {
      */
     private final List<String> fromAliases;
 
+    private int joinCount;
+
     /** The SQL dialect this query is to be generated in. */
     private final Dialect dialect;
 
     /** Scratch buffer. Clear it before use. */
     private final StringBuilder buf;
 
-    private final Set<MondrianDef.Relation> relations =
-        new HashSet<MondrianDef.Relation>();
-
-    private final Map<MondrianDef.Relation, MondrianDef.RelationOrJoin>
-        mapRelationToRoot =
-        new HashMap<MondrianDef.Relation, MondrianDef.RelationOrJoin>();
-
-    private final Map<MondrianDef.RelationOrJoin, List<RelInfo>>
-        mapRootToRelations =
-        new HashMap<MondrianDef.RelationOrJoin, List<RelInfo>>();
-
     private final Map<String, String> columnAliases =
         new HashMap<String, String>();
+
+    private final List<String> columnAliases2 = new ArrayList<String>();
 
     private static final String INDENT = "    ";
 
@@ -166,15 +161,6 @@ public class SqlQuery {
             MondrianProperties.instance().GenerateFormattedSql.get());
     }
 
-    /**
-     * Creates an empty <code>SqlQuery</code> with the same environment as this
-     * one. (As per the Gang of Four 'prototype' pattern.)
-     */
-    public SqlQuery cloneEmpty()
-    {
-        return new SqlQuery(dialect);
-    }
-
     public void setDistinct(final boolean distinct) {
         this.distinct = distinct;
     }
@@ -202,9 +188,11 @@ public class SqlQuery {
      *
      * @pre alias != null
      */
-    public boolean addFromQuery(
+    private boolean addFromQuery(
         final String query,
         final String alias,
+        String parentAlias,
+        String joinCondition,
         final boolean failIfExists)
     {
         assert alias != null;
@@ -230,8 +218,22 @@ public class SqlQuery {
             buf.append(' ');
         }
         dialect.quoteIdentifier(alias, buf);
-        fromAliases.add(alias);
 
+        if (parentAlias != null) {
+            assert fromAliases.contains(parentAlias);
+            assert joinCondition != null;
+            if (dialect.allowsJoinOn()) {
+                buf.append(" on ").append(joinCondition);
+                ++joinCount;
+            } else {
+                where.add(joinCondition);
+            }
+        } else {
+            assert joinCondition == null;
+            assert from.isEmpty() || !dialect.allowsJoinOn();
+        }
+
+        fromAliases.add(alias);
         from.add(buf.toString());
         return true;
     }
@@ -244,7 +246,7 @@ public class SqlQuery {
      * @param alias table alias, may not be null
      *              (if not null, must not be zero length).
      * @param filter Extra filter condition, or null
-     * @param hints table optimization hints, if any
+     * @param hintMap table optimization hints, if any
      * @param failIfExists Whether to throw a RuntimeException if from clause
      *   already contains this alias
      *
@@ -256,7 +258,9 @@ public class SqlQuery {
         final String name,
         final String alias,
         final String filter,
-        final Map hints,
+        final Map<String, String> hintMap,
+        final String parentAlias,
+        final String joinCondition,
         final boolean failIfExists)
     {
         if (fromAliases.contains(alias)) {
@@ -279,18 +283,32 @@ public class SqlQuery {
                 buf.append(' ');
             }
             dialect.quoteIdentifier(alias, buf);
-            fromAliases.add(alias);
         }
 
         if (this.allowHints) {
-            dialect.appendHintsAfterFromClause(buf, hints);
+            dialect.appendHintsAfterFromClause(buf, hintMap);
         }
 
+        if (parentAlias != null) {
+            assert fromAliases.contains(parentAlias);
+            assert joinCondition != null;
+            if (dialect.allowsJoinOn()) {
+                buf.append(" on ").append(joinCondition);
+                ++joinCount;
+            } else {
+                where.add(joinCondition);
+            }
+        } else {
+            assert joinCondition == null;
+            assert from.isEmpty() || !dialect.allowsJoinOn();
+        }
+
+        fromAliases.add(alias);
         from.add(buf.toString());
 
         if (filter != null) {
             // append filter condition to where clause
-            addWhere("(", filter, ")");
+            addWhere("(" + filter + ")");
         }
         return true;
     }
@@ -300,7 +318,7 @@ public class SqlQuery {
         final String alias,
         final boolean failIfExists)
     {
-        addFromQuery(sqlQuery.toString(), alias, failIfExists);
+        addFromQuery(sqlQuery.toString(), alias, null, null, failIfExists);
     }
 
     /**
@@ -312,13 +330,14 @@ public class SqlQuery {
      * @param relation Relation to add
      * @param alias Alias of relation. If null, uses relation's alias.
      * @param failIfExists Whether to fail if relation is already present
-     * @return true, if relation *was* added to query
+     * @return Whether relation was added to query
      */
     public boolean addFrom(
-        final MondrianDef.RelationOrJoin relation,
+        final RolapSchema.PhysRelation relation,
         final String alias,
         final boolean failIfExists)
     {
+<<<<<<< HEAD
         registerRootRelation(relation);
 
         if (relation instanceof MondrianDef.Relation) {
@@ -346,36 +365,70 @@ public class SqlQuery {
                 }
             }
         }
+=======
+        return addFrom_(relation, alias, null, null, failIfExists);
+    }
 
-        if (relation instanceof MondrianDef.View) {
-            final MondrianDef.View view = (MondrianDef.View) relation;
+    public boolean addFrom(
+        RolapSchema.PhysRelation relation,
+        String alias,
+        String parentAlias,
+        String joinCondition,
+        final boolean failIfExists)
+    {
+        return addFrom_(
+            relation, alias, parentAlias, joinCondition, failIfExists);
+    }
+>>>>>>> upstream/4.0
+
+    private boolean addFrom_(
+        RolapSchema.PhysRelation relation,
+        String alias,
+        String parentAlias,
+        String joinCondition,
+        final boolean failIfExists)
+    {
+        Util.deprecated("alias param probably not necessary", false);
+        Util.deprecated(
+            "adopt visitor pattern and replace 'instanceof' below", false);
+        if (relation instanceof RolapSchema.PhysView) {
+            final RolapSchema.PhysView view = (RolapSchema.PhysView) relation;
             final String viewAlias =
                 (alias == null)
                 ? view.getAlias()
                 : alias;
-            final String sqlString = view.getCodeSet().chooseQuery(dialect);
-            return addFromQuery(sqlString, viewAlias, false);
+            final String sqlString = view.getSqlString();
+            return addFromQuery(
+                sqlString, viewAlias, parentAlias, joinCondition, false);
 
-        } else if (relation instanceof MondrianDef.InlineTable) {
-            final MondrianDef.Relation relation1 =
-                RolapUtil.convertInlineTableToRelation(
-                    (MondrianDef.InlineTable) relation, dialect);
-            return addFrom(relation1, alias, failIfExists);
-
-        } else if (relation instanceof MondrianDef.Table) {
-            final MondrianDef.Table table = (MondrianDef.Table) relation;
+        } else if (relation instanceof RolapSchema.PhysTable) {
+            final RolapSchema.PhysTable table =
+                (RolapSchema.PhysTable) relation;
             final String tableAlias =
                 (alias == null)
                 ? table.getAlias()
                 : alias;
             return addFromTable(
-                table.schema,
-                table.name,
+                table.getSchemaName(),
+                table.getName(),
                 tableAlias,
-                table.getFilter(),
+                /*table.getFilter()*/null,
                 table.getHintMap(),
+                parentAlias,
+                joinCondition,
                 failIfExists);
-
+        } else if (relation instanceof RolapSchema.PhysInlineTable) {
+            final RolapSchema.PhysInlineTable table =
+                (RolapSchema.PhysInlineTable) relation;
+            RolapSchema.PhysView physView =
+                RolapUtil.convertInlineTableToRelation(table, dialect);
+            return addFromQuery(
+                physView.getSqlString(),
+                table.getAlias(),
+                parentAlias,
+                joinCondition,
+                failIfExists);
+/*
         } else if (relation instanceof MondrianDef.Join) {
             final MondrianDef.Join join = (MondrianDef.Join) relation;
             return addJoin(
@@ -386,79 +439,11 @@ public class SqlQuery {
                 join.getRightAlias(),
                 join.rightKey,
                 failIfExists);
+*/
         } else {
+            Util.deprecated("remove above commented section", false);
             throw Util.newInternal("bad relation type " + relation);
         }
-    }
-
-    private boolean addJoin(
-        MondrianDef.RelationOrJoin left,
-        String leftAlias,
-        String leftKey,
-        MondrianDef.RelationOrJoin right,
-        String rightAlias,
-        String rightKey,
-        boolean failIfExists)
-    {
-        boolean addLeft = addFrom(left, leftAlias, failIfExists);
-        boolean addRight = addFrom(right, rightAlias, failIfExists);
-
-        boolean added = addLeft || addRight;
-        if (added) {
-            buf.setLength(0);
-
-            dialect.quoteIdentifier(buf, leftAlias, leftKey);
-            buf.append(" = ");
-            dialect.quoteIdentifier(buf, rightAlias, rightKey);
-            final String condition = buf.toString();
-            if (dialect.allowsJoinOn()) {
-                from.addOn(
-                    leftAlias, leftKey, rightAlias, rightKey,
-                    condition);
-            } else {
-                addWhere(condition);
-            }
-        }
-        return added;
-    }
-
-    private void addJoinBetween(
-        MondrianDef.RelationOrJoin root,
-        MondrianDef.Relation relation1,
-        MondrianDef.Relation relation2)
-    {
-        List<RelInfo> relations = mapRootToRelations.get(root);
-        int index1 = find(relations, relation1);
-        int index2 = find(relations, relation2);
-        assert index1 != -1;
-        assert index2 != -1;
-        int min = Math.min(index1, index2);
-        int max = Math.max(index1, index2);
-        for (int i = max - 1; i >= min; i--) {
-            RelInfo relInfo = relations.get(i);
-                addJoin(
-                    relInfo.relation,
-                    relInfo.leftAlias != null
-                        ? relInfo.leftAlias
-                        : relInfo.relation.getAlias(),
-                    relInfo.leftKey,
-                    relations.get(i + 1).relation,
-                    relInfo.rightAlias != null
-                        ? relInfo.rightAlias
-                        : relations.get(i + 1).relation.getAlias(),
-                    relInfo.rightKey,
-                    false);
-        }
-    }
-
-    private int find(List<RelInfo> relations, MondrianDef.Relation relation) {
-        for (int i = 0, n = relations.size(); i < n; i++) {
-            RelInfo relInfo = relations.get(i);
-            if (relInfo.relation.equals(relation)) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     /**
@@ -466,16 +451,7 @@ public class SqlQuery {
      * column alias.
      */
     public String addSelect(final String expression, SqlStatement.Type type) {
-        // Some DB2 versions (AS/400) throw an error if a column alias is
-        //  *not* used in a subsequent order by (Group by).
-        // Derby fails on 'SELECT... HAVING' if column has alias.
-        switch (dialect.getDatabaseProduct()) {
-        case DB2_AS400:
-        case DERBY:
-            return addSelect(expression, type, null);
-        default:
-            return addSelect(expression, type, nextColumnAlias());
-        }
+        return addSelect(expression, type, null);
     }
 
     /**
@@ -517,8 +493,20 @@ public class SqlQuery {
         final SqlStatement.Type type,
         String alias)
     {
-        buf.setLength(0);
+        if (alias == null) {
+            alias = nextColumnAlias();
+        }
 
+        // Some DB2 versions (AS/400) throw an error if a column alias is
+        // *not* used in a subsequent order by (Group by).
+        // Derby fails on 'SELECT... HAVING' if column has alias.
+        switch (dialect.getDatabaseProduct()) {
+        case DB2_AS400:
+        case DERBY:
+            alias = null;
+        }
+
+        buf.setLength(0);
         buf.append(expression);
         if (alias != null) {
             buf.append(" as ");
@@ -526,7 +514,8 @@ public class SqlQuery {
         }
 
         select.add(buf.toString());
-        addType(type);
+        types.add(type);
+        columnAliases2.add(alias);
         columnAliases.put(expression, alias);
         return alias;
     }
@@ -535,32 +524,11 @@ public class SqlQuery {
         return columnAliases.get(expression);
     }
 
-    public void addWhere(
-        final String exprLeft,
-        final String exprMid,
-        final String exprRight)
-    {
-        int len = exprLeft.length() + exprMid.length() + exprRight.length();
-        StringBuilder buf = new StringBuilder(len);
-
-        buf.append(exprLeft);
-        buf.append(exprMid);
-        buf.append(exprRight);
-
-        addWhere(buf.toString());
+    public String getAlias(int i) {
+        return columnAliases2.get(i);
     }
 
-    public void addWhere(RolapStar.Condition joinCondition) {
-        String left = joinCondition.getLeft().getTableAlias();
-        String right = joinCondition.getRight().getTableAlias();
-        if (fromAliases.contains(left) && fromAliases.contains(right)) {
-            addWhere(
-                joinCondition.getLeft(this),
-                " = ",
-                joinCondition.getRight(this));
-        }
-    }
-
+<<<<<<< HEAD
     public void addWhere(final String expression)
     {
         assert expression != null && !expression.equals("");
@@ -570,6 +538,13 @@ public class SqlQuery {
     public void addGroupBy(final String expression)
     {
         assert expression != null && !expression.equals("");
+=======
+    public void addWhere(final String expression) {
+        where.add(expression);
+    }
+
+    public void addGroupBy(final String expression) {
+>>>>>>> upstream/4.0
         groupBy.add(expression);
     }
 
@@ -581,9 +556,13 @@ public class SqlQuery {
         }
     }
 
+<<<<<<< HEAD
     public void addHaving(final String expression)
     {
         assert expression != null && !expression.equals("");
+=======
+    public void addHaving(final String expression) {
+>>>>>>> upstream/4.0
         having.add(expression);
     }
 
@@ -601,7 +580,7 @@ public class SqlQuery {
         boolean prepend,
         boolean nullable)
     {
-        this.addOrderBy(expr, ascending, prepend, nullable, true);
+        this.addOrderBy(expr, expr, ascending, prepend, nullable, true);
     }
 
     /**
@@ -615,6 +594,7 @@ public class SqlQuery {
      */
     public void addOrderBy(
         String expr,
+        String alias,
         boolean ascending,
         boolean prepend,
         boolean nullable,
@@ -622,7 +602,9 @@ public class SqlQuery {
     {
         String orderExpr =
             dialect.generateOrderItem(
-                expr,
+                dialect.requiresOrderByAlias()
+                    ? alias
+                    : expr,
                 nullable,
                 ascending,
                 collateNullsLast);
@@ -633,11 +615,10 @@ public class SqlQuery {
         }
     }
 
-    public String toString()
-    {
-        buf.setLength(0);
-        toBuffer(buf, "");
-        return buf.toString();
+    public String toString() {
+        // Don't use buf. There are problems with reentrancy, especially while
+        // debugging.
+        return toBuffer(new StringBuilder(), "").toString();
     }
 
     /**
@@ -647,12 +628,18 @@ public class SqlQuery {
      * @param buf String builder
      * @param prefix Prefix for each line
      */
-    public void toBuffer(StringBuilder buf, String prefix) {
+    public StringBuilder toBuffer(StringBuilder buf, String prefix) {
         final String first = distinct ? "select distinct " : "select ";
         select.toBuffer(buf, generateFormattedSql, prefix, first, ", ", "", "");
         groupingFunctionsToBuffer(buf, prefix);
+        String fromSep = joinCount > 0 ? " join " : ", ";
+        if (dialect.allowsJoinOn() && from.size() > 1) {
+            if (joinCount <= 0) {
+                throw new AssertionError();
+            }
+        }
         from.toBuffer(
-            buf, generateFormattedSql, prefix, " from ", ", ", "", "");
+            buf, generateFormattedSql, prefix, " from ", fromSep, "", "");
         where.toBuffer(
             buf, generateFormattedSql, prefix, " where ", " and ", "", "");
         if (groupingSets.isEmpty()) {
@@ -672,6 +659,7 @@ public class SqlQuery {
             buf, generateFormattedSql, prefix, " having ", " and ", "", "");
         orderBy.toBuffer(
             buf, generateFormattedSql, prefix, " order by ", ", ", "", "");
+        return buf;
     }
 
     private void groupingFunctionsToBuffer(StringBuilder buf, String prefix) {
@@ -699,9 +687,7 @@ public class SqlQuery {
         return dialect;
     }
 
-    public static SqlQuery newQuery(DataSource dataSource, String err) {
-        final Dialect dialect =
-            DialectManager.createDialect(dataSource, null);
+    public static SqlQuery newQuery(Dialect dialect, String err) {
         return new SqlQuery(dialect);
     }
 
@@ -721,8 +707,8 @@ public class SqlQuery {
         types.add(null);
     }
 
-    private void addType(SqlStatement.Type type) {
-        types.add(type);
+    public String toSql() {
+        return toString();
     }
 
     public Pair<String, List<SqlStatement.Type>> toSqlAndTypes() {
@@ -733,51 +719,13 @@ public class SqlQuery {
         return Pair.of(toString(), types);
     }
 
-    public void registerRootRelation(MondrianDef.RelationOrJoin root) {
-        // REVIEW: In this method, we are building data structures about the
-        // structure of a star schema. These should be built into the schema,
-        // not constructed afresh for each SqlQuery. In mondrian-4.0,
-        // these methods and the data structures 'mapRootToRelations',
-        // 'relations', 'mapRelationToRoot' will disappear.
-        if (mapRelationToRoot.containsKey(root)) {
-            return;
-        }
-        if (mapRootToRelations.containsKey(root)) {
-            return;
-        }
-        List<RelInfo> relations = new ArrayList<RelInfo>();
-        flatten(relations, root, null, null, null, null);
-        for (RelInfo relation : relations) {
-            mapRelationToRoot.put(relation.relation, root);
-        }
-        mapRootToRelations.put(root, relations);
-    }
-
-    private void flatten(
-        List<RelInfo> relations,
-        MondrianDef.RelationOrJoin root,
-        String leftKey,
-        String leftAlias,
-        String rightKey,
-        String rightAlias)
-    {
-        if (root instanceof MondrianDef.Join) {
-            MondrianDef.Join join = (MondrianDef.Join) root;
-            flatten(
-                relations, join.left, join.leftKey, join.leftAlias,
-                join.rightKey, join.rightAlias);
-            flatten(
-                relations, join.right, leftKey, leftAlias, rightKey,
-                rightAlias);
-        } else {
-            relations.add(
-                new RelInfo(
-                    (MondrianDef.Relation) root,
-                    leftKey,
-                    leftAlias,
-                    rightKey,
-                    rightAlias));
-        }
+    /**
+     * Returns whether it is impossible for the query to ever return any rows.
+     *
+     * @return true if so; false otherwise
+     */
+    public boolean isUnsatisfiable() {
+        return where.contains(RolapUtil.SQL_FALSE_LITERAL);
     }
 
     private static class JoinOnClause {
@@ -874,6 +822,10 @@ public class SqlQuery {
                     .append(from);
             }
         }
+    }
+
+    public static String getBestName(Dialect dialect) {
+        return dialect.getDatabaseProduct().getFamily().name().toLowerCase();
     }
 
     static class ClauseList extends ArrayList<String> {
@@ -1005,11 +957,6 @@ public class SqlQuery {
                 throw Util.newError("View has no 'generic' variant");
             }
             return genericCode;
-        }
-
-        private static String getBestName(Dialect dialect) {
-            return dialect.getDatabaseProduct().getFamily().name()
-                .toLowerCase();
         }
     }
 

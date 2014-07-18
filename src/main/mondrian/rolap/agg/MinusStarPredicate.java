@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2009 Pentaho
+// Copyright (C) 2006-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -29,19 +29,16 @@ public class MinusStarPredicate extends AbstractColumnPredicate {
      *
      * @param plus Positive predicate
      * @param minus Negative predicate
-     * @pre plus != null
-     * @pre minus != null
      */
     public MinusStarPredicate(
         StarColumnPredicate plus,
         StarColumnPredicate minus)
     {
-        super(plus.getConstrainedColumn());
+        super(plus.getColumn());
         assert minus != null;
         this.plus = plus;
         this.minus = minus;
     }
-
 
     public boolean equals(Object obj) {
         if (obj instanceof MinusStarPredicate) {
@@ -56,10 +53,6 @@ public class MinusStarPredicate extends AbstractColumnPredicate {
     public int hashCode() {
         return plus.hashCode() * 31
             + minus.hashCode();
-    }
-
-    public RolapStar.Column getConstrainedColumn() {
-        return plus.getConstrainedColumn();
     }
 
     public void values(Collection<Object> collection) {
@@ -104,7 +97,7 @@ public class MinusStarPredicate extends AbstractColumnPredicate {
         }
         if (minus instanceof ListColumnPredicate) {
             ListColumnPredicate minusList = (ListColumnPredicate) minus;
-            RolapStar.Column column = plus.getConstrainedColumn();
+            PredicateColumn column = plus.getColumn();
             if (predicate instanceof ListColumnPredicate) {
                 // Case 1: 'minus' and 'constraint' are both lists.
                 ListColumnPredicate list =
@@ -115,9 +108,7 @@ public class MinusStarPredicate extends AbstractColumnPredicate {
                 unionList.addAll(list.getPredicates());
                 return new MinusStarPredicate(
                     plus,
-                    new ListColumnPredicate(
-                        column,
-                        unionList));
+                    new ListColumnPredicate(column, unionList));
             }
             if (predicate instanceof ValueColumnPredicate) {
                 ValueColumnPredicate valuePredicate =
@@ -144,11 +135,6 @@ public class MinusStarPredicate extends AbstractColumnPredicate {
             (StarColumnPredicate) predicate);
     }
 
-    public StarColumnPredicate cloneWithColumn(RolapStar.Column column) {
-        return new MinusStarPredicate(
-            plus.cloneWithColumn(column),
-            minus.cloneWithColumn(column));
-    }
 }
 
 // End MinusStarPredicate.java

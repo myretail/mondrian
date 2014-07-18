@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.sql;
@@ -13,10 +13,19 @@ package mondrian.rolap.sql;
 import mondrian.olap.MondrianProperties;
 import mondrian.rolap.BatchTestCase;
 import mondrian.spi.Dialect;
+import mondrian.spi.impl.JdbcDialectImpl;
 import mondrian.test.SqlPattern;
 import mondrian.test.TestContext;
 
-import java.util.*;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+import static mondrian.spi.Dialect.DatabaseProduct.MYSQL;
+import static mondrian.spi.Dialect.DatabaseProduct.POSTGRESQL;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 /**
  * Test for <code>SqlQuery</code>.
@@ -25,31 +34,24 @@ import java.util.*;
  * @since 06-Jun-2007
  */
 public class SqlQueryTest extends BatchTestCase {
-    private String origWarnIfNoPatternForDialect;
-
-    private MondrianProperties prop = MondrianProperties.instance();
+    private final MondrianProperties prop = propSaver.props;
 
     protected void setUp() throws Exception {
         super.setUp();
-        origWarnIfNoPatternForDialect = prop.WarnIfNoPatternForDialect.get();
 
         // This test warns of missing sql patterns for MYSQL.
         final Dialect dialect = getTestContext().getDialect();
         if (prop.WarnIfNoPatternForDialect.get().equals("ANY")
-            || dialect.getDatabaseProduct() == Dialect.DatabaseProduct.MYSQL)
+            || dialect.getDatabaseProduct() == MYSQL)
         {
-            prop.WarnIfNoPatternForDialect.set(
+            propSaver.set(
+                propSaver.props.WarnIfNoPatternForDialect,
                 dialect.getDatabaseProduct().toString());
         } else {
             // Do not warn unless the dialect is "MYSQL", or
             // if the test chooses to warn regardless of the dialect.
-            prop.WarnIfNoPatternForDialect.set("NONE");
+            propSaver.set(propSaver.props.WarnIfNoPatternForDialect, "NONE");
         }
-    }
-
-    protected void tearDown() throws Exception {
-        super.tearDown();
-        prop.WarnIfNoPatternForDialect.set(origWarnIfNoPatternForDialect);
     }
 
     public void testToStringForSingleGroupingSetSql() {
@@ -62,7 +64,8 @@ public class SqlQueryTest extends BatchTestCase {
             sqlQuery.addSelect("c1", null);
             sqlQuery.addSelect("c2", null);
             sqlQuery.addGroupingFunction("gf0");
-            sqlQuery.addFromTable("s", "t1", "t1alias", null, null, true);
+            sqlQuery.addFromTable(
+                "s", "t1", "t1alias", null, null, null, null, true);
             sqlQuery.addWhere("a=b");
             ArrayList<String> groupingsetsList = new ArrayList<String>();
             groupingsetsList.add("gs1");
@@ -97,6 +100,49 @@ public class SqlQueryTest extends BatchTestCase {
         }
     }
 
+    public void testOrderBy() throws SQLException {
+        // Test with requireAlias = true
+        assertEquals(
+            "\norder by\n"
+            + "    CASE WHEN alias IS NULL THEN 1 ELSE 0 END, alias ASC",
+            makeTestSqlQuery("expr", "alias", true, true, true, true)
+                .toString());
+        // requireAlias = false
+        assertEquals(
+            "\norder by\n"
+            + "    CASE WHEN expr IS NULL THEN 1 ELSE 0 END, expr ASC",
+            makeTestSqlQuery("expr", "alias", true, true, true, false)
+                .toString());
+        //  nullable = false
+        assertEquals(
+            "\norder by\n"
+            + "    expr ASC",
+            makeTestSqlQuery("expr", "alias", true, false, true, false)
+                .toString());
+        //  ascending=false, collateNullsLast=false
+        assertEquals(
+            "\norder by\n"
+            + "    CASE WHEN alias IS NULL THEN 0 ELSE 1 END, alias DESC",
+            makeTestSqlQuery("expr", "alias", false, true, false, true)
+                .toString());
+    }
+
+    /**
+     * Builds a SqlQuery with flags set according to params.
+     * Uses a Mockito spy to construct a dialect which will give the desired
+     * boolean value for reqOrderByAlias.
+     */
+    private SqlQuery makeTestSqlQuery(
+        String expr, String alias, boolean ascending,
+        boolean nullable, boolean collateNullsLast, boolean reqOrderByAlias)
+    {
+        JdbcDialectImpl dialect = spy(new JdbcDialectImpl());
+        when(dialect.requiresOrderByAlias()).thenReturn(reqOrderByAlias);
+        SqlQuery query = new SqlQuery(dialect, true);
+        query.addOrderBy(
+            expr, alias, ascending, true, nullable, collateNullsLast);
+        return query;
+    }
 
     public void testToStringForForcedIndexHint() {
         Map<String, String> hints = new HashMap<String, String>();
@@ -118,12 +164,12 @@ public class SqlQueryTest extends BatchTestCase {
 
         SqlPattern[] unformattedSqlPatterns = {
             new SqlPattern(
-                Dialect.DatabaseProduct.MYSQL,
+                MYSQL,
                 unformattedMysql,
                 null)};
         SqlPattern[] formattedSqlPatterns = {
             new SqlPattern(
-                Dialect.DatabaseProduct.MYSQL,
+                MYSQL,
                 formattedMysql,
                 null)};
 
@@ -134,7 +180,8 @@ public class SqlQueryTest extends BatchTestCase {
             sqlQuery.addSelect("c1", null);
             sqlQuery.addSelect("c2", null);
             sqlQuery.addGroupingFunction("gf0");
-            sqlQuery.addFromTable("s", "t1", "t1alias", null, hints, true);
+            sqlQuery.addFromTable(
+                "s", "t1", "t1alias", null, hints, null, null, true);
             sqlQuery.addWhere("a=b");
             SqlPattern[] expected;
             if (!formatted) {
@@ -202,54 +249,42 @@ public class SqlQueryTest extends BatchTestCase {
             "select {[Time].[1997].[Q1],[Time].[1997].[Q2],"
             + "[Time].[1997].[Q3]} on 0 from sales";
 
-        String accessSql =
-            "select `time_by_day`.`the_year` as `c0`, "
-            + "`time_by_day`.`quarter` as `c1`, "
-            + "sum(`sales_fact_1997`.`unit_sales`) as `m0` "
-            + "from `time_by_day` as `time_by_day`, "
-            + "`sales_fact_1997` as `sales_fact_1997` "
-            + "where `sales_fact_1997`.`time_id` = "
-            + "`time_by_day`.`time_id` and "
-            + "`time_by_day`.`the_year` = 1997 group by "
-            + "`time_by_day`.`the_year`, `time_by_day`.`quarter`";
-
         String mysqlSql =
-            "select "
-            + "`time_by_day`.`the_year` as `c0`, `time_by_day`.`quarter` as `c1`, "
-            + "sum(`sales_fact_1997`.`unit_sales`) as `m0` "
-            + "from "
-            + "`time_by_day` as `time_by_day`, `sales_fact_1997` as `sales_fact_1997` "
-            + "where "
-            + "`sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and "
-            + "`time_by_day`.`the_year` = 1997 "
-            + "group by `time_by_day`.`the_year`, `time_by_day`.`quarter`";
+            "select\n"
+            + "    `time_by_day`.`the_year` as `c0`,\n"
+            + "    `time_by_day`.`quarter` as `c1`,\n"
+            + "    sum(`sales_fact_1997`.`unit_sales`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "group by\n"
+            + "    `time_by_day`.`the_year`,\n"
+            + "    `time_by_day`.`quarter`";
 
         SqlPattern[] sqlPatterns = {
-            new SqlPattern(
-                Dialect.DatabaseProduct.ACCESS, accessSql, accessSql),
-            new SqlPattern(Dialect.DatabaseProduct.MYSQL, mysqlSql, mysqlSql)};
+            new SqlPattern(MYSQL, mysqlSql, mysqlSql)};
 
         assertSqlEqualsOptimzePredicates(true, mdx, sqlPatterns);
     }
 
     public void testTableNameIsIncludedWithParentChildQuery() {
         String sql =
-            "select `employee`.`employee_id` as `c0`, "
-            + "`employee`.`full_name` as `c1`, "
-            + "`employee`.`marital_status` as `c2`, "
-            + "`employee`.`position_title` as `c3`, "
-            + "`employee`.`gender` as `c4`, "
-            + "`employee`.`salary` as `c5`, "
-            + "`employee`.`education_level` as `c6`, "
-            + "`employee`.`management_role` as `c7` "
-            + "from `employee` as `employee` "
-            + "where `employee`.`supervisor_id` = 0 "
-            + "group by `employee`.`employee_id`, `employee`.`full_name`, "
-            + "`employee`.`marital_status`, `employee`.`position_title`, "
-            + "`employee`.`gender`, `employee`.`salary`,"
-            + " `employee`.`education_level`, `employee`.`management_role`"
-            + " order by Iif(`employee`.`employee_id` IS NULL, 1, 0),"
-            + " `employee`.`employee_id` ASC";
+            "select\n"
+            + "    `employee`.`employee_id` as `c0`,\n"
+            + "    `employee`.`full_name` as `c1`\n"
+            + "from\n"
+            + "    `employee` as `employee`\n"
+            + "where\n"
+            + "    `employee`.`supervisor_id` = 0\n"
+            + "group by\n"
+            + "    `employee`.`employee_id`,\n"
+            + "    `employee`.`full_name`\n"
+            + "order by\n"
+            + "    `employee`.`employee_id` ASC";
 
         final String mdx =
             "SELECT "
@@ -263,15 +298,12 @@ public class SqlQueryTest extends BatchTestCase {
             + "ALL"
             + ") DIMENSION PROPERTIES PARENT_LEVEL, CHILDREN_CARDINALITY, PARENT_UNIQUE_NAME ON AXIS(0) \n"
             + "FROM [HR]  CELL PROPERTIES VALUE, FORMAT_STRING";
-        SqlPattern[] sqlPatterns = {
-            new SqlPattern(Dialect.DatabaseProduct.ACCESS, sql, sql)
-        };
-        assertQuerySql(mdx, sqlPatterns);
+        assertQuerySql(getTestContext().withFreshConnection(), mdx, sql);
     }
 
     public void testPredicatesAreNotOptimizedWhenPropertyIsFalse() {
         if (prop.ReadAggregates.get() && prop.UseAggregates.get()) {
-            // Sql pattner will be different if using aggregate tables.
+            // Sql pattern will be different if using aggregate tables.
             // This test cover predicate generation so it's sufficient to
             // only check sql pattern when aggregate tables are not used.
             return;
@@ -280,34 +312,27 @@ public class SqlQueryTest extends BatchTestCase {
         String mdx =
             "select {[Time].[1997].[Q1],[Time].[1997].[Q2],"
             + "[Time].[1997].[Q3]} on 0 from sales";
-        String accessSql =
-            "select `time_by_day`.`the_year` as `c0`, "
-            + "`time_by_day`.`quarter` as `c1`, "
-            + "sum(`sales_fact_1997`.`unit_sales`) as `m0` "
-            + "from `time_by_day` as `time_by_day`, "
-            + "`sales_fact_1997` as `sales_fact_1997` "
-            + "where `sales_fact_1997`.`time_id` = "
-            + "`time_by_day`.`time_id` and `time_by_day`.`the_year` "
-            + "= 1997 and `time_by_day`.`quarter` in "
-            + "('Q1', 'Q2', 'Q3') group by "
-            + "`time_by_day`.`the_year`, `time_by_day`.`quarter`";
 
         String mysqlSql =
-            "select "
-            + "`time_by_day`.`the_year` as `c0`, `time_by_day`.`quarter` as `c1`, "
-            + "sum(`sales_fact_1997`.`unit_sales`) as `m0` "
-            + "from "
-            + "`time_by_day` as `time_by_day`, `sales_fact_1997` as `sales_fact_1997` "
-            + "where "
-            + "`sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and "
-            + "`time_by_day`.`the_year` = 1997 and "
-            + "`time_by_day`.`quarter` in ('Q1', 'Q2', 'Q3') "
-            + "group by `time_by_day`.`the_year`, `time_by_day`.`quarter`";
+            "select\n"
+            + "    `time_by_day`.`the_year` as `c0`,\n"
+            + "    `time_by_day`.`quarter` as `c1`,\n"
+            + "    sum(`sales_fact_1997`.`unit_sales`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `time_by_day`.`quarter` in ('Q1', 'Q2', 'Q3')\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "group by\n"
+            + "    `time_by_day`.`the_year`,\n"
+            + "    `time_by_day`.`quarter`";
 
         SqlPattern[] sqlPatterns = {
-            new SqlPattern(
-                Dialect.DatabaseProduct.ACCESS, accessSql, accessSql),
-            new SqlPattern(Dialect.DatabaseProduct.MYSQL, mysqlSql, mysqlSql)};
+            new SqlPattern(MYSQL, mysqlSql, mysqlSql)};
 
         assertSqlEqualsOptimzePredicates(false, mdx, sqlPatterns);
     }
@@ -335,20 +360,27 @@ public class SqlQueryTest extends BatchTestCase {
             + " `time_by_day`.`quarter`";
 
         String mysqlSql =
-            "select "
-            + "`time_by_day`.`the_year` as `c0`, `time_by_day`.`quarter` as `c1`, "
-            + "sum(`sales_fact_1997`.`unit_sales`) as `m0` "
-            + "from "
-            + "`time_by_day` as `time_by_day`, `sales_fact_1997` as `sales_fact_1997` "
-            + "where "
-            + "`sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and "
-            + "`time_by_day`.`the_year` = 1997 "
-            + "group by `time_by_day`.`the_year`, `time_by_day`.`quarter`";
+            "select\n"
+            + "    `time_by_day`.`the_year` as `c0`,\n"
+            + "    `time_by_day`.`quarter` as `c1`,\n"
+            + "    sum(`sales_fact_1997`.`unit_sales`) as `m0`\n"
+            + "from\n"
+
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+                + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+                + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+
+                + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+                + "group by\n"
+            + "    `time_by_day`.`the_year`,\n"
+            + "    `time_by_day`.`quarter`";
 
         SqlPattern[] sqlPatterns = {
             new SqlPattern(
                 Dialect.DatabaseProduct.ACCESS, accessSql, accessSql),
-            new SqlPattern(Dialect.DatabaseProduct.MYSQL, mysqlSql, mysqlSql)};
+            new SqlPattern(MYSQL, mysqlSql, mysqlSql)};
 
         assertSqlEqualsOptimzePredicates(true, mdx, sqlPatterns);
         assertSqlEqualsOptimzePredicates(false, mdx, sqlPatterns);
@@ -359,15 +391,8 @@ public class SqlQueryTest extends BatchTestCase {
         String inputMdx,
         SqlPattern[] sqlPatterns)
     {
-        boolean intialValueOptimize =
-            prop.OptimizePredicates.get();
-
-        try {
-            prop.OptimizePredicates.set(optimizePredicatesValue);
-            assertQuerySql(inputMdx, sqlPatterns);
-        } finally {
-            prop.OptimizePredicates.set(intialValueOptimize);
-        }
+        propSaver.props.OptimizePredicates.set(optimizePredicatesValue);
+        assertQuerySql(getTestContext(), inputMdx, sqlPatterns);
     }
 
     public void testToStringForGroupingSetSqlWithEmptyGroup() {
@@ -379,7 +404,8 @@ public class SqlQueryTest extends BatchTestCase {
             SqlQuery sqlQuery = new SqlQuery(getTestContext().getDialect(), b);
             sqlQuery.addSelect("c1", null);
             sqlQuery.addSelect("c2", null);
-            sqlQuery.addFromTable("s", "t1", "t1alias", null, null, true);
+            sqlQuery.addFromTable(
+                "s", "t1", "t1alias", null, null, null, null, true);
             sqlQuery.addWhere("a=b");
             sqlQuery.addGroupingFunction("g1");
             sqlQuery.addGroupingFunction("g2");
@@ -429,7 +455,8 @@ public class SqlQueryTest extends BatchTestCase {
             sqlQuery.addSelect("c1", null);
             sqlQuery.addSelect("c2", null);
             sqlQuery.addSelect("m1", null, "m1");
-            sqlQuery.addFromTable("s", "t1", "t1alias", null, null, true);
+            sqlQuery.addFromTable(
+                "s", "t1", "t1alias", null, null, null, null, true);
             sqlQuery.addWhere("a=b");
             sqlQuery.addGroupingFunction("c0");
             sqlQuery.addGroupingFunction("c1");
@@ -489,12 +516,12 @@ public class SqlQueryTest extends BatchTestCase {
             return;
         }
 
-        propSaver.set(prop.IgnoreInvalidMembers, true);
-        propSaver.set(prop.IgnoreInvalidMembersDuringQuery, true);
+        propSaver.set(propSaver.props.IgnoreInvalidMembers, true);
+        propSaver.set(propSaver.props.IgnoreInvalidMembersDuringQuery, true);
 
         // assertQuerySql(testContext, query, patterns);
 
-        // Test when the double value itself cotnains "E".
+        // Test when the double value itself contains "E".
         String dimensionSqlExpression =
             "cast(cast(\"salary\" as double)*cast(1000.0 as double)/cast(3.1234567890123456 as double) as double)\n";
 
@@ -595,12 +622,13 @@ public class SqlQueryTest extends BatchTestCase {
             + "order by \"store\".\"store_type\" ASC";
 
         SqlPattern[] patterns = {
-            new SqlPattern(Dialect.DatabaseProduct.MYSQL, sqlMySql, sqlMySql),
+            new SqlPattern(MYSQL, sqlMySql, sqlMySql),
             new SqlPattern(
                 Dialect.DatabaseProduct.ORACLE, sqlOracle, sqlOracle),
         };
 
         assertNoQuerySql(
+            getTestContext(),
             "select {[Time.Weekly].[All Time.Weeklys]} ON COLUMNS from [Sales]",
             patterns);
     }
@@ -639,11 +667,11 @@ public class SqlQueryTest extends BatchTestCase {
             new SqlPattern(
                 Dialect.DatabaseProduct.ORACLE, forbiddenSqlOracle, null),
             new SqlPattern(
-                Dialect.DatabaseProduct.MYSQL, forbiddenSqlMysql, null)
+                MYSQL, forbiddenSqlMysql, null)
         };
 
         final TestContext testContext =
-            TestContext.instance().create(
+            TestContext.instance().legacy().create(
                 null,
                 cubeSchema,
                 null,
@@ -658,6 +686,93 @@ public class SqlQueryTest extends BatchTestCase {
             true,
             true,
             true);
+    }
+
+    public void testLimitedRollupMemberRetrievableFromCache() throws Exception {
+        final String mdx =
+            "select NON EMPTY { [Store].[Stores].[Store State].members } on 0 from [Sales]";
+        final TestContext context =
+            TestContext.instance().create(
+                null, null, null, null, null,
+                " <Role name='justCA'>\n"
+                + " <SchemaGrant access='all'>\n"
+                + " <CubeGrant cube='Sales' access='all'>\n"
+                + " <HierarchyGrant hierarchy='[Stores]' access='custom' rollupPolicy='partial'>\n"
+                + " <MemberGrant member='[Store].[USA].[CA]' access='all'/>\n"
+                + " </HierarchyGrant>\n"
+                + " </CubeGrant>\n"
+                + " </SchemaGrant>\n"
+                + " </Role>\n").withRole("justCA");
+
+        String pgSql =
+            "select \"store\".\"store_country\" as \"c0\","
+            + " \"store\".\"store_state\" as \"c1\""
+            + " from \"sales_fact_1997\" as \"sales_fact_1997\","
+            + " \"store\" as \"store\" "
+            + "where (\"store\".\"store_country\" = 'USA') "
+            + "and (\"store\".\"store_state\" = 'CA') "
+            + "and \"sales_fact_1997\".\"store_id\" = \"store\".\"store_id\" "
+            + "group by \"store\".\"store_country\", \"store\".\"store_state\" "
+            + "order by \"store\".\"store_country\" ASC NULLS LAST,"
+            + " \"store\".\"store_state\" ASC NULLS LAST";
+        SqlPattern pgPattern =
+            new SqlPattern(POSTGRESQL, pgSql, pgSql.length());
+        String mySql =
+            "select `store`.`store_country` as `c0`,"
+            + " `store`.`store_state` as `c1`"
+            + " from `store` as `store`, `sales_fact_1997` as `sales_fact_1997` "
+            + "where `sales_fact_1997`.`store_id` = `store`.`store_id` "
+            + "and `store`.`store_country` = 'USA' "
+            + "and `store`.`store_state` = 'CA' "
+            + "group by `store`.`store_country`, `store`.`store_state` "
+            + "order by ISNULL(`store`.`store_country`) ASC,"
+            + " `store`.`store_country` ASC,"
+            + " ISNULL(`store`.`store_state`) ASC, `store`.`store_state` ASC";
+        SqlPattern myPattern = new SqlPattern(MYSQL, mySql, mySql.length());
+        SqlPattern[] patterns = {pgPattern, myPattern};
+        context.executeQuery(mdx);
+        assertQuerySqlOrNot(context, mdx, patterns, true, false, false);
+    }
+
+    /**
+     * This is a test for
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1869">MONDRIAN-1869</a>
+     *
+     * <p>Avg Aggregates need to be computed in SQL to get correct values.
+     */
+    public void testAvgAggregator() {
+        propSaver.set(propSaver.props.GenerateFormattedSql, true);
+        TestContext context = getTestContext().createSubstitutingCube(
+            "Sales",
+            null,
+            " <Measure name=\"Avg Sales\" column=\"unit_sales\" aggregator=\"avg\"\n"
+            + " formatString=\"#.###\"/>",
+            null,
+            null);
+        String mdx = "select measures.[avg sales] on 0 from sales"
+                       + " where { time.[1997].q1, time.[1997].q2.[4] }";
+        context.assertQueryReturns(
+            mdx,
+            "Axis #0:\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
+            + "Axis #1:\n"
+            + "{[Measures].[Avg Sales]}\n"
+            + "Row #0: 3.069\n");
+        String sql =
+            "select\n"
+            + "    avg(`sales_fact_1997`.`unit_sales`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    ((`time_by_day`.`the_year` = 1997 and `time_by_day`.`quarter` = 'Q1') "
+            + "or (`time_by_day`.`the_year` = 1997 and `time_by_day`.`month_of_year` = 4))\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`";
+        SqlPattern mySqlPattern =
+            new SqlPattern(Dialect.DatabaseProduct.MYSQL, sql, sql.length());
+        assertQuerySql(context, mdx, new SqlPattern[]{mySqlPattern});
     }
 }
 

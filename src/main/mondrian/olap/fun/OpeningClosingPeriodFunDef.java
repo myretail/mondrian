@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -111,17 +111,17 @@ class OpeningClosingPeriodFunDef extends FunDefBase {
             break;
         }
 
-        // Make sure the member and the level come from the same dimension.
+        // Make sure the member and the level come from the same hierarchy.
         if (levelCalc != null) {
-            final Dimension memberDimension =
-                memberCalc.getType().getDimension();
-            final Dimension levelDimension = levelCalc.getType().getDimension();
-            if (!memberDimension.equals(levelDimension)) {
+            final Hierarchy memberHierarchy =
+                memberCalc.getType().getHierarchy();
+            final Hierarchy levelHierarchy = levelCalc.getType().getHierarchy();
+            if (!memberHierarchy.equals(levelHierarchy)) {
                 throw MondrianResource.instance()
                     .FunctionMbrAndLevelHierarchyMismatch.ex(
                         opening ? "OpeningPeriod" : "ClosingPeriod",
-                        levelDimension.getUniqueName(),
-                        memberDimension.getUniqueName());
+                        levelHierarchy.getUniqueName(),
+                        memberHierarchy.getUniqueName());
             }
         }
         return new AbstractMemberCalc(
@@ -135,12 +135,12 @@ class OpeningClosingPeriodFunDef extends FunDefBase {
                 Level level;
                 if (levelCalc == null) {
                     int targetDepth = member.getLevel().getDepth() + 1;
-                    Level[] levels = member.getHierarchy().getLevels();
-
-                    if (levels.length <= targetDepth) {
+                    List<? extends Level> levels =
+                        member.getHierarchy().getLevelList();
+                    if (levels.size() <= targetDepth) {
                         return member.getHierarchy().getNullMember();
                     }
-                    level = levels[targetDepth];
+                    level = levels.get(targetDepth);
                 } else {
                     level = levelCalc.evaluateLevel(evaluator);
                 }

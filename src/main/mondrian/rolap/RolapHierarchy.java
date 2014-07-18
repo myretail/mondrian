@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -14,8 +14,6 @@ import mondrian.calc.*;
 import mondrian.calc.impl.*;
 import mondrian.mdx.*;
 import mondrian.olap.*;
-import mondrian.olap.DimensionType;
-import mondrian.olap.LevelType;
 import mondrian.olap.Role.HierarchyAccess;
 import mondrian.olap.fun.*;
 import mondrian.olap.type.*;
@@ -25,23 +23,21 @@ import mondrian.rolap.sql.MemberChildrenConstraint;
 import mondrian.rolap.sql.SqlQuery;
 import mondrian.spi.CellFormatter;
 import mondrian.spi.impl.Scripts;
-import mondrian.util.UnionIterator;
 
 import org.apache.log4j.Logger;
+
+import org.olap4j.impl.NamedListImpl;
+import org.olap4j.metadata.NamedList;
 
 import java.io.PrintWriter;
 import java.util.*;
 
 /**
- * <code>RolapHierarchy</code> implements {@link Hierarchy} for a ROLAP database.
+ * <code>RolapHierarchy</code> implements {@link Hierarchy} for a ROLAP
+ * database.
  *
- * <p>The ordinal of a hierarchy <em>within a particular cube</em> is found by
- * calling {@link #getOrdinalInCube()}. Ordinals are contiguous and zero-based.
- * Zero is always the <code>[Measures]</code> dimension.
- *
- * <p>NOTE: It is only valid to call that method on the measures hierarchy, and
- * on members of the {@link RolapCubeHierarchy} subclass. When the measures
- * hierarchy is of that class, we will move the method down.)
+ * <p>NOTE: This class must not contain any references to XML (MondrianDef)
+ * objects. Put those in {@link mondrian.rolap.RolapSchemaLoader}.
  *
  * @author jhyde
  * @since 10 August, 2001
@@ -50,94 +46,88 @@ public class RolapHierarchy extends HierarchyBase {
 
     private static final Logger LOGGER = Logger.getLogger(RolapHierarchy.class);
 
-    /**
-     * The raw member reader. For a member reader which incorporates access
-     * control and deals with hidden members (if the hierarchy is ragged), use
-     * {@link #createMemberReader(Role)}.
-     */
-    private MemberReader memberReader;
-    protected MondrianDef.Hierarchy xmlHierarchy;
-    private String memberReaderClass;
-    protected MondrianDef.RelationOrJoin relation;
-    private Member defaultMember;
-    private String defaultMemberName;
-    private RolapNullMember nullMember;
-
-    private String sharedHierarchyName;
-    private String uniqueKeyLevelName;
+    protected RolapMember nullMember;
 
     private Exp aggregateChildrenExpression;
 
     /**
      * The level that the null member belongs too.
      */
-    protected final RolapLevel nullLevel;
+    protected RolapLevel nullLevel;
+    protected RolapLevel allLevel;
 
     /**
      * The 'all' member of this hierarchy. This exists even if the hierarchy
      * does not officially have an 'all' member.
      */
-    private RolapMemberBase allMember;
-    private static final String ALL_LEVEL_CARDINALITY = "1";
-    private final Map<String, Annotation> annotationMap;
-    final RolapHierarchy closureFor;
+    protected RolapMemberBase allMember;
+    private static final int ALL_LEVEL_CARDINALITY = 1;
+    private static final int NULL_LEVEL_CARDINALITY = 1;
+    final RolapAttribute attribute;
+    private final Larder larder;
+    public final RolapHierarchy closureFor;
+
+    final NamedList<RolapLevel> levelList = new NamedListImpl<RolapLevel>();
+
+    /** Whether this hierarchy is the Scenario hierarchy of its cube. */
+    public final boolean isScenario;
 
     /**
-     * Creates a hierarchy.
+     * Creates a RolapHierarchy.
      *
-     * @param dimension Dimension
-     * @param subName Name of this hierarchy
-     * @param hasAll Whether hierarchy has an 'all' member
-     * @param closureFor Hierarchy for which the new hierarchy is a closure;
-     *     null for regular hierarchies
+     * @param dimension Dimension this hierarchy belongs to
+     * @param subName Name of hierarchy, or null if it is the same as the
+     *     dimension
+     * @param uniqueName Unique name of hierarchy
+     * @param hasAll Whether the dimension has an 'all' level
+     * @param attribute Attribute this is a hierarchy for; or null
      */
     RolapHierarchy(
         RolapDimension dimension,
         String subName,
-        String caption,
+        String uniqueName,
         boolean visible,
-        String description,
         boolean hasAll,
         RolapHierarchy closureFor,
-        Map<String, Annotation> annotationMap)
+        RolapAttribute attribute,
+        Larder larder)
     {
-        super(dimension, subName, caption, visible, description, hasAll);
-        this.annotationMap = annotationMap;
-        this.allLevelName = "(All)";
-        this.allMemberName =
-            subName != null
-            && (MondrianProperties.instance().SsasCompatibleNaming.get()
-                || name.equals(subName + "." + subName))
-                ? "All " + subName + "s"
-                : "All " + name + "s";
+        super(dimension, subName, uniqueName, visible, hasAll);
+        this.attribute = attribute;
+        this.larder = larder;
         this.closureFor = closureFor;
+        this.isScenario = subName != null && subName.equals("Scenario");
+        assert !isScenario
+            || dimension.getDimensionType()
+            == org.olap4j.metadata.Dimension.Type.SCENARIO;
+    }
+
+    void initHierarchy(
+        RolapSchemaLoader schemaLoader,
+        String allLevelName)
+    {
+        if (this instanceof RolapCubeHierarchy) {
+            throw new AssertionError();
+        }
+
+        // Create an 'all' level even if the hierarchy does not officially
+        // have one.
+        allLevel =
+            new RolapLevel(
+                this,
+                Util.first(allLevelName, "(All)"),
+                true,
+                0,
+                ALL_ATTRIBUTE.inDimension(getDimension()),
+                null,
+                Collections.<RolapSchema.PhysColumn>emptyList(),
+                null,
+                null,
+                RolapLevel.HideMemberCondition.Never,
+                Larders.EMPTY,
+                schemaLoader.resourceMap);
         if (hasAll) {
-            this.levels = new RolapLevel[1];
-            this.levels[0] =
-                new RolapLevel(
-                    this,
-                    this.allLevelName,
-                    null,
-                    true,
-                    null,
-                    0,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    RolapProperty.emptyArray,
-                    RolapLevel.FLAG_ALL | RolapLevel.FLAG_UNIQUE,
-                    null,
-                    null,
-                    RolapLevel.HideMemberCondition.Never,
-                    LevelType.Regular,
-                    "",
-                    Collections.<String, Annotation>emptyMap());
-        } else {
-            this.levels = new RolapLevel[0];
+            this.levelList.add(allLevel);
         }
 
         // The null member belongs to a level with very similar properties to
@@ -145,92 +135,16 @@ public class RolapHierarchy extends HierarchyBase {
         this.nullLevel =
             new RolapLevel(
                 this,
-                this.allLevelName,
-                null,
+                Util.first(allLevelName, "(All)"),
                 true,
-                null,
                 0,
+                NULL_ATTRIBUTE.inDimension(getDimension()),
                 null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                RolapProperty.emptyArray,
-                RolapLevel.FLAG_ALL | RolapLevel.FLAG_UNIQUE,
+                Collections.<RolapSchema.PhysColumn>emptyList(),
                 null,
                 null,
                 RolapLevel.HideMemberCondition.Never,
-                LevelType.Null,
-                "",
-                Collections.<String, Annotation>emptyMap());
-    }
-
-    /**
-     * Creates a <code>RolapHierarchy</code>.
-     *
-     * @param dimension the dimension this hierarchy belongs to
-     * @param xmlHierarchy the xml object defining this hierarchy
-     * @param xmlCubeDimension the xml object defining the cube
-     *   dimension for this object
-     */
-    RolapHierarchy(
-        RolapDimension dimension,
-        MondrianDef.Hierarchy xmlHierarchy,
-        MondrianDef.CubeDimension xmlCubeDimension)
-    {
-        this(
-            dimension,
-            xmlHierarchy.name,
-            xmlHierarchy.caption,
-            xmlHierarchy.visible,
-            xmlHierarchy.description,
-            xmlHierarchy.hasAll,
-            null,
-            createAnnotationMap(xmlHierarchy.annotations));
-
-        assert !(this instanceof RolapCubeHierarchy);
-
-        this.xmlHierarchy = xmlHierarchy;
-        this.relation = xmlHierarchy.relation;
-        if (xmlHierarchy.relation instanceof MondrianDef.InlineTable) {
-            this.relation =
-                RolapUtil.convertInlineTableToRelation(
-                    (MondrianDef.InlineTable) xmlHierarchy.relation,
-                    getRolapSchema().getDialect());
-        }
-        this.memberReaderClass = xmlHierarchy.memberReaderClass;
-        this.uniqueKeyLevelName = xmlHierarchy.uniqueKeyLevelName;
-
-        // Create an 'all' level even if the hierarchy does not officially
-        // have one.
-        if (xmlHierarchy.allMemberName != null) {
-            this.allMemberName = xmlHierarchy.allMemberName;
-        }
-        if (xmlHierarchy.allLevelName != null) {
-            this.allLevelName = xmlHierarchy.allLevelName;
-        }
-        RolapLevel allLevel =
-            new RolapLevel(
-                this,
-                this.allLevelName,
-                null,
-                true,
-                null,
-                0,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                RolapProperty.emptyArray,
-                RolapLevel.FLAG_ALL | RolapLevel.FLAG_UNIQUE,
-                null,
-                null,
-                RolapLevel.HideMemberCondition.Never,
+<<<<<<< HEAD
                 LevelType.Regular, ALL_LEVEL_CARDINALITY,
                 Collections.<String, Annotation>emptyMap());
         allLevel.init(xmlCubeDimension);
@@ -301,35 +215,27 @@ public class RolapHierarchy extends HierarchyBase {
         }
         defaultMemberName = xmlHierarchy.defaultMember;
     }
+=======
+                Larders.EMPTY,
+                schemaLoader.resourceMap);
+>>>>>>> upstream/4.0
 
-    public static Map<String, Annotation> createAnnotationMap(
-        MondrianDef.Annotations annotations)
-    {
-        if (annotations == null
-            || annotations.array == null
-            || annotations.array.length == 0)
-        {
-            return Collections.emptyMap();
+        if (dimension.isMeasures()) {
+            levelList.add(
+                new RolapLevel(
+                    this,
+                    RolapSchemaLoader.MEASURES_LEVEL_NAME,
+                    true,
+                    levelList.size(),
+                    MEASURES_ATTRIBUTE.inDimension(getDimension()),
+                    null,
+                    Collections.<RolapSchema.PhysColumn>emptyList(),
+                    null,
+                    null,
+                    RolapLevel.HideMemberCondition.Never,
+                    Larders.EMPTY,
+                    schemaLoader.resourceMap));
         }
-        // Use linked hash map because it retains order.
-        final Map<String, Annotation> map =
-            new LinkedHashMap<String, Annotation>();
-        for (MondrianDef.Annotation annotation : annotations.array) {
-            final String name = annotation.name;
-            final String value = annotation.cdata;
-            map.put(
-                annotation.name,
-                new Annotation() {
-                    public String getName() {
-                        return name;
-                    }
-
-                    public Object getValue() {
-                        return value;
-                    }
-                });
-        }
-        return map;
     }
 
     protected Logger getLogger() {
@@ -345,208 +251,27 @@ public class RolapHierarchy extends HierarchyBase {
         }
 
         RolapHierarchy that = (RolapHierarchy)o;
-        if (sharedHierarchyName == null || that.sharedHierarchyName == null) {
-            return false;
-        } else {
-            return sharedHierarchyName.equals(that.sharedHierarchyName)
-                && getUniqueName().equals(that.getUniqueName());
-        }
+        return getUniqueName().equals(that.getUniqueName());
     }
 
-    protected int computeHashCode() {
-        return super.computeHashCode()
-            ^ (sharedHierarchyName == null
-                ? 0
-                : sharedHierarchyName.hashCode());
+    public Larder getLarder() {
+        return larder;
     }
 
-    /**
-     * Initializes a hierarchy within the context of a cube.
-     */
-    void init(MondrianDef.CubeDimension xmlDimension) {
-        // first create memberReader
-        if (this.memberReader == null) {
-            this.memberReader = getRolapSchema().createMemberReader(
-                sharedHierarchyName, this, memberReaderClass);
-        }
-        for (Level level : levels) {
-            ((RolapLevel) level).init(xmlDimension);
-        }
-        if (defaultMemberName != null) {
-            List<Id.Segment> uniqueNameParts;
-            if (defaultMemberName.contains("[")) {
-                uniqueNameParts = Util.parseIdentifier(defaultMemberName);
-            } else {
-                uniqueNameParts =
-                    Collections.<Id.Segment>singletonList(
-                        new Id.NameSegment(
-                            defaultMemberName,
-                            Id.Quoting.UNQUOTED));
-            }
-
-            // First look up from within this hierarchy. Works for unqualified
-            // names, e.g. [USA].[CA].
-            defaultMember = (Member) Util.lookupCompound(
-                getRolapSchema().getSchemaReader(),
-                this,
-                uniqueNameParts,
-                false,
-                Category.Member,
-                MatchType.EXACT);
-
-            // Next look up within global context. Works for qualified names,
-            // e.g. [Store].[USA].[CA] or [Time].[Weekly].[1997].[Q2].
-            if (defaultMember == null) {
-                defaultMember = (Member) Util.lookupCompound(
-                    getRolapSchema().getSchemaReader(),
-                    new DummyElement(),
-                    uniqueNameParts,
-                    false,
-                    Category.Member,
-                    MatchType.EXACT);
-            }
-            if (defaultMember == null) {
-                throw Util.newInternal(
-                    "Can not find Default Member with name \""
-                    + defaultMemberName + "\" in Hierarchy \""
-                    + getName() + "\"");
-            }
-        }
+    @Override
+    public RolapDimension getDimension() {
+        return (RolapDimension) dimension;
     }
 
-    void setMemberReader(MemberReader memberReader) {
-        this.memberReader = memberReader;
+    public final RolapSchema getRolapSchema() {
+        return ((RolapDimension) dimension).schema;
     }
 
-    MemberReader getMemberReader() {
-        return memberReader;
+    public RolapMember getDefaultMember() {
+        throw new UnsupportedOperationException();
     }
 
-    public Map<String, Annotation> getAnnotationMap() {
-        return annotationMap;
-    }
-
-    RolapLevel newMeasuresLevel() {
-        RolapLevel level =
-            new RolapLevel(
-                this,
-                "MeasuresLevel",
-                null,
-                true,
-                null,
-                this.levels.length,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                RolapProperty.emptyArray,
-                0,
-                null,
-                null,
-                RolapLevel.HideMemberCondition.Never,
-                LevelType.Regular,
-                "",
-                Collections.<String, Annotation>emptyMap());
-        this.levels = Util.append(this.levels, level);
-        return level;
-    }
-
-    /**
-     * If this hierarchy has precisely one table, returns that table;
-     * if this hierarchy has no table, return the cube's fact-table;
-     * otherwise, returns null.
-     */
-    MondrianDef.Relation getUniqueTable() {
-        if (relation instanceof MondrianDef.Relation) {
-            return (MondrianDef.Relation) relation;
-        } else if (relation instanceof MondrianDef.Join) {
-            return null;
-        } else {
-            throw Util.newInternal(
-                "hierarchy's relation is a " + relation.getClass());
-        }
-    }
-
-    boolean tableExists(String tableName) {
-        return (relation != null) && getTable(tableName, relation) != null;
-    }
-
-    MondrianDef.Relation getTable(String tableName) {
-        return relation == null ? null : getTable(tableName, relation);
-    }
-
-    private static MondrianDef.Relation getTable(
-        String tableName,
-        MondrianDef.RelationOrJoin relationOrJoin)
-    {
-        if (relationOrJoin instanceof MondrianDef.Relation) {
-            MondrianDef.Relation relation =
-                (MondrianDef.Relation) relationOrJoin;
-            if (relation.getAlias().equals(tableName)) {
-                return relation;
-            } else {
-                return null;
-            }
-        } else {
-            MondrianDef.Join join = (MondrianDef.Join) relationOrJoin;
-            MondrianDef.Relation rel = getTable(tableName, join.left);
-            if (rel != null) {
-                return rel;
-            }
-            return getTable(tableName, join.right);
-        }
-    }
-
-    public RolapSchema getRolapSchema() {
-        return (RolapSchema) dimension.getSchema();
-    }
-
-    public MondrianDef.RelationOrJoin getRelation() {
-        return relation;
-    }
-
-    public MondrianDef.Hierarchy getXmlHierarchy() {
-        return xmlHierarchy;
-    }
-
-    public Member getDefaultMember() {
-        // use lazy initialization to get around bootstrap issues
-        if (defaultMember == null) {
-            List<RolapMember> rootMembers = memberReader.getRootMembers();
-            final SchemaReader schemaReader =
-                getRolapSchema().getSchemaReader();
-            List<RolapMember> calcMemberList =
-                Util.cast(schemaReader.getCalculatedMembers(getLevels()[0]));
-            for (RolapMember rootMember
-                : UnionIterator.over(rootMembers, calcMemberList))
-            {
-                if (rootMember.isHidden()) {
-                    continue;
-                }
-                // Note: We require that the root member is not a hidden member
-                // of a ragged hierarchy, but we do not require that it is
-                // visible. In particular, if a cube contains no explicit
-                // measures, the default measure will be the implicitly defined
-                // [Fact Count] measure, which happens to be non-visible.
-                defaultMember = rootMember;
-                break;
-            }
-            if (defaultMember == null) {
-                throw MondrianResource.instance().InvalidHierarchyCondition.ex(
-                    this.getUniqueName());
-            }
-        }
-        return defaultMember;
-    }
-
-    public Member getNullMember() {
-        // use lazy initialization to get around bootstrap issues
-        if (nullMember == null) {
-            nullMember = new RolapNullMember(nullLevel);
-        }
+    public RolapMember getNullMember() {
         return nullMember;
     }
 
@@ -563,38 +288,7 @@ public class RolapHierarchy extends HierarchyBase {
         String name,
         Formula formula)
     {
-        if (formula == null) {
-            return new RolapMemberBase(
-                (RolapMember) parent, (RolapLevel) level, name);
-        } else if (level.getDimension().isMeasures()) {
-            return new RolapCalculatedMeasure(
-                (RolapMember) parent, (RolapLevel) level, name, formula);
-        } else {
-            return new RolapCalculatedMember(
-                (RolapMember) parent, (RolapLevel) level, name, formula);
-        }
-    }
-
-    String getAlias() {
-        return getName();
-    }
-
-    /**
-     * Returns the name of the source hierarchy, if this hierarchy is shared,
-     * otherwise null.
-     *
-     * <p>If this hierarchy is a public -- that is, it belongs to a dimension
-     * which is a usage of a shared dimension -- then
-     * <code>sharedHierarchyName</code> holds the unique name of the shared
-     * hierarchy; otherwise it is null.
-     *
-     * <p> Suppose this hierarchy is "Weekly" in the dimension "Order Date" of
-     * cube "Sales", and that "Order Date" is a usage of the "Time"
-     * dimension. Then <code>sharedHierarchyName</code> will be
-     * "[Time].[Weekly]".
-     */
-    public String getSharedHierarchyName() {
-        return sharedHierarchyName;
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -611,20 +305,23 @@ public class RolapHierarchy extends HierarchyBase {
      *    topmost ('all') expression, which may require more columns and more
      *    joins
      */
-    void addToFromInverse(SqlQuery query, MondrianDef.Expression expression) {
+    void addToFromInverse(SqlQuery query, RolapSchema.PhysExpr expression) {
+/*
         if (relation == null) {
             throw Util.newError(
                 "cannot add hierarchy " + getUniqueName()
                 + " to query: it does not have a <Table>, <View> or <Join>");
         }
         final boolean failIfExists = false;
-        MondrianDef.RelationOrJoin subRelation = relation;
+        Mondrian3Def.RelationOrJoin subRelation = relation;
+                TODO:
         if (relation instanceof MondrianDef.Join) {
             if (expression != null) {
                 subRelation =
                     relationSubsetInverse(relation, expression.getTableAlias());
             }
         }
+<<<<<<< HEAD
         query.addFrom(subRelation, null, failIfExists);
     }
 
@@ -664,10 +361,13 @@ public class RolapHierarchy extends HierarchyBase {
                     relationSubset(relation, expression.getTableAlias());
             }
         }
+=======
+>>>>>>> upstream/4.0
         query.addFrom(
             subRelation,
             expression == null ? null : expression.getTableAlias(),
             failIfExists);
+<<<<<<< HEAD
     }
 
     /**
@@ -934,6 +634,9 @@ public class RolapHierarchy extends HierarchyBase {
         default:
             throw Util.badValue(access);
         }
+=======
+*/
+>>>>>>> upstream/4.0
     }
 
     /**
@@ -945,7 +648,11 @@ public class RolapHierarchy extends HierarchyBase {
      * the country level, we have to constrain at the city level, not state,
      * or else all the values of all cities in the state will be returned.
      */
+<<<<<<< HEAD
     List<Member> getLowestMembersForAccess(
+=======
+    protected List<Member> getLowestMembersForAccess(
+>>>>>>> upstream/4.0
         Evaluator evaluator,
         HierarchyAccess hAccess,
         Map<Member, Access> membersWithAccess)
@@ -985,8 +692,12 @@ public class RolapHierarchy extends HierarchyBase {
                 }
             }
             // Now pass it recursively to this method.
+<<<<<<< HEAD
             return getLowestMembersForAccess(
                 evaluator, hAccess, newMap);
+=======
+            return getLowestMembersForAccess(evaluator, hAccess, newList);
+>>>>>>> upstream/4.0
         }
         return new ArrayList<Member>(membersWithAccess.keySet());
     }
@@ -996,8 +707,8 @@ public class RolapHierarchy extends HierarchyBase {
      * members.
      */
     public boolean isRagged() {
-        for (Level level : levels) {
-            if (((RolapLevel) level).getHideMemberCondition()
+        for (RolapLevel level : levelList) {
+            if (level.getHideMemberCondition()
                 != RolapLevel.HideMemberCondition.Never)
             {
                 return true;
@@ -1014,7 +725,7 @@ public class RolapHierarchy extends HierarchyBase {
      * in a parent-child hierarchy, so we only need need to validate the
      * expression once.
      */
-    synchronized Exp getAggregateChildrenExpression() {
+    public synchronized Exp getAggregateChildrenExpression() {
         if (aggregateChildrenExpression == null) {
             UnresolvedFunCall fc = new UnresolvedFunCall(
                 "$AggregateChildren",
@@ -1027,206 +738,9 @@ public class RolapHierarchy extends HierarchyBase {
         return aggregateChildrenExpression;
     }
 
-    /**
-     * Builds a dimension which maps onto a table holding the transitive
-     * closure of the relationship for this parent-child level.
-     *
-     * <p>This method is triggered by the
-     * {@link mondrian.olap.MondrianDef.Closure} element
-     * in a schema, and is only meaningful for a parent-child hierarchy.
-     *
-     * <p>When a Schema contains a parent-child Hierarchy that has an
-     * associated closure table, Mondrian creates a parallel internal
-     * Hierarchy, called a "closed peer", that refers to the closure table.
-     * This is indicated in the schema at the level of a Level, by including a
-     * Closure element. The closure table represents
-     * the transitive closure of the parent-child relationship.
-     *
-     * <p>The peer dimension, with its single hierarchy, and 3 levels (all,
-     * closure, item) really 'belong to' the parent-child level. If a single
-     * hierarchy had two parent-child levels (however unlikely this might be)
-     * then each level would have its own auxiliary dimension.
-     *
-     * <p>For example, in the demo schema the [HR].[Employee] dimension
-     * contains a parent-child hierarchy:
-     *
-     * <pre>
-     * &lt;Dimension name="Employees" foreignKey="employee_id"&gt;
-     *   &lt;Hierarchy hasAll="true" allMemberName="All Employees"
-     *         primaryKey="employee_id"&gt;
-     *     &lt;Table name="employee"/&gt;
-     *     &lt;Level name="Employee Id" type="Numeric" uniqueMembers="true"
-     *            column="employee_id" parentColumn="supervisor_id"
-     *            nameColumn="full_name" nullParentValue="0"&gt;
-     *       &lt;Closure parentColumn="supervisor_id"
-     *                   childColumn="employee_id"&gt;
-     *          &lt;Table name="employee_closure"/&gt;
-     *       &lt;/Closure&gt;
-     *       ...
-     * </pre>
-     * The internal closed peer Hierarchy has this structure:
-     * <pre>
-     * &lt;Dimension name="Employees" foreignKey="employee_id"&gt;
-     *     ...
-     *     &lt;Hierarchy name="Employees$Closure"
-     *         hasAll="true" allMemberName="All Employees"
-     *         primaryKey="employee_id" primaryKeyTable="employee_closure"&gt;
-     *       &lt;Join leftKey="supervisor_id" rightKey="employee_id"&gt;
-     *         &lt;Table name="employee_closure"/&gt;
-     *         &lt;Table name="employee"/&gt;
-     *       &lt;/Join&gt;
-     *       &lt;Level name="Closure"  type="Numeric" uniqueMembers="false"
-     *           table="employee_closure" column="supervisor_id"/&gt;
-     *       &lt;Level name="Employee" type="Numeric" uniqueMembers="true"
-     *           table="employee_closure" column="employee_id"/&gt;
-     *     &lt;/Hierarchy&gt;
-     * </pre>
-     *
-     * <p>Note that the original Level with the Closure produces two Levels in
-     * the closed peer Hierarchy: a simple peer (Employee) and a closed peer
-     * (Closure).
-     *
-     * @param src a parent-child Level that has a Closure clause
-     * @param clos a Closure clause
-     * @return the closed peer Level in the closed peer Hierarchy
-     */
-    RolapDimension createClosedPeerDimension(
-        RolapLevel src,
-        MondrianDef.Closure clos,
-        MondrianDef.CubeDimension xmlDimension)
-    {
-        // REVIEW (mb): What about attribute primaryKeyTable?
-
-        // Create a peer dimension.
-        RolapDimension peerDimension = new RolapDimension(
-            dimension.getSchema(),
-            dimension.getName() + "$Closure",
-            null,
-            true,
-            "Closure dimension for parent-child hierarchy " + getName(),
-            DimensionType.StandardDimension,
-            dimension.isHighCardinality(),
-            Collections.<String, Annotation>emptyMap());
-
-        // Create a peer hierarchy.
-        RolapHierarchy peerHier = peerDimension.newHierarchy(null, true, this);
-        peerHier.allMemberName = getAllMemberName();
-        peerHier.allMember = (RolapMemberBase) getAllMember();
-        peerHier.allLevelName = getAllLevelName();
-        peerHier.sharedHierarchyName = getSharedHierarchyName();
-        MondrianDef.Join join = new MondrianDef.Join();
-        peerHier.relation = join;
-        join.left = clos.table;         // the closure table
-        join.leftKey = clos.parentColumn;
-        join.right = relation;     // the unclosed base table
-        join.rightKey = clos.childColumn;
-
-        // Create the upper level.
-        // This represents all groups of descendants. For example, in the
-        // Employee closure hierarchy, this level has a row for every employee.
-        int index = peerHier.levels.length;
-        int flags = src.getFlags() &~ RolapLevel.FLAG_UNIQUE;
-        MondrianDef.Expression keyExp =
-            new MondrianDef.Column(clos.table.name, clos.parentColumn);
-
-        RolapLevel level =
-            new RolapLevel(
-                peerHier, "Closure", caption, true, description, index++,
-                keyExp, null, null, null,
-                null, null,  // no longer a parent-child hierarchy
-                null,
-                RolapProperty.emptyArray,
-                flags | RolapLevel.FLAG_UNIQUE,
-                src.getDatatype(),
-                null,
-                src.getHideMemberCondition(),
-                src.getLevelType(),
-                "",
-                Collections.<String, Annotation>emptyMap());
-        peerHier.levels = Util.append(peerHier.levels, level);
-
-        // Create lower level.
-        // This represents individual items. For example, in the Employee
-        // closure hierarchy, this level has a row for every direct and
-        // indirect report of every employee (which is more than the number
-        // of employees).
-        flags = src.getFlags() | RolapLevel.FLAG_UNIQUE;
-        keyExp = new MondrianDef.Column(clos.table.name, clos.childColumn);
-        RolapLevel sublevel = new RolapLevel(
-            peerHier,
-            "Item",
-            null,
-            true,
-            null,
-            index++,
-            keyExp,
-            null,
-            null,
-            null,
-            null,
-            null,  // no longer a parent-child hierarchy
-            null,
-            RolapProperty.emptyArray,
-            flags,
-            src.getDatatype(),
-            src.getInternalType(),
-            src.getHideMemberCondition(),
-            src.getLevelType(),
-            "",
-            Collections.<String, Annotation>emptyMap());
-        peerHier.levels = Util.append(peerHier.levels, sublevel);
-
-        return peerDimension;
+    public List<? extends RolapLevel> getLevelList() {
+        return Util.cast(levelList);
     }
-
-    /**
-     * Sets default member of this Hierarchy.
-     *
-     * @param defaultMember Default member
-     */
-    public void setDefaultMember(Member defaultMember) {
-        if (defaultMember != null) {
-            this.defaultMember = defaultMember;
-        }
-    }
-
-
-    /**
-     * <p>Gets "unique key level name" attribute of this Hierarchy, if set.
-     * If set, this property indicates that all level properties are
-     * functionally dependent (invariant) on their associated levels,
-     * and that the set of levels from the root to the named level (inclusive)
-     * effectively defines an alternate key.</p>
-     *
-     * <p>This allows the GROUP BY to be eliminated from associated queries.</p>
-     *
-     * @return the name of the "unique key" level, or null if not specified
-     */
-    public String getUniqueKeyLevelName() {
-        return uniqueKeyLevelName;
-    }
-
-    /**
-     * Returns the ordinal of this hierarchy in its cube.
-     *
-     * <p>Temporarily defined against RolapHierarchy; will be moved to
-     * RolapCubeHierarchy as soon as the measures hierarchy is a
-     * RolapCubeHierarchy.
-     *
-     * @return Ordinal of this hierarchy in its cube
-     */
-    public int getOrdinalInCube() {
-        // This is temporary to verify that all calls to this method are for
-        // the measures hierarchy. For all other hierarchies, the context will
-        // be a RolapCubeHierarchy.
-        //
-        // In particular, if this method is called from
-        // RolapEvaluator.setContext, the caller of that method should have
-        // passed in a RolapCubeMember, not a RolapMember.
-        assert dimension.isMeasures();
-        return 0;
-    }
-
 
     /**
      * A <code>RolapNullMember</code> is the null member of its hierarchy.
@@ -1236,14 +750,22 @@ public class RolapHierarchy extends HierarchyBase {
      * }".
      */
     static class RolapNullMember extends RolapMemberBase {
-        RolapNullMember(final RolapLevel level) {
+        RolapNullMember(final RolapCubeLevel level) {
             super(
                 null,
                 level,
+<<<<<<< HEAD
                 RolapUtil.sqlNullValue,
                 RolapUtil.mdxNullLiteral(),
                 MemberType.NULL);
             assert level != null;
+=======
+                Util.COMPARABLE_EMPTY_LIST,
+                MemberType.NULL,
+                Util.makeFqName(
+                    level.getHierarchy(), RolapUtil.mdxNullLiteral()),
+                Larders.ofName(RolapUtil.mdxNullLiteral()));
+>>>>>>> upstream/4.0
         }
     }
 
@@ -1258,18 +780,22 @@ public class RolapHierarchy extends HierarchyBase {
         private RolapResult.ValueFormatter cellFormatter;
 
         public RolapCalculatedMeasure(
-            RolapMember parent, RolapLevel level, String name, Formula formula)
+            RolapMember parent,
+            RolapCubeLevel level,
+            String name,
+            Formula formula)
         {
             super(parent, level, name, formula);
         }
 
-        public synchronized void setProperty(String name, Object value) {
-            if (name.equals(Property.CELL_FORMATTER.getName())) {
+        public synchronized void setProperty(Property property, Object value) {
+            if (property == Property.CELL_FORMATTER) {
                 String cellFormatterClass = (String) value;
                 try {
                     CellFormatter formatter =
-                        RolapSchema.getCellFormatter(
+                        RolapSchemaLoader.getFormatter(
                             cellFormatterClass,
+                            CellFormatter.class,
                             null);
                     this.cellFormatter =
                         new RolapResult.CellFormatterValueFormatter(formatter);
@@ -1279,9 +805,9 @@ public class RolapHierarchy extends HierarchyBase {
                             cellFormatterClass, getUniqueName(), e);
                 }
             }
-            if (name.equals(Property.CELL_FORMATTER_SCRIPT.name)) {
+            if (property == Property.CELL_FORMATTER_SCRIPT) {
                 String language = (String) getPropertyValue(
-                    Property.CELL_FORMATTER_SCRIPT_LANGUAGE.name);
+                    Property.CELL_FORMATTER_SCRIPT_LANGUAGE);
                 String scriptText = (String) value;
                 try {
                     final Scripts.ScriptDefinition script =
@@ -1289,8 +815,9 @@ public class RolapHierarchy extends HierarchyBase {
                             scriptText,
                             Scripts.ScriptLanguage.lookup(language));
                     CellFormatter formatter =
-                        RolapSchema.getCellFormatter(
+                        RolapSchemaLoader.getFormatter(
                             null,
+                            CellFormatter.class,
                             script);
                     this.cellFormatter =
                         new RolapResult.CellFormatterValueFormatter(formatter);
@@ -1300,7 +827,7 @@ public class RolapHierarchy extends HierarchyBase {
                             scriptText, getUniqueName(), e);
                 }
             }
-            super.setProperty(name, value);
+            super.setProperty(property, value);
         }
 
         public RolapResult.ValueFormatter getFormatter() {
@@ -1313,19 +840,15 @@ public class RolapHierarchy extends HierarchyBase {
      * or 'hidden'. The member is calculated using an expression which
      * aggregates only visible descendants.
      *
-     * <p>Note that this class extends RolapCubeMember only because other code
-     * expects that all members in a RolapCubeHierarchy are RolapCubeMembers.
-     * As part of {@link mondrian.util.Bug#BugSegregateRolapCubeMemberFixed},
-     * maybe make {@link mondrian.rolap.RolapCubeMember} an interface.
-     *
      * @see mondrian.olap.Role.RollupPolicy
      */
-    public static class LimitedRollupMember extends RolapCubeMember {
+    public static class LimitedRollupMember extends DelegatingRolapMember {
         public final RolapMember member;
         private final Exp exp;
         final HierarchyAccess hierarchyAccess;
 
         LimitedRollupMember(
+<<<<<<< HEAD
             RolapCubeMember member,
             Exp exp,
             HierarchyAccess hierarchyAccess)
@@ -1335,6 +858,12 @@ public class RolapHierarchy extends HierarchyBase {
                 member.getRolapMember(),
                 member.getLevel());
             this.hierarchyAccess = hierarchyAccess;
+=======
+            RolapMember member,
+            Exp exp)
+        {
+            super(member);
+>>>>>>> upstream/4.0
             assert !(member instanceof LimitedRollupMember);
             this.member = member;
             this.exp = exp;
@@ -1346,17 +875,22 @@ public class RolapHierarchy extends HierarchyBase {
         }
 
         public int hashCode() {
+<<<<<<< HEAD
             int hash = member.hashCode();
             hash = Util.hash(hash, exp);
             return hash;
+=======
+            return member.hashCode();
+>>>>>>> upstream/4.0
         }
 
         public Exp getExpression() {
             return exp;
         }
 
-        protected boolean computeCalculated(final MemberType memberType) {
-            return true;
+        @Override
+        public Calc getCompiledExpression(RolapEvaluatorRoot root) {
+            return root.getCompiled(getExpression(), true, null);
         }
 
         public boolean isCalculated() {
@@ -1373,7 +907,7 @@ public class RolapHierarchy extends HierarchyBase {
      * role has limited access to the hierarchy, replaces members with
      * dummy members which evaluate to the sum of only the accessible children.
      */
-    private static class LimitedRollupSubstitutingMemberReader
+    static class LimitedRollupSubstitutingMemberReader
         extends SubstitutingMemberReader
     {
         private final Role.HierarchyAccess hierarchyAccess;
@@ -1400,6 +934,7 @@ public class RolapHierarchy extends HierarchyBase {
             this.exp = exp;
         }
 
+<<<<<<< HEAD
         public Map<? extends Member, Access> getMemberChildren(
             RolapMember member,
             List<RolapMember> memberChildren,
@@ -1446,6 +981,24 @@ public class RolapHierarchy extends HierarchyBase {
                     (RolapCubeMember) member,
                     exp,
                     hierarchyAccess);
+=======
+        @Override
+        public RolapMember substitute(final RolapMember member) {
+            if (member == null) {
+                return null;
+            }
+            if (member instanceof MultiCardinalityDefaultMember) {
+                return new LimitedRollupMember(
+                    member.getParentMember(),
+                    exp);
+            }
+            if (hierarchyAccess.getAccess(member) == Access.CUSTOM
+                || hierarchyAccess.hasInaccessibleDescendants(member))
+            {
+                // Member is visible, but at least one of its
+                // descendants is not.
+                return new LimitedRollupMember(member, exp);
+>>>>>>> upstream/4.0
             } else {
                 // No need to substitute. Member and all of its
                 // descendants are accessible. Total for member
@@ -1475,7 +1028,7 @@ public class RolapHierarchy extends HierarchyBase {
      * Compiled expression that computes rollup over a set of visible children.
      * The {@code listCalc} expression determines that list of children.
      */
-    private static class LimitedRollupAggregateCalc
+    static class LimitedRollupAggregateCalc
         extends AggregateFunDef.AggregateCalc
     {
         public LimitedRollupAggregateCalc(
@@ -1494,7 +1047,13 @@ public class RolapHierarchy extends HierarchyBase {
      * shared hierarchies. Acts like a cube that has a single child, the
      * hierarchy in question.
      */
-    private class DummyElement implements OlapElement {
+    static class DummyElement implements OlapElement {
+        private final RolapHierarchy hierarchy;
+
+        DummyElement(RolapHierarchy hierarchy) {
+            this.hierarchy = hierarchy;
+        }
+
         public String getUniqueName() {
             throw new UnsupportedOperationException();
         }
@@ -1517,16 +1076,9 @@ public class RolapHierarchy extends HierarchyBase {
             }
             final Id.NameSegment nameSegment = (Id.NameSegment) s;
 
-            if (Util.equalName(nameSegment.name, dimension.getName())) {
-                return dimension;
-            }
-            // Archaic form <dimension>.<hierarchy>, e.g. [Time.Weekly].[1997]
-            if (!MondrianProperties.instance().SsasCompatibleNaming.get()
-                && Util.equalName(
-                    nameSegment.name,
-                    dimension.getName() + "." + subName))
+            if (Util.equalName(nameSegment.name, hierarchy.dimension.getName()))
             {
-                return RolapHierarchy.this;
+                return hierarchy.dimension;
             }
             return null;
         }
@@ -1555,6 +1107,42 @@ public class RolapHierarchy extends HierarchyBase {
             throw new UnsupportedOperationException();
         }
     }
+
+    private static final RolapSharedAttribute ALL_ATTRIBUTE =
+        new RolapSharedAttribute(
+            "All",
+            true,
+            Collections.<RolapSchema.PhysColumn>emptyList(),
+            null,
+            null,
+            Collections.<RolapSchema.PhysColumn>emptyList(),
+            null,
+            org.olap4j.metadata.Level.Type.ALL,
+            ALL_LEVEL_CARDINALITY);
+
+    private static final RolapSharedAttribute NULL_ATTRIBUTE =
+        new RolapSharedAttribute(
+            "Null",
+            true,
+            Collections.<RolapSchema.PhysColumn>emptyList(),
+            null,
+            null,
+            Collections.<RolapSchema.PhysColumn>emptyList(),
+            null,
+            org.olap4j.metadata.Level.Type.NULL,
+            NULL_LEVEL_CARDINALITY);
+
+    private static final RolapSharedAttribute MEASURES_ATTRIBUTE =
+        new RolapSharedAttribute(
+            "Measures",
+            true,
+            Collections.<RolapSchema.PhysColumn>emptyList(),
+            null,
+            null,
+            Collections.<RolapSchema.PhysColumn>emptyList(),
+            null,
+            org.olap4j.metadata.Level.Type.REGULAR,
+            Integer.MIN_VALUE);
 }
 
 // End RolapHierarchy.java

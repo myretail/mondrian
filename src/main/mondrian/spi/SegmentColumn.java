@@ -86,8 +86,8 @@ public class SegmentColumn implements Serializable {
         return new SegmentColumn(
             columnExpression,
             valueCount,
-            ((ArraySortedSet) this.values).merge(
-                (ArraySortedSet) col.values));
+            ((ArraySortedSet<Comparable>) this.values).merge(
+                (ArraySortedSet<Comparable>) col.values));
     }
 
     /**

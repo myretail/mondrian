@@ -4,15 +4,23 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2012-2012 Pentaho
+=======
+// Copyright (C) 2012-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.test;
 
+<<<<<<< HEAD
 import mondrian.olap.Connection;
 import mondrian.olap.DriverManager;
 import mondrian.olap.MondrianException;
 import mondrian.olap.Util;
+=======
+import mondrian.olap.*;
+>>>>>>> upstream/4.0
 
 import junit.framework.Assert;
 
@@ -20,6 +28,7 @@ import junit.framework.Assert;
  * Unit test for automatic detection of schema version.
  */
 public class SchemaVersionTest extends FoodMartTestCase {
+<<<<<<< HEAD
     public void testSchema3withVersion() {
         TestContext testContext =
             TestContext.instance().withSchema(SCHEMA_3_VHEADER + SCHEMA_3_BODY);
@@ -76,6 +85,70 @@ public class SchemaVersionTest extends FoodMartTestCase {
     private static final String SCHEMA_3_VHEADER =
         "<?xml version='1.0'?>\n"
         + "<Schema name='MiniFoodMart' metamodelVersion='3.0'>\n";
+=======
+    public void testV4SchemaWithHeader() {
+        TestContext testContext =
+            TestContext.instance().withSchema(SCHEMA_V4_HEADER + SCHEMA_4_BODY);
+        Util.PropertyList connectionInfo =
+            testContext.getConnectionProperties();
+        Connection conn = DriverManager.getConnection(connectionInfo, null);
+        conn.close();
+    }
+
+    public void testV4SchemaNoHeader() {
+        TestContext testContext =
+            TestContext.instance().withSchema(
+                SCHEMA_NO_VERSION_HEADER + SCHEMA_4_BODY);
+        Util.PropertyList connectionInfo =
+            testContext.getConnectionProperties();
+        try {
+            Connection conn = DriverManager.getConnection(connectionInfo, null);
+            conn.close();
+            Assert.fail();
+        } catch (Throwable t) {
+            TestContext.checkThrowable(t, "metamodelVersion");
+        }
+    }
+
+    public void testV3SchemaNoHeaderOK() {
+        TestContext testContext =
+            TestContext.instance().withSchema(
+                SCHEMA_NO_VERSION_HEADER + SCHEMA_3_BODY);
+        Util.PropertyList connectionInfo =
+            testContext.getConnectionProperties();
+        Connection conn = DriverManager.getConnection(connectionInfo, null);
+        conn.close();
+    }
+
+    public void testV5SchemaWithHeader() {
+        TestContext testContext =
+            TestContext.instance().withSchema(SCHEMA_V5_HEADER + SCHEMA_4_BODY);
+        Util.PropertyList connectionInfo =
+            testContext.getConnectionProperties();
+        try {
+            Connection conn = DriverManager.getConnection(connectionInfo, null);
+            conn.close();
+            Assert.fail();
+        } catch (Throwable t) {
+            TestContext.checkThrowable(
+                t,
+                "Schema version '5.0' is later than schema version '4.x' "
+                + "supported by this version of Mondrian");
+        }
+    }
+
+    private static final String SCHEMA_NO_VERSION_HEADER =
+        "<?xml version='1.0'?>\n"
+        + "<Schema name='MiniFoodMart'>\n";
+
+    private static final String SCHEMA_V4_HEADER =
+        "<?xml version='1.0'?>\n"
+        + "<Schema name='MiniFoodMart' metamodelVersion='4.0'>\n";
+
+    private static final String SCHEMA_V5_HEADER =
+        "<?xml version='1.0'?>\n"
+        + "<Schema name='MiniFoodMart' metamodelVersion='5.0'>\n";
+>>>>>>> upstream/4.0
 
     private static final String SCHEMA_3_BODY =
         "    <Dimension name='Time' type='TimeDimension'>\n"
@@ -120,6 +193,13 @@ public class SchemaVersionTest extends FoodMartTestCase {
         + "\n"
         + "    <Cube name='Sales' defaultMeasure='Unit Sales'>\n"
         + "      <Table name='sales_fact_1997'>\n"
+<<<<<<< HEAD
+=======
+        + "        <AggExclude name='agg_c_special_sales_fact_1997' />\n"
+        + "        <AggExclude name='agg_lc_100_sales_fact_1997' />\n"
+        + "        <AggExclude name='agg_lc_10_sales_fact_1997' />\n"
+        + "        <AggExclude name='agg_pc_10_sales_fact_1997' />\n"
+>>>>>>> upstream/4.0
         + "      </Table>\n"
         + "      <DimensionUsage name='Time' source='Time' foreignKey='time_id'/>\n"
         + "      <DimensionUsage name='Product' source='Product' foreignKey='product_id'/>\n"
@@ -129,6 +209,7 @@ public class SchemaVersionTest extends FoodMartTestCase {
         + "\n"
         + "</Schema>";
 
+<<<<<<< HEAD
     private static final String SCHEMA_4_HEADER =
         "<?xml version='1.0'?>\n"
         + "<Schema name='MiniFoodMart' metamodelVersion='4.0'>\n";
@@ -138,6 +219,9 @@ public class SchemaVersionTest extends FoodMartTestCase {
         + "<Schema name='MiniFoodMart'>\n";
 
     private static String SCHEMA_4_BODY =
+=======
+    private static final String SCHEMA_4_BODY =
+>>>>>>> upstream/4.0
         "    <PhysicalSchema>\n"
         + "        <Table name='product'>\n"
         + "            <Key>\n"
@@ -177,7 +261,11 @@ public class SchemaVersionTest extends FoodMartTestCase {
         + "        </Table>\n"
         + "    </PhysicalSchema>\n"
         + "\n"
+<<<<<<< HEAD
         + "    <Dimension name='Time' table='time_by_day' type='TimeDimension' key='Time Id'>\n"
+=======
+        + "    <Dimension name='Time' table='time_by_day' type='TIME' key='Time Id'>\n"
+>>>>>>> upstream/4.0
         + "      <Attributes>\n"
         + "          <Attribute name='Year' keyColumn='the_year' levelType='TimeYears'/>\n"
         + "          <Attribute name='Quarter' levelType='TimeQuarters'>\n"
@@ -189,6 +277,10 @@ public class SchemaVersionTest extends FoodMartTestCase {
         + "                  <Column name='quarter'/>\n"
         + "              </Name>\n"
         + "          </Attribute>\n"
+<<<<<<< HEAD
+=======
+        + "          <Attribute name='Time Id' keyColumn='time_id'/>\n"
+>>>>>>> upstream/4.0
         + "      </Attributes>\n"
         + "      <Hierarchies>\n"
         + "        <Hierarchy name='Time' hasAll='false'>\n"

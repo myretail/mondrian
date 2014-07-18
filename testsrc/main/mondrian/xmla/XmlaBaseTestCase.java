@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.xmla;
@@ -24,6 +24,7 @@ import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
 import java.io.*;
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -65,30 +66,18 @@ public abstract class XmlaBaseTestCase extends FoodMartTestCase {
     public static final String LOCALE_PROP = "locale";
     protected static final boolean DEBUG = false;
 
-    /**
-     * Cache servlet instances between test invocations. Prevents creation
-     * of many spurious MondrianServer instances.
-     */
-    private final HashMap<List<String>, Servlet>
-        SERVLET_CACHE = new HashMap<List<String>, Servlet>();
+    private Resource resource;
 
-    /**
-     * Cache servlet instances between test invocations. Prevents creation
-     * of many spurious MondrianServer instances.
-     */
-    private final HashMap<List<String>, MondrianServer>
-        SERVER_CACHE = new HashMap<List<String>, MondrianServer>();
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        resource = Resource.acquire();
+    }
 
+    @Override
     protected void tearDown() throws Exception {
         super.tearDown();
-        for (MondrianServer server : SERVER_CACHE.values()) {
-            server.shutdown();
-        }
-        SERVER_CACHE.clear();
-        for (Servlet servlet : SERVLET_CACHE.values()) {
-            servlet.destroy();
-        }
-        SERVLET_CACHE.clear();
+        resource = null;
     }
 
     protected String generateExpectedString(Properties props)
@@ -367,7 +356,34 @@ System.out.println("Got CONTINUE");
                 connectString,
                 catalogNameUrls,
                 getServletCallbackClass().getName(),
-                SERVLET_CACHE);
+                resource.servletCache);
+    }
+
+    protected String filterConnectString(String original) {
+        return original;
+    }
+
+    /**
+     * Masks Mondrian's version number from a string.
+     * Note that this method does a mostly blind replacement
+     * of the version string and may replace strings that
+     * just happen to have the same sequence.
+     *
+     * @param str String
+     * @return String with each occurrence of mondrian's version number
+     *    (e.g. "2.3.0.0") replaced with "${mondrianVersion}"
+     */
+    protected static String maskVersion(String str) {
+        MondrianServer.MondrianVersion mondrianVersion =
+            MondrianServer.forId(null).getVersion();
+        String versionString = mondrianVersion.getVersionString();
+        // regex characters that wouldn't be expected before or after the
+        // version string.  This avoids a false match when the version
+        // string digits appear in other contexts (e.g. $3.56)
+        String charsOutOfContext = "([^,\\$\\d])";
+        String matchString = charsOutOfContext + Pattern.quote(versionString)
+            + charsOutOfContext;
+        return str.replaceAll(matchString, "$1\\${mondrianVersion}$2");
     }
 
     protected String filterConnectString(String original) {
@@ -595,8 +611,14 @@ System.out.println("Got CONTINUE");
         // do XMLA
         byte[] bytes =
             XmlaSupport.processXmla(
+<<<<<<< HEAD
                 xmlaReqDoc, filterConnectString(connectString),
                 catalogNameUrls, role, SERVER_CACHE);
+=======
+                xmlaReqDoc, connectString, catalogNameUrls, role,
+                resource.serverCache);
+
+>>>>>>> upstream/4.0
         if (XmlUtil.supportsValidation()
             // We can't validate against the schema when the content type
             // is Data because it doesn't respect the XDS.
@@ -626,7 +648,7 @@ System.out.println("Got CONTINUE");
             catalogNameUrls,
             callBackClassName,
             role,
-            SERVLET_CACHE);
+            resource.servletCache);
 
         if (DEBUG) {
             System.out.println(
@@ -669,7 +691,12 @@ System.out.println("Got CONTINUE");
         // do XMLA
         byte[] bytes =
             XmlaSupport.processXmla(
+<<<<<<< HEAD
                 xmlaReqDoc, connectString, catalogNameUrls, role, SERVER_CACHE);
+=======
+                xmlaReqDoc, connectString, catalogNameUrls, role,
+                resource.serverCache);
+>>>>>>> upstream/4.0
 
         // do SOAP-XMLA
         String callBackClassName = CallBack.class.getName();
@@ -679,7 +706,7 @@ System.out.println("Got CONTINUE");
             catalogNameUrls,
             callBackClassName,
             role,
-            SERVLET_CACHE);
+            resource.servletCache);
         if (DEBUG) {
             System.out.println(
                 "XmlaBaseTestCase.doTests: soap response=" + new String(bytes));
@@ -805,6 +832,7 @@ System.out.println("Got CONTINUE");
     }
 
     /**
+<<<<<<< HEAD
      * Masks Mondrian's version number from a string.
      * Note that this method does a mostly blind replacement
      * of the version string and may replace strings that
@@ -825,6 +853,55 @@ System.out.println("Got CONTINUE");
         String matchString = charsOutOfContext + Pattern.quote(versionString)
             + charsOutOfContext;
         return str.replaceAll(matchString, "$1\\${mondrianVersion}$2");
+=======
+     * Holder for resources (e.g. caches) that are shared between tests.
+     *
+     * <p>At any time there are either 0 or 1 instances. (It's a
+     * reference-counted optional singleton.)</p>
+     *
+     * <p>Resources are acquired on
+     * {@link mondrian.xmla.XmlaBaseTestCase#setUp()}</p> and released on
+     * {@link XmlaBaseTestCase#tearDown()}. This releases them faster than
+     * if they were fields inside each {@link mondrian.xmla.XmlaBaseTestCase}
+     * instance.
+     */
+    private static class Resource {
+        private static WeakReference<Resource> REF;
+
+        static synchronized Resource acquire() {
+            Resource resource;
+            if (REF == null || (resource = REF.get()) == null) {
+                resource = new Resource();
+                REF = new WeakReference<Resource>(resource);
+            }
+            return resource;
+        }
+
+        protected void finalize() {
+            for (MondrianServer server : serverCache.values()) {
+                server.shutdown();
+            }
+            serverCache.clear();
+            for (Servlet servlet : servletCache.values()) {
+                servlet.destroy();
+            }
+            servletCache.clear();
+        }
+
+        /**
+         * Cache servlet instances between test invocations. Prevents creation
+         * of many spurious MondrianServer instances.
+         */
+        private final Map<List<String>, Servlet> servletCache =
+            new HashMap<List<String>, Servlet>();
+
+        /**
+         * Cache servlet instances between test invocations. Prevents creation
+         * of many spurious MondrianServer instances.
+         */
+        private final Map<List<String>, MondrianServer> serverCache =
+            new TestContext.WeakMap<List<String>, MondrianServer>();
+>>>>>>> upstream/4.0
     }
 }
 

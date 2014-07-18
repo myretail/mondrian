@@ -5,10 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 1999-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
+
+import java.util.List;
 
 /**
  * A <code>Hierarchy</code> is a set of members, organized into levels.
@@ -18,6 +20,7 @@ public interface Hierarchy extends OlapElement, Annotated {
      * Returns the dimension this hierarchy belongs to.
      */
     Dimension getDimension();
+
     /**
      * Returns the levels in this hierarchy.
      *
@@ -25,8 +28,17 @@ public interface Hierarchy extends OlapElement, Annotated {
      * not be visible; use {@link SchemaReader#getHierarchyLevels} instead.
      *
      * @post return != null
+     * @deprecated Use {@link #getLevelList}; will be removed before 4.0.
      */
     Level[] getLevels();
+
+    /**
+     * Returns the levels of this hierarchy.
+     *
+     * @return List of levels
+     */
+    List<? extends Level> getLevelList();
+
     /**
      * Returns the default member of this hierarchy.
      *
@@ -36,12 +48,14 @@ public interface Hierarchy extends OlapElement, Annotated {
      * @post return != null
      */
     Member getDefaultMember();
+
     /**
      * Returns the "All" member of this hierarchy.
      *
      * @post return != null
      */
     Member getAllMember();
+
     /**
      * Returns a special member representing the "null" value. This never
      * occurs on an axis, but may occur if functions such as <code>Lead</code>,

@@ -26,4 +26,8 @@
     </chain>
   </resolvers>
   <caches lockStrategy="artifact-lock" resolutionCacheDir="${ivy.default.ivy.user.dir}/resol-cache${env.EXECUTOR_NUMBER}" />
+<<<<<<< HEAD
 </ivysettings>
+=======
+</ivysettings>
+>>>>>>> upstream/4.0

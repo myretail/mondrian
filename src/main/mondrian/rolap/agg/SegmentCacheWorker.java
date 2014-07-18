@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2011-2012 Pentaho and others
+// Copyright (C) 2011-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -12,7 +12,7 @@ package mondrian.rolap.agg;
 import mondrian.olap.MondrianProperties;
 import mondrian.resource.MondrianResource;
 import mondrian.spi.*;
-import mondrian.util.ServiceDiscovery;
+import mondrian.util.*;
 
 import org.apache.log4j.Logger;
 
@@ -101,14 +101,10 @@ public final class SegmentCacheWorker {
     private static SegmentCache instantiateCache(String cacheName) {
         try {
             LOGGER.debug("Starting cache instance: " + cacheName);
-            Class<?> clazz =
-                Class.forName(cacheName);
-            Object scObject = clazz.newInstance();
-            if (!(scObject instanceof SegmentCache)) {
-                throw MondrianResource.instance()
-                    .SegmentCacheIsNotImplementingInterface.ex();
-            }
-            return (SegmentCache) scObject;
+            return ClassResolver.INSTANCE.instantiateSafe(cacheName);
+        } catch (ClassCastException e) {
+            throw MondrianResource.instance()
+                .SegmentCacheIsNotImplementingInterface.ex();
         } catch (Exception e) {
             LOGGER.error(
                 MondrianResource.instance()

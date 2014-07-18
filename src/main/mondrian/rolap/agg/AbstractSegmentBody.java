@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2011-2013 Pentaho and others
+=======
+// Copyright (C) 2011-2014 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -117,7 +121,11 @@ abstract class AbstractSegmentBody implements SegmentBody {
                 }
                 int k = ordinals.length - 1;
                 while (k >= 0) {
-                    if (ordinals[k] < axisValueSets[k].size() - 1) {
+                    int j = 1;
+                    if (nullAxisFlags[k]) {
+                        j = 0;
+                    }
+                    if (ordinals[k] < axisValueSets[k].size() - j) {
                         ++ordinals[k];
                         break;
                     } else {

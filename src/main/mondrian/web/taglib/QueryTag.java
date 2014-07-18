@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2010 Pentaho and others
+// Copyright (C) 2005-2011 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.web.taglib;
@@ -21,10 +21,10 @@ import javax.servlet.jsp.tagext.BodyTagSupport;
  * select
  *   {[Measures].[Unit Sales], [Measures].[Store Cost]} on columns,
  *   CrossJoin(
- *     { [Promotion Media].[Radio],
- *       [Promotion Media].[TV],
- *       [Promotion Media].[Sunday Paper],
- *       [Promotion Media].[Street Handout] },
+ *     { [Promotion].[Media Type].[Radio],
+ *       [Promotion].[Media Type].[TV],
+ *       [Promotion].[Media Type].[Sunday Paper],
+ *       [Promotion].[Media Type].[Street Handout] },
  *     [Product].[Drink].children) on rows
  * from Sales
  * where ([Time].[1997])

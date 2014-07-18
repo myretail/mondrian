@@ -5,13 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 1999-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * Cube.
@@ -26,8 +25,17 @@ public interface Cube extends OlapElement, Annotated {
 
     /**
      * Returns the dimensions of this cube.
+     *
+     * @deprecated Use {@link #getDimensionList()}; will be removed before 4.0.
      */
     Dimension[] getDimensions();
+
+    /**
+     * Returns the dimensions in this cube.
+     *
+     * @return List of dimensions
+     */
+    List<? extends Dimension> getDimensionList();
 
     /**
      * Returns the named sets of this cube.
@@ -89,28 +97,19 @@ public interface Cube extends OlapElement, Annotated {
      * Creates a calculated member in this cube.
      *
      * <p>The XML string must be a <code>&lt;CalculatedMember/&gt;</code>
-     * element, as defined in <code>Mondrian.xml</code>.
+     * element, as defined in <code>MondrianSchema.xml</code>.
      *
      * @param xml XML string
      */
     Member createCalculatedMember(String xml);
 
     /**
-     * Finds out non joining dimensions for this cube.
+     * Returns the first level of a given type in this cube.
      *
-     * @param tuple array of members
-     * @return Set of dimensions that do not exist (non joining) in this cube
+     * @param levelType Level type
+     * @return First level of given type, or null
      */
-    Set<Dimension> nonJoiningDimensions(Member[] tuple);
-
-    /**
-     * Finds out non joining dimensions for this cube.
-     *
-     * @param otherDims Set of dimensions to be tested for existence
-     *     in this cube
-     * @return Set of dimensions that do not exist (non joining) in this cube
-     */
-    Set<Dimension> nonJoiningDimensions(Set<Dimension> otherDims);
+    Level getTimeLevel(org.olap4j.metadata.Level.Type levelType);
 }
 
 // End Cube.java

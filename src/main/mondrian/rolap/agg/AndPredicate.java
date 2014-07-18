@@ -10,7 +10,7 @@
 package mondrian.rolap.agg;
 
 import mondrian.rolap.*;
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.spi.Dialect;
 
 import java.util.*;
 
@@ -24,7 +24,14 @@ import java.util.*;
  */
 public class AndPredicate extends ListPredicate {
 
-    public AndPredicate(List<StarPredicate> predicateList) {
+    /**
+     * Creates an AndPredicate.
+     *
+     * @param predicateList List of operand predicates
+     */
+    public AndPredicate(
+        List<StarPredicate> predicateList)
+    {
         super(predicateList);
     }
 
@@ -56,15 +63,14 @@ public class AndPredicate extends ListPredicate {
         }
     }
 
-
     public StarPredicate or(StarPredicate predicate) {
-        List<StarPredicate> list = new ArrayList<StarPredicate>();
-        list.add(this);
-        list.add(predicate);
-        return new OrPredicate(list);
+        return Predicates.or(Arrays.asList(this, predicate));
     }
 
-    public BitKey checkInList(SqlQuery sqlQuery, BitKey inListLHSBitKey) {
+    public BitKey checkInList(
+        Dialect dialect,
+        BitKey inListLhsBitKey)
+    {
         // AND predicate by itself is not using IN list; when it is
         // one of the children to an OR predicate, then using IN list
         // is helpful. The later is checked by passing in a bitmap that
@@ -102,13 +108,13 @@ public class AndPredicate extends ListPredicate {
         // predicates with common parents. So some optimization possible in
         // generateMultiValueInExpr() is not tried here, as they require
         // implementing "longest common prefix" algorithm which is an overkill.
-        BitKey inListRHSBitKey = inListLHSBitKey.copy();
+        BitKey inListRhsBitKey = inListLhsBitKey.copy();
 
-        if (!getConstrainedColumnBitKey().equals(inListLHSBitKey)
+        if (!getConstrainedColumnBitKey().equals(inListLhsBitKey)
             || (children.size() > 1
-             && !sqlQuery.getDialect().supportsMultiValueInExpr()))
+             && !dialect.supportsMultiValueInExpr()))
         {
-            inListRHSBitKey.clear();
+            inListRhsBitKey.clear();
         } else {
             for (StarPredicate predicate : children) {
                 // If any predicate requires comparison to null value, cannot
@@ -118,40 +124,55 @@ public class AndPredicate extends ListPredicate {
                         ((ValueColumnPredicate) predicate);
                     if (columnPred.getValue() == RolapUtil.sqlNullValue) {
                         // This column predicate cannot be translated to IN
-                        inListRHSBitKey.clear(
-                            columnPred.getConstrainedColumn().getBitPosition());
+                        inListRhsBitKey.clear(
+                            columnPred.getColumn().physColumn.ordinal());
                     }
                     // else do nothing because this column predicate can be
                     // translated to IN
                 } else {
-                    inListRHSBitKey.clear();
+                    inListRhsBitKey.clear();
                     break;
                 }
             }
         }
-        return inListRHSBitKey;
+        return inListRhsBitKey;
     }
 
     /**
+<<<<<<< HEAD
      * Generate value list for this predicate to be used in an IN-list
+=======
+     * Generates value list for this predicate to be used in an IN-list
+>>>>>>> upstream/4.0
      * sql predicate.
      *
-     * The values in a multi-column IN list predicates are generated in the
-     * same order, based on the bit position from the columnBitKey.
+     * <p>The values in a multi-column IN list predicates are generated in the
+     * same order, based on the bit position from the columnBitKey.</p>
      *
+     * @param buf Buffer wherein to build SQL
+     * @param dialect Dialect
+     * @param inListRhsBitKey Bit key
      */
     public void toInListSql(
-        SqlQuery sqlQuery,
+        Dialect dialect,
         StringBuilder buf,
-        BitKey inListRHSBitKey)
+        BitKey inListRhsBitKey)
     {
+<<<<<<< HEAD
         boolean firstValue = true;
+=======
+>>>>>>> upstream/4.0
         final boolean multiValueInList = children.size() > 1;
         if (multiValueInList) {
             buf.append("(");
         }
+<<<<<<< HEAD
          // Arranging children according to the bit position. This is required
          // as RHS of IN list needs to list the column values in the same order.
+=======
+        // Arranging children according to the bit position. This is required
+        // as RHS of IN list needs to list the column values in the same order.
+>>>>>>> upstream/4.0
         Set<ValueColumnPredicate> sortedPredicates =
             new TreeSet<ValueColumnPredicate>();
 
@@ -159,27 +180,33 @@ public class AndPredicate extends ListPredicate {
             // inListPossible() checks guarantees that predicate is of type
             // ValueColumnPredicate
             assert predicate instanceof ValueColumnPredicate;
-            if (inListRHSBitKey.get(
-                    ((ValueColumnPredicate) predicate).getConstrainedColumn()
-                        .getBitPosition()))
+            if (inListRhsBitKey.get(
+                    ((ValueColumnPredicate) predicate).getColumn().physColumn
+                        .ordinal()))
             {
                 sortedPredicates.add((ValueColumnPredicate)predicate);
             }
         }
 
+        int k = 0;
         for (ValueColumnPredicate predicate : sortedPredicates) {
-            if (firstValue) {
-                firstValue = false;
-            } else {
+            if (k++ > 0) {
                 buf.append(", ");
             }
-            sqlQuery.getDialect().quote(
-                buf, predicate.getValue(),
-                predicate.getConstrainedColumn().getDatatype());
+            dialect.quote(
+                buf,
+                predicate.getValue(),
+                predicate.getColumn().physColumn.getDatatype());
         }
         if (multiValueInList) {
             buf.append(")");
         }
+<<<<<<< HEAD
+        if (multiValueInList) {
+            buf.append(")");
+        }
+=======
+>>>>>>> upstream/4.0
     }
 
     protected String getOp() {

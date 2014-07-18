@@ -4,12 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.aggmatcher;
 
-import mondrian.olap.MondrianProperties;
 import mondrian.test.loader.CsvDBTestCase;
 
 /**
@@ -19,39 +18,30 @@ import mondrian.test.loader.CsvDBTestCase;
  * the reloading of the aggregate tables after the CSV tables are loaded.
  * The particular cube definition and CSV file to use are abstract methods.
  *
- * @author <a>Richard M. Emberson</a>
+ * @author Richard M. Emberson
  */
 public abstract class AggTableTestCase extends CsvDBTestCase {
 
     private static final String DIRECTORY =
-                            "testsrc/main/mondrian/rolap/aggmatcher";
+        "testsrc/main/mondrian/rolap/aggmatcher";
 
     public AggTableTestCase() {
         super();
     }
+
     public AggTableTestCase(String name) {
         super(name);
     }
 
     protected void setUp() throws Exception {
+        // Schema needs to be flushed before DBLoader is created is super.setUp,
+        // otherwise AggTableManager can end up loading an old JdbcSchema
+        getConnection().getCacheControl(null).flushSchemaCache();
+
         super.setUp();
 
-        // store current property values
-        MondrianProperties props = MondrianProperties.instance();
-
         // turn off caching
-        propSaver.set(
-            props.DisableCaching,
-            true);
-        propSaver.set(
-            props.UseAggregates,
-            true);
-        propSaver.set(
-            props.ReadAggregates,
-            false);
-        propSaver.set(
-            props.ReadAggregates,
-            true);
+        propSaver.set(propSaver.props.DisableCaching, true);
     }
 
     protected String getDirectoryName() {

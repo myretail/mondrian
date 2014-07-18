@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2012 Pentaho
+// Copyright (C) 2007-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.olap4j;
@@ -69,17 +69,7 @@ class MondrianOlap4jDimension
     }
 
     public Type getDimensionType() throws OlapException {
-        final DimensionType dimensionType = dimension.getDimensionType();
-        switch (dimensionType) {
-        case StandardDimension:
-            return Type.OTHER;
-        case MeasuresDimension:
-            return Type.MEASURE;
-        case TimeDimension:
-            return Type.TIME;
-        default:
-            throw Util.unexpected(dimensionType);
-        }
+        return dimension.getDimensionType();
     }
 
     public String getName() {
@@ -92,13 +82,13 @@ class MondrianOlap4jDimension
 
     public String getCaption() {
         return dimension.getLocalized(
-            OlapElement.LocalizedProperty.CAPTION,
+            LocalizedProperty.CAPTION,
             olap4jSchema.getLocale());
     }
 
     public String getDescription() {
         return dimension.getLocalized(
-            OlapElement.LocalizedProperty.DESCRIPTION,
+            LocalizedProperty.DESCRIPTION,
             olap4jSchema.getLocale());
     }
 

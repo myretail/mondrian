@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2012-2012 Pentaho
+=======
+// Copyright (C) 2012-2014 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.spi.impl;
@@ -41,7 +45,16 @@ public class JdbcStatisticsProvider implements StatisticsProvider {
             resultSet =
                 connection
                     .getMetaData()
+<<<<<<< HEAD
                     .getIndexInfo(catalog, schema, table, false, true);
+=======
+                    .getIndexInfo(
+                        dialect.rectifyCase(catalog),
+                        dialect.rectifyCase(schema),
+                        dialect.rectifyCase(table),
+                        false,
+                        true);
+>>>>>>> upstream/4.0
             int maxNonUnique = -1;
             while (resultSet.next()) {
                 final int type = resultSet.getInt(7); // "TYPE" column
@@ -66,7 +79,11 @@ public class JdbcStatisticsProvider implements StatisticsProvider {
             if (LOG.isDebugEnabled()) {
                 LOG.debug(
                     "JdbcStatisticsProvider failed to get the cardinality of the table "
+<<<<<<< HEAD
                         + table,
+=======
+                    + table,
+>>>>>>> upstream/4.0
                     e);
             }
             return -1;
@@ -101,12 +118,30 @@ public class JdbcStatisticsProvider implements StatisticsProvider {
             resultSet =
                 connection
                     .getMetaData()
+<<<<<<< HEAD
                     .getIndexInfo(catalog, schema, table, false, true);
+=======
+                    .getIndexInfo(
+                        dialect.rectifyCase(catalog),
+                        dialect.rectifyCase(schema),
+                        dialect.rectifyCase(table),
+                        false,
+                        true);
+>>>>>>> upstream/4.0
             while (resultSet.next()) {
                 int type = resultSet.getInt(7); // "TYPE" column
                 switch (type) {
                 case DatabaseMetaData.tableIndexStatistic:
+<<<<<<< HEAD
                     return resultSet.getInt(11); // "CARDINALITY" column
+=======
+                    continue;
+                default:
+                    String columnName = resultSet.getString(9); // COLUMN_NAME
+                    if (columnName != null && columnName.equals(column)) {
+                        return resultSet.getInt(11); // "CARDINALITY" column
+                    }
+>>>>>>> upstream/4.0
                 }
             }
             return -1; // information not available, apparently
@@ -116,7 +151,11 @@ public class JdbcStatisticsProvider implements StatisticsProvider {
             if (LOG.isDebugEnabled()) {
                 LOG.debug(
                     "JdbcStatisticsProvider failed to get the cardinality of the table "
+<<<<<<< HEAD
                         + table,
+=======
+                    + table,
+>>>>>>> upstream/4.0
                     e);
             }
             return -1;

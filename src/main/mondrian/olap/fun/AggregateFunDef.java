@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho
+=======
+// Copyright (C) 2005-2014 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -14,8 +18,7 @@ import mondrian.calc.impl.*;
 import mondrian.mdx.ResolvedFunCall;
 import mondrian.olap.*;
 import mondrian.olap.Role.RollupPolicy;
-import mondrian.rolap.RolapAggregator;
-import mondrian.rolap.RolapEvaluator;
+import mondrian.rolap.*;
 
 import org.eigenbase.util.property.IntegerProperty;
 
@@ -94,7 +97,7 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
         {
             Aggregator aggregator =
                 (Aggregator) evaluator.getProperty(
-                    Property.AGGREGATION_TYPE.name, null);
+                    Property.AGGREGATION_TYPE, null);
             if (aggregator == null) {
                 throw newEvalException(
                     null,
@@ -106,7 +109,9 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
                     null,
                     "Don't know how to rollup aggregator '" + aggregator + "'");
             }
-            if (aggregator != RolapAggregator.DistinctCount) {
+            if (aggregator != RolapAggregator.DistinctCount
+                && aggregator != RolapAggregator.Avg)
+            {
                 final int savepoint = evaluator.savepoint();
                 try {
                     evaluator.setNonEmpty(false);
@@ -211,7 +216,11 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
                 optimizeChildren(
                     tupleList,
                     evaluator.getSchemaReader(),
+<<<<<<< HEAD
                     evaluator.getMeasureCube());
+=======
+                    evaluator.getMeasureGroup());
+>>>>>>> upstream/4.0
             if (checkSize) {
                 checkIfAggregationSizeIsTooLarge(tupleList);
             }
@@ -334,13 +343,13 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
          *
          * @param tuples Tuples
          * @param reader Schema reader
-         * @param baseCubeForMeasure Cube
+         * @param measureGroup Cube
          * @return xxxx
          */
         public static TupleList optimizeChildren(
             TupleList tuples,
             SchemaReader reader,
-            Cube baseCubeForMeasure)
+            RolapMeasureGroup measureGroup)
         {
             Map<Member, Integer>[] membersOccurencesInTuple =
                 membersVersusOccurencesInTuple(tuples);
@@ -357,7 +366,7 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
                         optimizeMemberSet(
                             new LinkedHashSet<Member>(members),
                             reader,
-                            baseCubeForMeasure);
+                            measureGroup);
                     if (sets[i].size() != originalSize) {
                         optimized = true;
                     }
@@ -407,7 +416,7 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
         private static Set<Member> optimizeMemberSet(
             Set<Member> members,
             SchemaReader reader,
-            Cube baseCubeForMeasure)
+            RolapMeasureGroup measureGroup)
         {
             boolean didOptimize;
             Set<Member> membersToBeOptimized = new LinkedHashSet<Member>();
@@ -450,7 +459,7 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
                 }
                 if (childCountOfParent != -1
                     && membersToBeOptimized.size() == childCountOfParent
-                    && canOptimize(firstParentMember, baseCubeForMeasure))
+                    && canOptimize(firstParentMember, measureGroup))
                 {
                     optimizedMembers.add(firstParentMember);
                     didOptimize = true;
@@ -489,10 +498,10 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
 
         private static boolean canOptimize(
             Member parentMember,
-            Cube baseCube)
+            RolapMeasureGroup measureGroup)
         {
             return dimensionJoinsToBaseCube(
-                parentMember.getDimension(), baseCube)
+                parentMember.getDimension(), measureGroup)
                 || !parentMember.isAll();
         }
 
@@ -511,11 +520,13 @@ public class AggregateFunDef extends AbstractAggregateFunDef {
 
         private static boolean dimensionJoinsToBaseCube(
             Dimension dimension,
-            Cube baseCube)
+            RolapMeasureGroup measureGroup)
         {
-            HashSet<Dimension> dimensions = new HashSet<Dimension>();
-            dimensions.add(dimension);
-            return baseCube.nonJoiningDimensions(dimensions).size() == 0;
+            return !measureGroup
+                .nonJoiningDimensions(
+                    Collections.singletonList((RolapCubeDimension) dimension))
+                .iterator()
+                .hasNext();
         }
 
         private static int getChildCount(

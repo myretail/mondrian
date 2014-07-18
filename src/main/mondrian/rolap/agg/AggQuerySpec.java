@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 //
 // jhyde, 21 March, 2002
@@ -55,7 +55,7 @@ class AggQuerySpec {
     }
 
     protected SqlQuery newSqlQuery() {
-        return getStar().getSqlQuery();
+        return new SqlQuery(getStar().getSqlQueryDialect());
     }
 
     public RolapStar getStar() {
@@ -160,28 +160,13 @@ class AggQuerySpec {
             String expr = column.generateExprString(sqlQuery);
 
             StarColumnPredicate predicate = getPredicate(i);
-            final String where = RolapStar.Column.createInExpr(
-                expr,
-                predicate,
-                column.getDatatype(),
-                sqlQuery);
+            final String where =
+                Predicates.toSql(predicate, sqlQuery.getDialect());
             if (!where.equals("true")) {
                 sqlQuery.addWhere(where);
             }
 
-            // some DB2 (AS400) versions throw an error, if a column alias is
-            // there and *not* used in a subsequent order by/group by
-            final String alias0;
-            switch (sqlQuery.getDialect().getDatabaseProduct()) {
-            case DB2_AS400:
-            case DB2_OLD_AS400:
-                alias0 = null;
-                break;
-            default:
-                alias0 = getColumnAlias(i);
-                break;
-            }
-
+            final String alias0 = getColumnAlias(i);
             final String alias =
                 sqlQuery.addSelect(expr, column.getInternalType(), alias0);
             if (rollup) {

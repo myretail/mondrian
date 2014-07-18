@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2012-2012 Pentaho and others
+=======
+// Copyright (C) 2012-2013 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap.cache;

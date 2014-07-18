@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -17,8 +17,7 @@ import mondrian.server.Execution;
 import mondrian.server.Locus;
 import mondrian.spi.SegmentColumn;
 import mondrian.util.ArraySortedSet;
-
-import org.eigenbase.util.property.BooleanProperty;
+import mondrian.util.Pair;
 
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
@@ -93,11 +92,11 @@ public class CacheControlImpl implements CacheControl {
     public CellRegion createCrossjoinRegion(CellRegion... regions) {
         assert regions != null;
         assert regions.length >= 2;
-        final HashSet<Dimension> set = new HashSet<Dimension>();
+        final Set<Hierarchy> set = new HashSet<Hierarchy>();
         final List<CellRegionImpl> list = new ArrayList<CellRegionImpl>();
         for (CellRegion region : regions) {
             int prevSize = set.size();
-            List<Dimension> dimensionality = region.getDimensionality();
+            List<Hierarchy> dimensionality = region.getDimensionality();
             set.addAll(dimensionality);
             if (set.size() < prevSize + dimensionality.size()) {
                 throw MondrianResource.instance()
@@ -149,8 +148,8 @@ public class CacheControlImpl implements CacheControl {
     }
 
     public CellRegion createMeasuresRegion(Cube cube) {
-        Dimension measuresDimension = null;
-        for (Dimension dim : cube.getDimensions()) {
+        RolapCubeDimension measuresDimension = null;
+        for (RolapCubeDimension dim : ((RolapCube) cube).getDimensionList()) {
             if (dim.isMeasures()) {
                 measuresDimension = dim;
                 break;
@@ -163,7 +162,9 @@ public class CacheControlImpl implements CacheControl {
         }
         final List<Member> measures =
             cube.getSchemaReader(null).withLocus().getLevelMembers(
-                measuresDimension.getHierarchy().getLevels()[0],
+                measuresDimension
+                    .getHierarchyList().get(0)
+                    .getLevelList().get(0),
                 false);
         if (measures.size() == 0) {
             return new EmptyCellRegion();
@@ -187,10 +188,10 @@ public class CacheControlImpl implements CacheControl {
         if (region instanceof EmptyCellRegion) {
             return;
         }
-        final List<Dimension> dimensionality = region.getDimensionality();
+        final List<Hierarchy> dimensionality = region.getDimensionality();
         boolean found = false;
-        for (Dimension dimension : dimensionality) {
-            if (dimension.isMeasures()) {
+        for (Hierarchy hierarchy : dimensionality) {
+            if (hierarchy.getDimension().isMeasures()) {
                 found = true;
                 break;
             }
@@ -238,9 +239,9 @@ public class CacheControlImpl implements CacheControl {
     }
 
     private boolean containsMeasures(CellRegion cellRegion) {
-        final List<Dimension> dimensionList = cellRegion.getDimensionality();
-        for (Dimension dimension : dimensionList) {
-            if (dimension.isMeasures()) {
+        final List<Hierarchy> hierarchyList = cellRegion.getDimensionality();
+        for (Hierarchy hierarchy : hierarchyList) {
+            if (hierarchy.getDimension().isMeasures()) {
                 return true;
             }
         }
@@ -276,6 +277,7 @@ public class CacheControlImpl implements CacheControl {
     {
         RolapSchemaPool.instance().remove(
             catalogUrl,
+            null,
             connectionKey,
             jdbcUser,
             dataSourceStr);
@@ -288,6 +290,7 @@ public class CacheControlImpl implements CacheControl {
     {
         RolapSchemaPool.instance().remove(
             catalogUrl,
+            null, // dialectClassName
             dataSource);
     }
 
@@ -452,7 +455,7 @@ public class CacheControlImpl implements CacheControl {
         final CellRegionVisitor visitor =
             new CellRegionVisitorImpl() {
                 public void visit(MemberCellRegion region) {
-                    if (region.dimension.isMeasures()) {
+                    if (region.hierarchy.getDimension().isMeasures()) {
                         list.addAll(region.memberList);
                     }
                 }
@@ -468,47 +471,72 @@ public class CacheControlImpl implements CacheControl {
         return list;
     }
 
+    public static Collection<RolapStar> getStars(CellRegion region) {
+        return findStars(region).left;
+    }
+
+    static Collection<RolapMeasureGroup> getMeasureGroups(CellRegion region) {
+        return findStars(region).right;
+    }
+
+    private static Pair<Set<RolapStar>, Set<RolapMeasureGroup>> findStars(
+        CellRegion region)
+    {
+        final Set<RolapStar> starList = new LinkedHashSet<RolapStar>();
+        final Set<RolapMeasureGroup> measureGroupSet =
+            new LinkedHashSet<RolapMeasureGroup>();
+        for (Member measure : findMeasures(region)) {
+            if (measure instanceof RolapStoredMeasure) {
+                RolapStoredMeasure storedMeasure = (RolapStoredMeasure) measure;
+                starList.add(storedMeasure.getStarMeasure().getStar());
+                measureGroupSet.add(storedMeasure.getMeasureGroup());
+            }
+        }
+        return Pair.of(starList, measureGroupSet);
+    }
+
     public static SegmentColumn[] findAxisValues(CellRegion region) {
-        final List<SegmentColumn> list =
-            new ArrayList<SegmentColumn>();
+        final List<SegmentColumn> list = new ArrayList<SegmentColumn>();
         final CellRegionVisitor visitor =
             new CellRegionVisitorImpl() {
                 public void visit(MemberCellRegion region) {
-                    if (region.dimension.isMeasures()) {
+                    if (region.hierarchy.getDimension().isMeasures()) {
                         return;
                     }
                     final Map<String, Set<Comparable>> levels =
+                        collectValuesByLevel(region);
+                    populateSegmentColumns(levels);
+                }
+
+                private Map<String, Set<Comparable>> collectValuesByLevel(
+                    MemberCellRegion region)
+                {
+                    final Map<String, Set<Comparable>> levels =
                         new HashMap<String, Set<Comparable>>();
                     for (Member member : region.memberList) {
-                        RolapLevel currentLevel =
-                            ((RolapLevel)member.getLevel());
-                        while (true) {
-                            if (currentLevel == null) {
-                                break;
+                        List<RolapSchema.PhysColumn> keyList =
+                            ((RolapLevel) member.getLevel()).getAttribute()
+                            .getKeyList();
+                        for (RolapSchema.PhysColumn physColumn : keyList) {
+                            final String ccName = physColumn.toSql();
+                            Set<Comparable> levelValueSet = levels.get(ccName);
+                            if (levelValueSet == null) {
+                                levelValueSet = new HashSet<Comparable>();
+                                levels.put(ccName, levelValueSet);
                             }
-                            if (currentLevel.isAll()) {
-                                currentLevel =
-                                    (RolapLevel) currentLevel.getChildLevel();
-                                continue;
-                            }
-                            final String ccName =
-                                currentLevel.getKeyExp()
-                                    .getGenericExpression();
-                            if (!levels.containsKey(ccName)) {
-                                levels.put(
-                                    ccName, new HashSet<Comparable>());
-                            }
-                            if (member.getLevel().equals(currentLevel)) {
-                                levels.get(ccName).add(
-                                    (Comparable)((RolapMember)member).getKey());
-                            } else {
-                                levels.get(ccName).clear();
-                                levels.get(ccName).add(true);
-                            }
-                            currentLevel =
-                                (RolapLevel) currentLevel.getChildLevel();
+                            final Object key =
+                                getMemberKeyAtLevel(
+                                    (RolapMember) member, ccName);
+                            levelValueSet.add(
+                                (Comparable) key);
                         }
                     }
+                    return levels;
+                }
+
+                private void populateSegmentColumns(
+                    Map<String, Set<Comparable>> levels)
+                {
                     for (Entry<String, Set<Comparable>> entry
                         : levels.entrySet())
                     {
@@ -536,13 +564,33 @@ public class CacheControlImpl implements CacheControl {
                     }
                 }
 
+                private Comparable getMemberKeyAtLevel(
+                    RolapMember member, String ccName)
+                {
+                    String levelSql =
+                        member.getLevel().getAttribute().getNameExp().toSql();
+                    if (levelSql.equals(ccName)) {
+                        List<Comparable> keyList = member.getKeyAsList();
+                        return keyList.get(keyList.size() - 1);
+                    } else if (member.getLevel().getDepth()> 0) {
+                        return getMemberKeyAtLevel(
+                            member.getParentMember(), ccName);
+                    } else {
+                        return null;
+                    }
+                }
+
                 public void visit(MemberRangeCellRegion region) {
                     // We translate all ranges into wildcards.
-                    // FIXME Optimize this by resolving the list of members
+                    //
+                    // FIXME: Optimize this by resolving the list of members
                     // into an actual list of values for ConstrainedColumn
+                    //
+                    // FIXME: Don't assume key is non-composite.
                     list.add(
                         new SegmentColumn(
-                            region.level.getKeyExp().getGenericExpression(),
+                            region.level.getAttribute().getKeyList().get(0)
+                                .toSql(),
                             -1,
                             null));
                 }
@@ -551,29 +599,11 @@ public class CacheControlImpl implements CacheControl {
         return list.toArray(new SegmentColumn[list.size()]);
     }
 
-    public static List<RolapStar> getStarList(CellRegion region) {
-        // Figure out which measure (therefore star) it belongs to.
-        List<RolapStar> starList = new ArrayList<RolapStar>();
-        final List<Member> measuresList = findMeasures(region);
-        for (Member measure : measuresList) {
-            if (measure instanceof RolapStoredMeasure) {
-                RolapStoredMeasure storedMeasure = (RolapStoredMeasure) measure;
-                final RolapStar.Measure starMeasure =
-                    (RolapStar.Measure) storedMeasure.getStarMeasure();
-                if (!starList.contains(starMeasure.getStar())) {
-                    starList.add(starMeasure.getStar());
-                }
-            }
-        }
-        return starList;
-    }
-
     public void printCacheState(
         final PrintWriter pw,
         final CellRegion region)
     {
-        final List<RolapStar> starList = getStarList(region);
-        for (RolapStar star : starList) {
+        for (RolapStar star : getStars(region)) {
             star.print(pw, "", false);
         }
         final SegmentCacheManager manager =
@@ -614,8 +644,8 @@ public class CacheControlImpl implements CacheControl {
             upperInclusive = false;
         }
         return new RangeMemberSet(
-            stripMember((RolapMember) lowerMember), lowerInclusive,
-            stripMember((RolapMember) upperMember), upperInclusive,
+            (RolapMember) lowerMember, lowerInclusive,
+            (RolapMember) upperMember, upperInclusive,
             descendants);
     }
 
@@ -626,11 +656,7 @@ public class CacheControlImpl implements CacheControl {
     }
 
     public MemberSet filter(Level level, MemberSet baseSet) {
-        if (level instanceof RolapCubeLevel) {
-            // be forgiving
-            level = ((RolapCubeLevel) level).getRolapLevel();
-        }
-        return ((MemberSetPlus) baseSet).filter((RolapLevel) level);
+        return ((MemberSetPlus) baseSet).filter((RolapCubeLevel) level);
     }
 
     public void flush(MemberSet memberSet) {
@@ -810,13 +836,6 @@ public class CacheControlImpl implements CacheControl {
     }
 
     public void execute(MemberEditCommand cmd) {
-        final BooleanProperty prop =
-            MondrianProperties.instance().EnableRolapCubeMemberCache;
-        if (prop.get()) {
-            throw new IllegalArgumentException(
-                "Member cache control operations are not allowed unless "
-                + "property " + prop.getPath() + " is false");
-        }
         synchronized (MEMBER_CACHE_LOCK) {
             // Make sure that a Locus is in the Execution stack,
             // since some operations might require DB access.
@@ -848,11 +867,12 @@ public class CacheControlImpl implements CacheControl {
                     // It is possible that some regions don't intersect
                     // with a cube. We will intercept the exceptions and
                     // skip to the next cube if necessary.
-                    final List<Dimension> dimensions =
+                    final List<Hierarchy> hierarchies =
                         memberRegion.getDimensionality();
-                    if (dimensions.size() > 0) {
+                    if (hierarchies.size() > 0) {
+                        final Hierarchy hierarchy0 = hierarchies.get(0);
                         for (Cube cube
-                            : dimensions.get(0) .getSchema().getCubes())
+                            : hierarchy0.getDimension().getSchema().getCubes())
                         {
                             try {
                                 final List<CellRegionImpl> crossList =
@@ -924,17 +944,17 @@ public class CacheControlImpl implements CacheControl {
      */
     static class MemberCellRegion implements CellRegionImpl {
         private final List<Member> memberList;
-        private final Dimension dimension;
+        private final Hierarchy hierarchy;
 
         MemberCellRegion(List<Member> memberList, boolean descendants) {
             assert memberList.size() > 0;
             this.memberList = memberList;
-            this.dimension = (memberList.get(0)).getDimension();
+            this.hierarchy = (memberList.get(0)).getHierarchy();
             Util.discard(descendants);
         }
 
-        public List<Dimension> getDimensionality() {
-            return Collections.singletonList(dimension);
+        public List<Hierarchy> getDimensionality() {
+            return Collections.singletonList(hierarchy);
         }
 
         public String toString() {
@@ -957,7 +977,7 @@ public class CacheControlImpl implements CacheControl {
         public void accept(CellRegionVisitor visitor) {
             visitor.visit(this);
         }
-        public List<Dimension> getDimensionality() {
+        public List<Hierarchy> getDimensionality() {
             return Collections.emptyList();
         }
     }
@@ -997,8 +1017,8 @@ public class CacheControlImpl implements CacheControl {
                 : lowerMember.getLevel();
         }
 
-        public List<Dimension> getDimensionality() {
-            return Collections.singletonList(level.getDimension());
+        public List<Hierarchy> getDimensionality() {
+            return Collections.<Hierarchy>singletonList(level.getHierarchy());
         }
 
         public RolapLevel getLevel() {
@@ -1057,12 +1077,12 @@ public class CacheControlImpl implements CacheControl {
      * Cell region formed by a cartesian product of two or more CellRegions.
      */
     static class CrossjoinCellRegion implements CellRegionImpl {
-        final List<Dimension> dimensions;
+        final List<Hierarchy> dimensions;
         private List<CellRegionImpl> components =
             new ArrayList<CellRegionImpl>();
 
         CrossjoinCellRegion(List<CellRegionImpl> regions) {
-            final List<Dimension> dimensionality = new ArrayList<Dimension>();
+            final List<Hierarchy> dimensionality = new ArrayList<Hierarchy>();
             compute(regions, components, dimensionality);
             dimensions = Collections.unmodifiableList(dimensionality);
         }
@@ -1070,13 +1090,13 @@ public class CacheControlImpl implements CacheControl {
         private static void compute(
             List<CellRegionImpl> regions,
             List<CellRegionImpl> components,
-            List<Dimension> dimensionality)
+            List<Hierarchy> dimensionality)
         {
-            final Set<Dimension> dimensionSet = new HashSet<Dimension>();
+            final Set<Hierarchy> dimensionSet = new HashSet<Hierarchy>();
             for (CellRegionImpl region : regions) {
                 addComponents(region, components);
 
-                final List<Dimension> regionDimensionality =
+                final List<Hierarchy> regionDimensionality =
                     region.getDimensionality();
                 dimensionality.addAll(regionDimensionality);
                 dimensionSet.addAll(regionDimensionality);
@@ -1108,7 +1128,7 @@ public class CacheControlImpl implements CacheControl {
             }
         }
 
-        public List<Dimension> getDimensionality() {
+        public List<Hierarchy> getDimensionality() {
             return dimensions;
         }
 
@@ -1137,7 +1157,7 @@ public class CacheControlImpl implements CacheControl {
             }
         }
 
-        public List<Dimension> getDimensionality() {
+        public List<Hierarchy> getDimensionality() {
             return regions.get(0).getDimensionality();
         }
 
@@ -1243,7 +1263,7 @@ public class CacheControlImpl implements CacheControl {
          * @param level Level
          * @return Member set with members not at the given level removed
          */
-        MemberSetPlus filter(RolapLevel level);
+        MemberSetPlus filter(RolapCubeLevel level);
     }
 
     /**
@@ -1337,7 +1357,7 @@ public class CacheControlImpl implements CacheControl {
             // nothing
         }
 
-        public MemberSetPlus filter(RolapLevel level) {
+        public MemberSetPlus filter(RolapCubeLevel level) {
             return this;
         }
 
@@ -1353,11 +1373,10 @@ public class CacheControlImpl implements CacheControl {
         public final List<RolapMember> members;
         // the set includes the descendants of all members
         public final boolean descendants;
-        public final RolapHierarchy hierarchy;
+        public final RolapCubeHierarchy hierarchy;
 
         SimpleMemberSet(List<RolapMember> members, boolean descendants) {
             this.members = new ArrayList<RolapMember>(members);
-            stripMemberList(this.members);
             this.descendants = descendants;
             this.hierarchy =
                 members.isEmpty()
@@ -1375,7 +1394,7 @@ public class CacheControlImpl implements CacheControl {
             visitor.visit(this);
         }
 
-        public MemberSetPlus filter(RolapLevel level) {
+        public MemberSetPlus filter(RolapCubeLevel level) {
             List<RolapMember> filteredMembers = new ArrayList<RolapMember>();
             for (RolapMember member : members) {
                 if (member.getLevel().equals(level)) {
@@ -1419,7 +1438,7 @@ public class CacheControlImpl implements CacheControl {
             visitor.visit(this);
         }
 
-        public MemberSetPlus filter(RolapLevel level) {
+        public MemberSetPlus filter(RolapCubeLevel level) {
             final List<MemberSetPlus> filteredItems =
                 new ArrayList<MemberSetPlus>();
             for (MemberSetPlus item : items) {
@@ -1451,7 +1470,7 @@ public class CacheControlImpl implements CacheControl {
         private final RolapMember upperMember;
         private final boolean upperInclusive;
         private final boolean descendants;
-        private final RolapLevel level;
+        private final RolapCubeLevel level;
 
         RangeMemberSet(
             RolapMember lowerMember,
@@ -1466,8 +1485,6 @@ public class CacheControlImpl implements CacheControl {
                 || lowerMember.getLevel() == upperMember.getLevel();
             assert !(lowerMember == null && lowerInclusive);
             assert !(upperMember == null && upperInclusive);
-            assert !(lowerMember instanceof RolapCubeMember);
-            assert !(upperMember instanceof RolapCubeMember);
             this.lowerMember = lowerMember;
             this.lowerInclusive = lowerInclusive;
             this.upperMember = upperMember;
@@ -1511,7 +1528,7 @@ public class CacheControlImpl implements CacheControl {
             visitor.visit(this);
         }
 
-        public MemberSetPlus filter(RolapLevel level) {
+        public MemberSetPlus filter(RolapCubeLevel level) {
             if (level == this.level) {
                 return this;
             } else {
@@ -1520,8 +1537,8 @@ public class CacheControlImpl implements CacheControl {
         }
 
         public MemberSetPlus filter2(
-            RolapLevel seekLevel,
-            RolapLevel level,
+            RolapCubeLevel seekLevel,
+            RolapCubeLevel level,
             RolapMember lower,
             RolapMember upper)
         {
@@ -1547,7 +1564,7 @@ public class CacheControlImpl implements CacheControl {
                 }
                 RolapMember upperChild = list.get(list.size() - 1);
                 return filter2(
-                    seekLevel, (RolapLevel) level.getChildLevel(),
+                    seekLevel, level.getChildLevel(),
                     lowerChild, upperChild);
             } else {
                 return EmptyMemberSet.INSTANCE;
@@ -1631,7 +1648,7 @@ public class CacheControlImpl implements CacheControl {
 
         public AddMemberCommand(RolapMember member) {
             assert member != null;
-            this.member = stripMember(member);
+            this.member = member;
         }
 
         public String toString() {
@@ -1679,9 +1696,12 @@ public class CacheControlImpl implements CacheControl {
 
         public void commit() {
             try {
-                ((RolapMemberBase) member).setParentMember(newParent);
+                final RolapMemberBase memberBase = (RolapMemberBase) member;
+                memberBase.setParentMember(newParent);
                 callable1.call();
-                ((RolapMemberBase) member).setUniqueName(member.getKey());
+                memberBase.setUniqueName(
+                    memberBase.computeUniqueName(
+                        member.getKey()));
                 callable2.call();
             } catch (Exception e) {
                 throw new MondrianException(e);
@@ -1726,13 +1746,11 @@ public class CacheControlImpl implements CacheControl {
         public void commit() {
             for (RolapMember member : members) {
                 // Change member's properties.
-                member = stripMember(member);
+                member = member;
                 final MemberCache memberCache = getMemberCache(member);
-                final Object cacheKey =
-                    memberCache.makeKey(
-                        member.getParentMember(),
-                        member.getKey());
-                final RolapMember cacheMember = memberCache.getMember(cacheKey);
+                final Object cacheKey = member.getKeyCompact();
+                final RolapMember cacheMember =
+                    memberCache.getMember(member.getLevel(), cacheKey);
                 if (cacheMember == null) {
                     return;
                 }
@@ -1741,22 +1759,6 @@ public class CacheControlImpl implements CacheControl {
                 {
                     cacheMember.setProperty(entry.getKey(), entry.getValue());
                 }
-            }
-        }
-    }
-
-    private static RolapMember stripMember(RolapMember member) {
-        if (member instanceof RolapCubeMember) {
-            member = ((RolapCubeMember) member).member;
-        }
-        return member;
-    }
-
-    private static void stripMemberList(List<RolapMember> members) {
-        for (int i = 0; i < members.size(); i++) {
-            RolapMember member = members.get(i);
-            if (member instanceof RolapCubeMember) {
-                members.set(i, ((RolapCubeMember) member).member);
             }
         }
     }
@@ -1815,9 +1817,8 @@ public class CacheControlImpl implements CacheControl {
 
                 // Remove the member itself. The MemberCacheHelper takes care of
                 // removing the member's children as well.
-                final Object key =
-                    memberCache.makeKey(previousParent, member.getKey());
-                memberCache.removeMember(key);
+                final Object key = member.getKeyCompact();
+                memberCache.removeMember(member.getLevel(), key);
 
                 return true;
             }
@@ -1887,11 +1888,8 @@ public class CacheControlImpl implements CacheControl {
                 }
 
                 // Now add the member itself into cache
-                final Object memberKey =
-                    memberCache.makeKey(
-                        member.getParentMember(),
-                        member.getKey());
-                memberCache.putMember(memberKey, member);
+                final Object memberKey = member.getKeyCompact();
+                memberCache.putMember(member.getLevel(), memberKey, member);
 
                 return true;
             }
@@ -1909,9 +1907,8 @@ public class CacheControlImpl implements CacheControl {
         List<CellRegion> cellRegionList)
     {
         final MemberCache memberCache = getMemberCache(member);
-        final Object key =
-            memberCache.makeKey(member.getParentMember(), member.getKey());
-        memberCache.removeMember(key);
+        final Object key = member.getKeyCompact();
+        memberCache.removeMember(member.getLevel(), key);
         cellRegionList.add(createMemberRegion(member, false));
     }
 }

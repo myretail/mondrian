@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 //
 // jhyde, 28 August, 2001
@@ -14,9 +14,12 @@ package mondrian.rolap.agg;
 
 import mondrian.olap.*;
 import mondrian.rolap.*;
+import mondrian.spi.*;
 
 import java.util.*;
 import java.util.concurrent.Future;
+
+import static mondrian.spi.DataServicesLocator.*;
 
 /**
  * A <code>Aggregation</code> is a pre-computed aggregation over a set of
@@ -109,9 +112,9 @@ public class Aggregation {
      * state = {CA, OR},
      * gender = unconstrained</pre></blockquote>
      *
+     * @param starConverter Star converter
      * @param segmentFutures List of futures wherein each statement will place
      *                       a list of the segments it has loaded, when it
-     *                       completes
      */
     public void load(
         SegmentCacheManager cacheMgr,
@@ -119,6 +122,7 @@ public class Aggregation {
         RolapStar.Column[] columns,
         List<RolapStar.Measure> measures,
         StarColumnPredicate[] predicates,
+        AggregationManager.StarConverter starConverter,
         GroupingSetsCollector groupingSetsCollector,
         List<Future<Map<Segment, SegmentWithData>>> segmentFutures)
     {
@@ -128,17 +132,22 @@ public class Aggregation {
 
         List<Segment> segments =
             createSegments(
-                columns, measures, measureBitKey, predicates);
+                starConverter, columns, measures, measureBitKey, predicates);
 
         // The constrained columns are simply the level and foreign columns
         BitKey levelBitKey = getConstrainedColumnsBitKey();
         GroupingSet groupingSet =
             new GroupingSet(
-                segments, levelBitKey, measureBitKey, predicates, columns);
+                segments, levelBitKey, measureBitKey,
+                predicates, columns);
         if (groupingSetsCollector.useGroupingSets()) {
             groupingSetsCollector.add(groupingSet);
         } else {
-            final SegmentLoader segmentLoader = new SegmentLoader(cacheMgr);
+            DataServicesProvider provider =
+                getDataServicesProvider(
+                    star.getSchema().getDataServiceProviderName());
+            final SegmentLoader segmentLoader =
+                provider.getSegmentLoader(cacheMgr);
             segmentLoader.load(
                 cellRequestCount,
                 new ArrayList<GroupingSet>(
@@ -149,6 +158,7 @@ public class Aggregation {
     }
 
     private List<Segment> createSegments(
+        AggregationManager.StarConverter starConverter,
         RolapStar.Column[] columns,
         List<RolapStar.Measure> measures,
         BitKey measureBitKey,
@@ -158,7 +168,8 @@ public class Aggregation {
         for (RolapStar.Measure measure : measures) {
             measureBitKey.set(measure.getBitPosition());
             Segment segment =
-                new Segment(
+                Segment.create(
+                    starConverter,
                     star,
                     constrainedColumnsBitKey,
                     columns,
@@ -168,6 +179,7 @@ public class Aggregation {
                     compoundPredicateList);
             segments.add(segment);
         }
+
         // It is important to sort the segments per measure bitkey.
         // The order in which the measures come in is not deterministic.
         // It actually depends on the order of the CellRequests.
@@ -175,11 +187,12 @@ public class Aggregation {
         // Failure to sort them will give out wrong results (uses the wrong
         // column) if we have more than one column in the grouping set.
         Collections.sort(
-            segments, new Comparator<Segment>() {
+            segments,
+            new Comparator<Segment>() {
                 public int compare(Segment o1, Segment o2) {
-                    return Integer.valueOf(
-                        o1.measure.getBitPosition())
-                            .compareTo(o2.measure.getBitPosition());
+                    return Util.compare(
+                        o1.measure.getBitPosition(),
+                        o2.measure.getBitPosition());
                 }
             });
         return segments;
@@ -193,10 +206,14 @@ public class Aggregation {
         RolapStar.Column[] columns,
         StarColumnPredicate[] predicates)
     {
+        if (predicates.length == 0) {
+            return predicates;
+        }
         RolapStar star = getStar();
-        Util.assertTrue(predicates.length == columns.length);
+        assert predicates.length == columns.length;
         StarColumnPredicate[] newPredicates = predicates.clone();
         double[] bloats = new double[columns.length];
+        final RolapSchema.PhysRouter router = predicates[0].getColumn().router;
 
         // We want to handle the special case "drilldown" which occurs pretty
         // often. Here, the parent is here as a constraint with a single member
@@ -238,7 +255,7 @@ public class Aggregation {
             }
 
             // more than one - check for children of same parent
-            double constraintLength = (double) valueCount;
+            double constraintLength = valueCount;
             Member parent = null;
             Level level = null;
             for (int j = 0; j < valueCount; j++) {
@@ -335,7 +352,7 @@ public class Aggregation {
         double abloat = 1.0;
         final double aBloatLimit = .5;
 
-        for (Integer j : indexes) {
+        for (int j : indexes) {
             abloat = abloat * bloats[j];
             if (abloat <= aBloatLimit) {
                 break;
@@ -344,7 +361,12 @@ public class Aggregation {
             if (MondrianProperties.instance().OptimizePredicates.get()
                 || bloats[j] == 1)
             {
-                newPredicates[j] = new LiteralStarPredicate(columns[j], true);
+                newPredicates[j] =
+                    Predicates.wildcard(
+                        new PredicateColumn(
+                            router,
+                            columns[j].getExpression()),
+                        true);
             }
         }
 
@@ -374,213 +396,6 @@ public class Aggregation {
 
     // -- classes -------------------------------------------------------------
 
-    /**
-     * Helper class to figure out which axis values evaluate to true at least
-     * once by a given predicate.
-     *
-     * <p>Consider, for example, the flush predicate<blockquote><code>
-     *
-     * member between [Time].[1997].[Q3] and [Time].[1999].[Q1]
-     *
-     * </code></blockquote>applied to the segment <blockquote><code>
-     *
-     * year in (1996, 1997, 1998, 1999)<br/>
-     * quarter in (Q1, Q2, Q3, Q4)
-     *
-     * </code></blockquote> The predicate evaluates to true for the pairs
-     * <blockquote><code>
-     *
-     * {(1997, Q3), (1997, Q4),
-     * (1998, Q1), (1998, Q2), (1998, Q3), (1998, Q4), (1999, Q1)}
-     *
-     * </code></blockquote> and therefore we wish to eliminate these pairs from
-     * the segment. But we can eliminate a value only if <em>all</em> of its
-     * values are eliminated.
-     *
-     * <p>In this case, year=1998 is the only value which can be eliminated from
-     * the segment.
-     */
-    private static class ValuePruner {
-        /**
-         * Multi-column predicate. If the predicate evaluates to true, a cell
-         * will be removed from the segment. But we can only eliminate a value
-         * if all of its cells are eliminated.
-         */
-        private final StarPredicate flushPredicate;
-        /**
-         * Number of columns predicate depends on.
-         */
-        private final int arity;
-        /**
-         * For each column, the segment axis which the column corresponds to, or
-         * null.
-         */
-        private final SegmentAxis[] axes;
-        /**
-         * For each column, a bitmap of values for which the predicate is
-         * sometimes false. These values cannot be eliminated from the axis.
-         */
-        private final BitSet[] keepBitSets;
-        /**
-         * For each segment axis, the predicate column which depends on the
-         * axis, or -1.
-         */
-        private final int[] axisInverseOrdinals;
-        /**
-         * Workspace which contains the current key value for each column.
-         */
-        private final Object[] values;
-        /**
-         * View onto {@link #values} as a list.
-         */
-        private final List<Object> valueList;
-        /**
-         * Workspace which contains the ordinal of the current value of each
-         * column on its axis.
-         */
-        private final int[] ordinals;
-
-        private final SegmentDataset data;
-
-        private final CellKey cellKey;
-
-        /**
-         * Creates a ValuePruner.
-         *
-         * @param flushPredicate Multi-column predicate to test
-         * @param segmentAxes    Axes of the segment. (The columns that the
-         *                       predicate may not be present, or may
-         *                       be in a different order.)
-         * @param data           Segment dataset, which allows pruner
-         *                       to determine whether a particular
-         *                       cell is currently empty
-         */
-        ValuePruner(
-            StarPredicate flushPredicate,
-            SegmentAxis[] segmentAxes,
-            SegmentDataset data)
-        {
-            this.flushPredicate = flushPredicate;
-            this.arity = flushPredicate.getConstrainedColumnList().size();
-            this.axes = new SegmentAxis[arity];
-            this.keepBitSets = new BitSet[arity];
-            this.axisInverseOrdinals = new int[segmentAxes.length];
-            Arrays.fill(axisInverseOrdinals, -1);
-            this.values = new Object[arity];
-            this.valueList = Arrays.asList(values);
-            this.ordinals = new int[arity];
-            assert data != null;
-            this.data = data;
-            this.cellKey = CellKey.Generator.newCellKey(segmentAxes.length);
-
-            // Pair up constraint columns with axes. If one of the constraint's
-            // columns is not in this segment, it gets the null axis. The
-            // constraint will have to evaluate to true for all possible values
-            // of that column.
-            for (int i = 0; i < arity; i++) {
-                RolapStar.Column column =
-                    flushPredicate.getConstrainedColumnList().get(i);
-                int axisOrdinal =
-                    findAxis(segmentAxes, column.getBitPosition());
-                if (axisOrdinal < 0) {
-                    this.axes[i] = null;
-                    values[i] = StarPredicate.WILDCARD;
-                    keepBitSets[i] = new BitSet(1); // dummy
-                } else {
-                    axes[i] = segmentAxes[axisOrdinal];
-                    axisInverseOrdinals[axisOrdinal] = i;
-                    final int keyCount = axes[i].getKeys().length;
-                    keepBitSets[i] = new BitSet(keyCount);
-                }
-            }
-        }
-
-        private int findAxis(SegmentAxis[] axes, int bitPosition) {
-            for (int i = 0; i < axes.length; i++) {
-                SegmentAxis axis = axes[i];
-                if (axis.getPredicate().getConstrainedColumn().getBitPosition()
-                    == bitPosition)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        /**
-         * Applies this ValuePruner's predicate and sets bits in axisBitSets
-         * to indicate extra values which can be removed.
-         *
-         * @param axisKeepBitSets Array containing, for each axis, a bitset
-         *                        of values to keep (not flush)
-         */
-        void go(BitSet[] axisKeepBitSets) {
-            evaluatePredicate(0);
-
-            // Clear bits in the axis bit sets (indicating that a value is never
-            // used) if this predicate evaluates to true for every combination
-            // of values which this axis value appears in.
-            for (int i = 0; i < axisKeepBitSets.length; i++) {
-                if (axisInverseOrdinals[i] < 0) {
-                    continue;
-                }
-                BitSet axisKeepBitSet = axisKeepBitSets[axisInverseOrdinals[i]];
-                final BitSet keepBitSet = keepBitSets[i];
-                axisKeepBitSet.and(keepBitSet);
-            }
-        }
-
-        /**
-         * Evaluates the predicate for axes <code>i</code> and higher, and marks
-         * {@link #keepBitSets} if the predicate ever evaluates to false.
-         * The result is that discardBitSets[i] will be false for column #i if
-         * the predicate evaluates to true for all cells in the segment which
-         * have that column value.
-         *
-         * @param axisOrdinal Axis ordinal
-         */
-        private void evaluatePredicate(int axisOrdinal) {
-            if (axisOrdinal == arity) {
-                // If the flush predicate evaluates to false for this cell,
-                // and this cell currently has some data (*),
-                // then none of the values which are the coordinates of this
-                // cell can be discarded.
-                //
-                // * Important when there is sparsity. Consider the cell
-                // {year=1997, quarter=Q1, month=12}. This cell would never have
-                // data, so there's no point keeping it.
-                if (!flushPredicate.evaluate(valueList)) {
-                    // REVIEW: getObject forces an int or double dataset to
-                    // create a boxed object; use exists() instead?
-                    if (data.getObject(cellKey) != null) {
-                        for (int k = 0; k < arity; k++) {
-                            keepBitSets[k].set(ordinals[k]);
-                        }
-                    }
-                }
-            } else {
-                final SegmentAxis axis = axes[axisOrdinal];
-                if (axis == null) {
-                    evaluatePredicate(axisOrdinal + 1);
-                } else {
-                    final Comparable[] keys = axis.getKeys();
-                    for (int keyOrdinal = 0;
-                        keyOrdinal < keys.length;
-                        keyOrdinal++)
-                    {
-                        Object key = keys[keyOrdinal];
-                        values[axisOrdinal] = key;
-                        ordinals[axisOrdinal] = keyOrdinal;
-                        cellKey.setAxis(
-                            axisInverseOrdinals[axisOrdinal],
-                            keyOrdinal);
-                        evaluatePredicate(axisOrdinal + 1);
-                    }
-                }
-            }
-        }
-    }
-
     private static class ConstraintComparator implements Comparator<Integer> {
         private final double[] bloats;
 
@@ -600,8 +415,6 @@ public class Aggregation {
                     : -1;
         }
     }
-
-
 }
 
 // End Aggregation.java

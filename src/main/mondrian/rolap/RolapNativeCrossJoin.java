@@ -45,6 +45,9 @@ import java.util.*;
  */
 public class RolapNativeCrossJoin extends RolapNativeSet {
 
+    /**
+     * Creates a RolapNativeCrossJoin.
+     */
     public RolapNativeCrossJoin() {
         super.setEnabled(
             MondrianProperties.instance().EnableNativeCrossJoin.get());
@@ -59,16 +62,31 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
      * filter out these later.</p>
      */
     static class NonEmptyCrossJoinConstraint extends SetConstraint {
+        /**
+         * Creates a NonEmptyCrossJoinConstraint.
+         *
+         * @param args Cross-join arguments
+         * @param evaluator Evaluator
+         * @param measureGroupList List of measure groups to join to
+         */
         NonEmptyCrossJoinConstraint(
             CrossJoinArg[] args,
-            RolapEvaluator evaluator)
+            RolapEvaluator evaluator,
+            List<RolapMeasureGroup> measureGroupList)
         {
             // Cross join ignores calculated members, including the ones from
             // the slicer.
-            super(args, evaluator, false);
+            super(args, evaluator, measureGroupList, false);
         }
 
-        public RolapMember findMember(Object key) {
+        /**
+         * Finds a member argument that matches given key.
+         *
+         * @param keys Key, compatible with {@link RolapMember#getKeyCompact()}
+         *
+         * @return Member, or null if not found
+         */
+        public RolapMember findMember(Object keys) {
             for (CrossJoinArg arg : args) {
                 if (arg instanceof MemberListCrossJoinArg) {
                     final MemberListCrossJoinArg crossJoinArg =
@@ -76,13 +94,21 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
                     final List<RolapMember> memberList =
                         crossJoinArg.getMembers();
                     for (RolapMember rolapMember : memberList) {
-                        if (key.equals(rolapMember.getKey())) {
+                        if (keys.equals(rolapMember.getKeyCompact())) {
                             return rolapMember;
                         }
                     }
                 }
             }
             return null;
+        }
+        /**
+         * {@inheritDoc}
+         * <p> Always returns <code>true</code> as this is only used
+         * in NON EMPTY contexts.
+         */
+        public boolean isJoinRequired() {
+            return true;
         }
     }
 
@@ -133,7 +159,7 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
         for (CrossJoinArg arg : cjArgs) {
             if (arg instanceof MemberListCrossJoinArg) {
                 MemberListCrossJoinArg cjArg =
-                    (MemberListCrossJoinArg)arg;
+                    (MemberListCrossJoinArg) arg;
                 if (cjArg.hasAllMember() || cjArg.isEmptyCrossJoinArg()) {
                     ++countNonNativeInputArg;
                 }
@@ -163,9 +189,9 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
         }
 
         // Verify that args are valid
-        List<RolapLevel> levels = new ArrayList<RolapLevel>();
+        List<RolapCubeLevel> levels = new ArrayList<RolapCubeLevel>();
         for (CrossJoinArg cjArg : cjArgs) {
-            RolapLevel level = cjArg.getLevel();
+            RolapCubeLevel level = cjArg.getLevel();
             if (level != null) {
                 // Only add non null levels. These levels have real
                 // constraints.
@@ -173,7 +199,7 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
             }
         }
 
-        if (cube.isVirtual()
+        if (cube.getMeasureGroups().size() > 1
             && !evaluator.getQuery().nativeCrossJoinVirtualCube())
         {
             // Something in the query at large (namely, some unsupported
@@ -186,11 +212,14 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
             return null;
         }
 
-        if (!NonEmptyCrossJoinConstraint.isValidContext(
+        final List<RolapMeasureGroup> measureGroupList =
+            new ArrayList<RolapMeasureGroup>();
+        if (!SqlContextConstraint.checkValidContext(
                 evaluator,
                 false,
-                levels.toArray(new RolapLevel[levels.size()]),
-                restrictMemberTypes()))
+                levels,
+                restrictMemberTypes(),
+                measureGroupList))
         {
             // Missing join conditions due to non-conforming dimensions
             // meant native evaluation would have led to a true cross
@@ -200,7 +229,7 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
         }
 
         // join with fact table will always filter out those members
-        // that dont have a row in the fact table
+        // that don't have a row in the fact table
         if (!evaluator.isNonEmpty()) {
             return null;
         }
@@ -212,22 +241,52 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
         // (otherwise, that outer context would be incorrectly intersected
         // with the constraints from the inputs).
         final int savepoint = evaluator.savepoint();
+<<<<<<< HEAD
 
         try {
             overrideContext(evaluator, cjArgs, null);
 
             // Use the combined CrossJoinArg for the tuple constraint,
             // which will be translated to the SQL WHERE clause.
+=======
+        try {
+            Member[] evalMembers = evaluator.getMembers().clone();
+            for (RolapLevel level : levels) {
+                RolapHierarchy hierarchy = level.getHierarchy();
+                memberLoop:
+                for (int i = 0; i < evalMembers.length; ++i) {
+                    Dimension evalMemberDimension =
+                        evalMembers[i].getHierarchy().getDimension();
+                    if (evalMemberDimension == hierarchy.getDimension()
+                        && !evalMembers[i].isAll())
+                    {
+                        evalMembers[i] = hierarchy.getAllMember();
+                        break memberLoop;
+                    }
+                }
+            }
+            evaluator.setContext(evalMembers);
+
+            // Use the combined CrossJoinArg for the tuple constraint, which
+            // will be translated to the SQL WHERE clause.
+>>>>>>> upstream/4.0
             CrossJoinArg[] cargs = combineArgs(allArgs);
 
             // Now construct the TupleConstraint that contains both the CJ
             // dimensions and the additional filter on them. It will make a
             // copy of the evaluator.
             TupleConstraint constraint =
+<<<<<<< HEAD
                 buildConstraint(evaluator, fun, cargs);
 
             // Use the just the CJ CrossJoiArg for the evaluator context,
             // which will be translated to select list in sql.
+=======
+                buildConstraint(evaluator, fun, cargs, measureGroupList);
+
+            // Use the just the CJ CrossJoiArg for the evaluator context, which
+            // will be translated to select list in sql.
+>>>>>>> upstream/4.0
             final SchemaReader schemaReader = evaluator.getSchemaReader();
             return new SetEvaluator(cjArgs, schemaReader, constraint);
         } finally {
@@ -252,7 +311,8 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
     private TupleConstraint buildConstraint(
         final RolapEvaluator evaluator,
         final FunDef fun,
-        final CrossJoinArg[] cargs)
+        final CrossJoinArg[] cargs,
+        List<RolapMeasureGroup> measureGroupList)
     {
         CrossJoinArg[] myArgs;
         if (safeToConstrainByOtherAxes(fun)) {
@@ -260,7 +320,8 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
         } else {
             myArgs = cargs;
         }
-        return new NonEmptyCrossJoinConstraint(myArgs, evaluator);
+        return new NonEmptyCrossJoinConstraint(
+            myArgs, evaluator, measureGroupList);
     }
 
     private CrossJoinArg[] buildArgs(
@@ -295,4 +356,3 @@ public class RolapNativeCrossJoin extends RolapNativeSet {
 }
 
 // End RolapNativeCrossJoin.java
-

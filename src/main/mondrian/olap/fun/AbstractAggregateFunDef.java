@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2005-2011 Pentaho
+// Copyright (C) 2002-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -14,8 +14,7 @@ import mondrian.calc.impl.DelegatingTupleList;
 import mondrian.mdx.UnresolvedFunCall;
 import mondrian.olap.*;
 import mondrian.resource.MondrianResource;
-import mondrian.rolap.RolapCube;
-import mondrian.rolap.RolapMember;
+import mondrian.rolap.*;
 
 import java.util.*;
 
@@ -136,7 +135,7 @@ public class AbstractAggregateFunDef extends FunDefBase {
      * @param evaluator Evaluator
      * @return list of members or tuples
      */
-    private static TupleList processUnrelatedDimensions(
+    public static TupleList processUnrelatedDimensions(
         TupleList tuplesForAggregation,
         Evaluator evaluator)
     {
@@ -144,45 +143,83 @@ public class AbstractAggregateFunDef extends FunDefBase {
             return tuplesForAggregation;
         }
 
-        RolapMember measure = (RolapMember) evaluator.getMembers()[0];
+        RolapMember measure = getRolapMeasureForUnrelatedDimCheck(
+            evaluator, tuplesForAggregation);
 
         if (measure.isCalculated()) {
             return tuplesForAggregation;
         }
 
-        RolapCube virtualCube = (RolapCube) evaluator.getCube();
-        RolapCube baseCube = (RolapCube) evaluator.getMeasureCube();
-        if (virtualCube.isVirtual() && baseCube != null) {
-            if (virtualCube.shouldIgnoreUnrelatedDimensions(baseCube.getName()))
-            {
+        final List<RolapMeasureGroup> cubeMeasureGroups =
+        ((RolapCube) evaluator.getCube()).getMeasureGroups();
+
+        if (cubeMeasureGroups != null && cubeMeasureGroups.size() > 1) {
+            // this should be a safe cast since we've eliminated calcs above
+            RolapMeasureGroup measureGroup =
+                ((RolapBaseCubeMeasure)measure).getMeasureGroup();
+            if (measureGroup == null) {
+                return tuplesForAggregation;
+            }
+            if (measureGroup.ignoreUnrelatedDimensions) {
                 return ignoreUnrelatedDimensions(
-                    tuplesForAggregation, baseCube);
+                    tuplesForAggregation, measureGroup);
             } else if (MondrianProperties.instance()
                 .IgnoreMeasureForNonJoiningDimension.get())
             {
                 return ignoreMeasureForNonJoiningDimension(
-                    tuplesForAggregation, baseCube);
+                    tuplesForAggregation, measureGroup);
             }
         }
         return tuplesForAggregation;
     }
 
     /**
+     * Returns the measure to use when determining which dimensions
+     * are unrelated.  Most of the time this is the measure in context,
+     * except 2 cases:
+     * 1)  When a measure is included in a compound slicer
+     * 2)  When one or more measures are included in the first parameter
+     *     of Aggregate.
+     *      e.g. Aggregate( Crossjoin( {Time.[1997]}, {measures.[Unit Sales]})
+     * In both cases the measure(s) will be present in tuplesForAggregation.
+     */
+    private static RolapMember getRolapMeasureForUnrelatedDimCheck(
+        Evaluator evaluator, TupleList tuplesForAggregation)
+    {
+        RolapMember measure = (RolapMember)evaluator.getMembers()[0];
+        if (tuplesForAggregation != null
+            && tuplesForAggregation.size() > 0)
+        {
+            // this looks for the measure in the first tuple, with the
+            // assumption that there is a single measure in all tuples.
+            // This assumption is incorrect in the unusual case where
+            // a set of measures is used as the first param in an aggregate
+            // function.
+            for (Member tupMember : tuplesForAggregation.get(0)) {
+                if (tupMember.isMeasure()) {
+                    measure = (RolapMember)tupMember;
+                }
+            }
+        }
+        return measure;
+    }
+
+    /**
      * If a non joining dimension exists in the aggregation list then return
      * an empty list else return the original list.
      *
-     * @param tuplesForAggregation is a list of members or tuples used in
-     * computing the aggregate
-     * @param baseCube
+     * @param tuplesForAggregation List of members or tuples used in
+     *     computing the aggregate
+     * @param measureGroup Measure group
      * @return list of members or tuples
      */
     private static TupleList ignoreMeasureForNonJoiningDimension(
         TupleList tuplesForAggregation,
-        RolapCube baseCube)
+        RolapMeasureGroup measureGroup)
     {
-        Set<Dimension> nonJoiningDimensions =
-            nonJoiningDimensions(baseCube, tuplesForAggregation);
-        if (nonJoiningDimensions.size() > 0) {
+        Iterable<RolapCubeDimension> nonJoiningDimensions =
+            nonJoiningDimensions(measureGroup, tuplesForAggregation);
+        if (nonJoiningDimensions.iterator().hasNext()) {
             return TupleCollections.emptyList(tuplesForAggregation.getArity());
         }
         return tuplesForAggregation;
@@ -199,23 +236,27 @@ public class AbstractAggregateFunDef extends FunDefBase {
      */
     private static TupleList ignoreUnrelatedDimensions(
         TupleList tuplesForAggregation,
-        RolapCube baseCube)
+        RolapMeasureGroup measureGroup)
     {
-        Set<Dimension> nonJoiningDimensions =
-            nonJoiningDimensions(baseCube, tuplesForAggregation);
+        Set<RolapCubeDimension> nonJoiningDimensions =
+            new HashSet<RolapCubeDimension>();
+        for (RolapCubeDimension dimension
+            : nonJoiningDimensions(measureGroup, tuplesForAggregation))
+        {
+            nonJoiningDimensions.add(dimension);
+        }
         final Set<List<Member>> processedTuples =
             new LinkedHashSet<List<Member>>(tuplesForAggregation.size());
         for (List<Member> tuple : tuplesForAggregation) {
             List<Member> tupleCopy = tuple;
             for (int j = 0; j < tuple.size(); j++) {
-                final Member member = tuple.get(j);
+                final RolapMember member = (RolapMember) tuple.get(j);
                 if (nonJoiningDimensions.contains(member.getDimension())) {
                     if (tupleCopy == tuple) {
                         // Avoid making a copy until we have to change a tuple.
                         tupleCopy = new ArrayList<Member>(tuple);
                     }
-                    final Hierarchy hierarchy =
-                        member.getDimension().getHierarchy();
+                    final Hierarchy hierarchy = member.getHierarchy();
                     if (hierarchy.hasAll()) {
                         tupleCopy.set(j, hierarchy.getAllMember());
                     } else {
@@ -231,13 +272,12 @@ public class AbstractAggregateFunDef extends FunDefBase {
                 processedTuples));
     }
 
-    private static Set<Dimension> nonJoiningDimensions(
-        RolapCube baseCube,
+    private static Iterable<RolapCubeDimension> nonJoiningDimensions(
+        RolapMeasureGroup measureGroup,
         TupleList tuplesForAggregation)
     {
         List<Member> tuple = tuplesForAggregation.get(0);
-        return baseCube.nonJoiningDimensions(
-            tuple.toArray(new Member[tuple.size()]));
+        return measureGroup.nonJoiningDimensions(tuple);
     }
 }
 

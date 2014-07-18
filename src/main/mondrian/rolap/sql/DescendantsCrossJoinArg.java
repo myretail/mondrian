@@ -5,13 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2009 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.sql;
 
 import mondrian.rolap.*;
-import mondrian.rolap.aggmatcher.AggStar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,15 +26,15 @@ import java.util.List;
  * </ul>
  */
 public class DescendantsCrossJoinArg implements CrossJoinArg {
-    RolapMember member;
-    RolapLevel level;
+    final RolapMember member;
+    final RolapCubeLevel level;
 
-    public DescendantsCrossJoinArg(RolapLevel level, RolapMember member) {
+    public DescendantsCrossJoinArg(RolapCubeLevel level, RolapMember member) {
         this.level = level;
         this.member = member;
     }
 
-    public RolapLevel getLevel() {
+    public RolapCubeLevel getLevel() {
         return level;
     }
 
@@ -49,13 +48,12 @@ public class DescendantsCrossJoinArg implements CrossJoinArg {
     }
 
     public void addConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar)
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet)
     {
         if (member != null) {
             SqlConstraintUtils.addMemberConstraint(
-                sqlQuery, baseCube, aggStar, member, true);
+                queryBuilder, starSet, member, true);
         }
     }
 

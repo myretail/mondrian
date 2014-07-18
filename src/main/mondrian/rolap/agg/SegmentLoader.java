@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2013 Pentaho and others
+=======
+// Copyright (C) 2005-2014 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -52,7 +56,7 @@ public class SegmentLoader {
 
     private static final Logger LOGGER = Logger.getLogger(SegmentLoader.class);
 
-    private final SegmentCacheManager cacheMgr;
+    protected final SegmentCacheManager cacheMgr;
 
     /**
      * Creates a SegmentLoader.
@@ -110,10 +114,17 @@ public class SegmentLoader {
                         cacheMgr.getIndexRegistry().getIndex(segment.star);
                     index.add(
                         segment.getHeader(),
+<<<<<<< HEAD
                         true,
                         new SegmentBuilder.StarSegmentConverter(
                             segment.measure,
                             compoundPredicateList));
+=======
+                        new SegmentBuilder.StarSegmentConverter(
+                            segment.measure,
+                            compoundPredicateList),
+                        true);
+>>>>>>> upstream/4.0
                     // Make sure that we are registered as a client of
                     // the segment by invoking getFuture.
                     Util.discard(
@@ -173,7 +184,7 @@ public class SegmentLoader {
         }
     }
 
-    private Map<Segment, SegmentWithData> loadImpl(
+    protected Map<Segment, SegmentWithData> loadImpl(
         int cellRequestCount,
         List<GroupingSet> groupingSets,
         List<StarPredicate> compoundPredicateList)
@@ -229,6 +240,7 @@ public class SegmentLoader {
                 groupingSetsList, rows, groupingDataSetsMap);
 
             setDataToSegments(
+                this.cacheMgr,
                 groupingSetsList,
                 groupingDataSetsMap,
                 segmentMap);
@@ -245,7 +257,10 @@ public class SegmentLoader {
                 stmt.close();
             }
             setFailOnStillLoadingSegments(
-                segmentMap, groupingSetsList, throwable);
+                this.cacheMgr,
+                segmentMap,
+                groupingSetsList,
+                throwable);
         }
     }
 
@@ -256,7 +271,8 @@ public class SegmentLoader {
      * @param header Segment header
      * @param body Segment body
      */
-    private void cacheSegment(
+    private static void cacheSegment(
+        SegmentCacheManager cacheMgr,
         RolapStar star,
         SegmentHeader header,
         SegmentBody body)
@@ -276,7 +292,8 @@ public class SegmentLoader {
         }
     }
 
-    private boolean setFailOnStillLoadingSegments(
+    public static boolean setFailOnStillLoadingSegments(
+        SegmentCacheManager cacheMgr,
         Map<Segment, SegmentWithData> segmentMap,
         GroupingSetsList groupingSetsList,
         Throwable throwable)
@@ -307,7 +324,7 @@ public class SegmentLoader {
      * the row data. If grouping sets is not used, data is loaded on to
      * nonGroupingDataSets.
      */
-    private void loadDataToDataSets(
+    public static void loadDataToDataSets(
         GroupingSetsList groupingSetsList,
         RowList rows,
         Map<BitKey, GroupingSetsList.Cohort> groupingDataSetMap)
@@ -370,7 +387,7 @@ public class SegmentLoader {
         }
     }
 
-    private boolean setAxisDataAndDecideSparseUse(
+    public boolean setAxisDataAndDecideSparseUse(
         SortedSet<Comparable>[] axisValueSets,
         boolean[] axisContainsNull,
         GroupingSetsList groupingSetsList,
@@ -406,12 +423,13 @@ public class SegmentLoader {
         return useSparse(sparse, n, rows);
     }
 
-    boolean useSparse(boolean sparse, int n, RowList rows) {
-        sparse = sparse || useSparse((double) n, (double) rows.size());
+    public boolean useSparse(boolean sparse, int n, RowList rows) {
+        sparse = sparse || useSparse(n, rows.size());
         return sparse;
     }
 
-    private void setDataToSegments(
+    public static void setDataToSegments(
+        SegmentCacheManager cacheMgr,
         GroupingSetsList groupingSetsList,
         Map<BitKey, GroupingSetsList.Cohort> datasetsMap,
         Map<Segment, SegmentWithData> segmentSlotMap)
@@ -438,7 +456,7 @@ public class SegmentLoader {
                 final SegmentBody body =
                     segmentWithData.getData().createSegmentBody(
                         new AbstractList<
-                                Pair<SortedSet<Comparable>, Boolean>>()
+                            Pair<SortedSet<Comparable>, Boolean>>()
                         {
                             public Pair<SortedSet<Comparable>, Boolean> get(
                                 int index)
@@ -454,12 +472,13 @@ public class SegmentLoader {
 
                 // Send a message to the agg manager. It will place the segment
                 // in the index.
-                cacheSegment(segment.star, header, body);
+                cacheSegment(cacheMgr, segment.star, header, body);
             }
         }
     }
 
-    private Map<BitKey, GroupingSetsList.Cohort> createDataSetsForGroupingSets(
+    public static Map<BitKey, GroupingSetsList.Cohort>
+    createDataSetsForGroupingSets(
         GroupingSetsList groupingSetsList,
         boolean sparse,
         List<SqlStatement.Type> types)
@@ -490,7 +509,7 @@ public class SegmentLoader {
         return datasetsMap;
     }
 
-    private int calculateMaxDataSize(SegmentAxis[] axes) {
+    static int calculateMaxDataSize(SegmentAxis[] axes) {
         int n = 1;
         for (SegmentAxis axis : axes) {
             n *= axis.getKeys().length;
@@ -498,7 +517,7 @@ public class SegmentLoader {
         return n;
     }
 
-    private GroupingSetsList.Cohort createDataSets(
+    public static GroupingSetsList.Cohort createDataSets(
         boolean sparse,
         List<Segment> segments,
         SegmentAxis[] axes,
@@ -519,7 +538,7 @@ public class SegmentLoader {
         return new GroupingSetsList.Cohort(datasets, axes);
     }
 
-    private void setAxisDataToGroupableList(
+    public static void setAxisDataToGroupableList(
         GroupingSetsList groupingSetsList,
         SortedSet<Comparable> valueSet,
         boolean axisContainsNull,
@@ -572,8 +591,13 @@ public class SegmentLoader {
         // When caching is enabled, we must register the SQL statement
         // in the index. We don't want to cancel SQL statements that are shared
         // across threads unless it is safe.
+<<<<<<< HEAD
         final Util.Functor1<Void, Statement> callbackWithCaching =
             new Util.Functor1<Void, Statement>() {
+=======
+        final Util.Function1<Statement, Void> callbackWithCaching =
+            new Util.Function1<Statement, Void>() {
+>>>>>>> upstream/4.0
                 public Void apply(final Statement stmt) {
                     cacheMgr.execute(
                         new SegmentCacheManager.Command<Void>() {
@@ -613,8 +637,13 @@ public class SegmentLoader {
 
         // When using no cache, we register the SQL statement directly
         // with the execution instance for cleanup.
+<<<<<<< HEAD
         final Util.Functor1<Void, Statement> callbackNoCaching =
                 new Util.Functor1<Void, Statement>() {
+=======
+        final Util.Function1<Statement, Void> callbackNoCaching =
+                new Util.Function1<Statement, Void>() {
+>>>>>>> upstream/4.0
                     public Void apply(final Statement stmt) {
                         locus.execution.registerStatement(locus, stmt);
                         return null;
@@ -693,9 +722,10 @@ public class SegmentLoader {
                         o = RolapUtil.sqlNullValue;
                         if (!groupingSetsList.useGroupingSets()
                             || !isAggregateNull(
-                                rawRows, groupingColumnStartIndex,
-                            groupingSetsList,
-                            axisIndex))
+                                rawRows,
+                                groupingColumnStartIndex,
+                                groupingSetsList,
+                                axisIndex))
                         {
                             axisContainsNull[axisIndex] = true;
                         }
@@ -703,7 +733,7 @@ public class SegmentLoader {
                         // We assume that all values are Comparable. Boolean
                         // wasn't Comparable until JDK 1.5, but we can live with
                         // that bug because JDK 1.4 is no longer important.
-                        axisValueSets[axisIndex].add((Comparable) o);
+                        axisValueSets[axisIndex].add((Comparable<?>) o);
                     }
                     processedRows.setObject(columnIndex, o);
                     break;
@@ -712,9 +742,10 @@ public class SegmentLoader {
                     if (intValue == 0 && rawRows.wasNull()) {
                         if (!groupingSetsList.useGroupingSets()
                             || !isAggregateNull(
-                                rawRows, groupingColumnStartIndex,
-                            groupingSetsList,
-                            axisIndex))
+                                rawRows,
+                                groupingColumnStartIndex,
+                                groupingSetsList,
+                                axisIndex))
                         {
                             axisContainsNull[axisIndex] = true;
                         }
@@ -748,9 +779,10 @@ public class SegmentLoader {
                     if (doubleValue == 0 && rawRows.wasNull()) {
                         if (!groupingSetsList.useGroupingSets()
                             || !isAggregateNull(
-                                rawRows, groupingColumnStartIndex,
-                            groupingSetsList,
-                            axisIndex))
+                                rawRows,
+                                groupingColumnStartIndex,
+                                groupingSetsList,
+                                axisIndex))
                         {
                             axisContainsNull[axisIndex] = true;
                         }
@@ -833,7 +865,11 @@ public class SegmentLoader {
         return processedRows;
     }
 
+<<<<<<< HEAD
     private void checkResultLimit(int currentCount) {
+=======
+    protected static void checkResultLimit(int currentCount) {
+>>>>>>> upstream/4.0
         final int limit =
             MondrianProperties.instance().ResultLimit.get();
         if (limit > 0 && currentCount > limit) {
@@ -888,7 +924,7 @@ public class SegmentLoader {
         return stmt.getResultSet();
     }
 
-    SortedSet<Comparable>[] getDistinctValueWorkspace(int arity) {
+    public static SortedSet<Comparable>[] getDistinctValueWorkspace(int arity) {
         // Workspace to build up lists of distinct values for each axis.
         SortedSet<Comparable>[] axisValueSets = new SortedSet[arity];
         for (int i = 0; i < axisValueSets.length; i++) {
@@ -929,22 +965,22 @@ public class SegmentLoader {
         }
         boolean sparse =
             (possibleCount - countThreshold) * densityThreshold >
-                actualCount;
+            actualCount;
         if (possibleCount < countThreshold) {
             assert !sparse
                 : "Should never use sparse if count is less "
-                + "than threshold, possibleCount=" + possibleCount
-                + ", actualCount=" + actualCount
-                + ", countThreshold=" + countThreshold
-                + ", densityThreshold=" + densityThreshold;
+                  + "than threshold, possibleCount=" + possibleCount
+                  + ", actualCount=" + actualCount
+                  + ", countThreshold=" + countThreshold
+                  + ", densityThreshold=" + densityThreshold;
         }
         if (possibleCount == actualCount) {
             assert !sparse
                 : "Should never use sparse if result is 100% dense: "
-                + "possibleCount=" + possibleCount
-                + ", actualCount=" + actualCount
-                + ", countThreshold=" + countThreshold
-                + ", densityThreshold=" + densityThreshold;
+                  + "possibleCount=" + possibleCount
+                  + ", actualCount=" + actualCount
+                  + ", countThreshold=" + countThreshold
+                  + ", densityThreshold=" + densityThreshold;
         }
         return sparse;
     }
@@ -993,7 +1029,7 @@ public class SegmentLoader {
          * @param types Column types
          * @param capacity Initial capacity
          */
-        RowList(List<SqlStatement.Type> types, int capacity) {
+        public RowList(List<SqlStatement.Type> types, int capacity) {
             this.columns = new Column[types.size()];
             this.capacity = capacity;
             for (int i = 0; i < columns.length; i++) {
@@ -1001,7 +1037,7 @@ public class SegmentLoader {
             }
         }
 
-        void createRow() {
+        public void createRow() {
             currentRow = rowCount++;
             if (rowCount > capacity) {
                 capacity *= 3;
@@ -1011,19 +1047,19 @@ public class SegmentLoader {
             }
         }
 
-        void setObject(int column, Object value) {
+        public void setObject(int column, Object value) {
             columns[column].setObject(currentRow, value);
         }
 
-        void setDouble(int column, double value) {
+        public void setDouble(int column, double value) {
             columns[column].setDouble(currentRow, value);
         }
 
-        void setInt(int column, int value) {
+        public void setInt(int column, int value) {
             columns[column].setInt(currentRow, value);
         }
 
-        void setLong(int column, long value) {
+        public void setLong(int column, long value) {
             columns[column].setLong(currentRow, value);
         }
 
@@ -1272,8 +1308,8 @@ public class SegmentLoader {
 
             public boolean isNull(int row) {
                 return ints[row] == 0
-                   && nullIndicators != null
-                   && nullIndicators.get(row);
+                       && nullIndicators != null
+                       && nullIndicators.get(row);
             }
 
             protected int getCapacity() {
@@ -1316,8 +1352,8 @@ public class SegmentLoader {
 
             public boolean isNull(int row) {
                 return longs[row] == 0
-                   && nullIndicators != null
-                   && nullIndicators.get(row);
+                       && nullIndicators != null
+                       && nullIndicators.get(row);
             }
 
             protected int getCapacity() {
@@ -1364,8 +1400,8 @@ public class SegmentLoader {
 
             public boolean isNull(int row) {
                 return doubles[row] == 0d
-                   && nullIndicators != null
-                   && nullIndicators.get(row);
+                       && nullIndicators != null
+                       && nullIndicators.get(row);
             }
 
             public Double getObject(int row) {

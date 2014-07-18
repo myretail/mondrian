@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2013 Pentaho and others
+=======
+// Copyright (C) 2005-2014 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -15,6 +19,7 @@ import mondrian.mdx.ResolvedFunCall;
 import mondrian.olap.*;
 import mondrian.olap.fun.AggregateFunDef;
 import mondrian.olap.fun.VisualTotalsFunDef;
+import mondrian.resource.MondrianResource;
 import mondrian.server.Locus;
 import mondrian.spi.PropertyFormatter;
 import mondrian.util.*;
@@ -22,30 +27,157 @@ import mondrian.util.*;
 import org.apache.commons.collections.map.Flat3Map;
 import org.apache.log4j.Logger;
 
+<<<<<<< HEAD
 import org.eigenbase.util.property.StringProperty;
 
+=======
+>>>>>>> upstream/4.0
 import java.math.BigDecimal;
 import java.util.*;
 
-
 /**
- * Basic implementation of a member in a {@link RolapHierarchy}.
+ * Basic implementation of a member in a {@link RolapCubeHierarchy}.
+ *
+ * <p>This class aims to be memory-efficient. There are as few fields as
+ * possible. We pack several properties into the {@link #flags} field, and
+ * we store optional attributes (along with annotations, localized resources and
+ * properties) in the larder. Minimizing the number of fields is also why this
+ * class does not inherit from {@link OlapElementBase}.</p>
+ *
+ * <b>Developers, please do not add fields to this
+ * class without design review</b>.</p>
  *
  * @author jhyde
  * @since 10 August, 2001
  */
 public class RolapMemberBase
-    extends MemberBase
     implements RolapMember
 {
+    protected RolapMember parentMember;
+    protected final RolapCubeLevel level;
+    private String uniqueName;
+
     /**
      * For members of a level with an ordinal expression defined, the
      * value of that expression for this member as retrieved via JDBC;
      * otherwise null.
      */
     private Comparable orderKey;
-    private Boolean isParentChildLeaf;
+
+    /**
+     * Combines member type and other properties, such as whether the member
+     * is the 'all' or 'null' member of its hierarchy and whether it is a
+     * measure or is calculated, into an integer field.
+     *
+     * <p>The fields are:<ul>
+     * <li>bits 0, 1, 2 ({@link MemberBase#FLAG_TYPE_MASK}) are member type;
+     * <li>bit 3 ({@link MemberBase#FLAG_HIDDEN}) is set if the member is
+     *     hidden;
+     * <li>bit 4 ({@link MemberBase#FLAG_ALL}) is set if this is the all member
+     *     of its hierarchy;
+     * <li>bit 5 ({@link MemberBase#FLAG_NULL}) is set if this is the null
+     *     member of its hierarchy;
+     * <li>bit 6 ({@link MemberBase#FLAG_CALCULATED}) is set if this is a
+     *     calculated member.
+     * <li>bit 7 ({@link MemberBase#FLAG_MEASURE}) is set if this is a measure.
+     * <li>bits 8 and 9 support {@link #isParentChildLeaf()}.</li>
+     * <li>bits 10 and 11 support {@link #containsAggregateFunction()}.</li>
+     * </ul>
+     *
+     * NOTE: jhyde, 2007/8/10. It is necessary to cache whether the member is
+     * 'all', 'calculated' or 'null' in the member's state, because these
+     * properties are used so often. If we used a virtual method call - say we
+     * made each subclass implement 'boolean isNull()' - it would be slower.
+     * We use one flags field rather than 4 boolean fields to save space.
+     */
+    protected int flags;
+
+    // Leaf takes bits 8 and 9. Bit 8 is whether known. Bit 9 is yes or no.
+    private static final int LEAF_MASK = (1 << 8) | (1 << 9);
+    private static final int LEAF_YES = (1 << 8) | (1 << 9);
+    private static final int LEAF_NO = (1 << 8);
+
+    // Contains aggregate function takes bits 10 and 11. Bit 10 is whether
+    // known. Bit 11 is yes or no.
+    private static final int AGG_FUN_MASK = (1 << 10) | (1 << 11);
+    private static final int AGG_FUN_YES = (1 << 10) | (1 << 11);
+    private static final int AGG_FUN_NO = (1 << 10);
+
     private static final Logger LOGGER = Logger.getLogger(RolapMember.class);
+    private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+
+    /** Ordinal of the member within the hierarchy. Some member readers do not
+     * use this property; in which case, they should leave it as its default,
+     * -1. */
+    private int ordinal;
+    private final Comparable key;
+
+    /**
+     * Maps property name to property value.
+     *
+     * <p> We expect there to be a lot of members, but few of them will
+     * have properties. So to reduce memory usage, when empty, this is set to
+     * an immutable empty set.
+     */
+    protected Larder larder;
+
+    /**
+     * Creates a RolapMemberBase.
+     *
+     * <p>Larder must contain name (if different from that derived from the
+     * key), caption (if different from that derived from the name),
+     * property values, and annotations. (Only calculated members defined in the
+     * schema have annotations.)</p>
+     *
+     * @param parentMember Parent member
+     * @param level Level this member belongs to
+     * @param key Key to this member in the underlying RDBMS, per
+     *   {@link RolapMember.Key}
+     * @param memberType Type of member
+     * @param uniqueName Unique name of this member
+     * @param larder Larder
+     */
+    public RolapMemberBase(
+        RolapMember parentMember,
+        RolapCubeLevel level,
+        Comparable key,
+        MemberType memberType,
+        String uniqueName,
+        Larder larder)
+    {
+        assert Key.isValid(key, level, memberType)
+            : "invalid key " + key + " for level " + level;
+        assert larder != null;
+        this.parentMember = parentMember;
+        this.level = level;
+        this.flags = memberType.ordinal()
+            | (memberType == MemberType.ALL ? MemberBase.FLAG_ALL : 0)
+            | (memberType == MemberType.NULL ? MemberBase.FLAG_NULL : 0)
+            | (computeCalculated(memberType) ? MemberBase.FLAG_CALCULATED : 0)
+            | (level.isMeasure() ? MemberBase.FLAG_MEASURE : 0);
+        this.key = key;
+        this.ordinal = -1;
+        this.larder = larder;
+        this.uniqueName = uniqueName;
+    }
+
+    public String getQualifiedName() {
+        return MondrianResource.instance().MdxMemberName.str(getUniqueName());
+    }
+
+    public final String getUniqueName() {
+        return uniqueName;
+    }
+
+    public String getCaption() {
+        // if there is a member formatter for the members level,
+        //  we will call this interface to provide the display string
+        mondrian.spi.MemberFormatter mf = getLevel().getMemberFormatter();
+        if (mf != null) {
+            return mf.formatMember(this);
+        }
+        return Larders.getCaption(this, getLarder());
+    }
 
     /**
      * Sets a member's parent.
@@ -69,32 +201,117 @@ public class RolapMemberBase
         this.parentMember = parentMember;
     }
 
-    /** Ordinal of the member within the hierarchy. Some member readers do not
-     * use this property; in which case, they should leave it as its default,
-     * -1. */
-    private int ordinal;
-    private final Object key;
+    public String getParentUniqueName() {
+        return parentMember == null
+            ? null
+            : parentMember.getUniqueName();
+    }
+
+    public MemberType getMemberType() {
+        return MemberBase.MEMBER_TYPE_VALUES[flags & MemberBase.FLAG_TYPE_MASK];
+    }
+
+    public String getDescription() {
+        return Larders.getDescription(getLarder());
+    }
+
+    public boolean isMeasure() {
+        return (flags & MemberBase.FLAG_MEASURE) != 0;
+    }
+
+    public boolean isAll() {
+        return (flags & MemberBase.FLAG_ALL) != 0;
+    }
+
+    public boolean isNull() {
+        return (flags & MemberBase.FLAG_NULL) != 0;
+    }
+
+    public boolean isCalculated() {
+        return (flags & MemberBase.FLAG_CALCULATED) != 0;
+    }
+
+    public boolean isEvaluated() {
+        // should just call isCalculated(), but called in tight loops
+        // and too many subclass implementations for jit to inline properly?
+        return (flags & MemberBase.FLAG_CALCULATED) != 0;
+    }
+
+    public OlapElement lookupChild(
+        SchemaReader schemaReader,
+        Id.Segment childName,
+        MatchType matchType)
+    {
+        return schemaReader.lookupMemberChildByName(
+            this, childName, matchType);
+    }
+
+    // implement Member
+    public boolean isChildOrEqualTo(Member member) {
+        // REVIEW: Using uniqueName to calculate ancestry seems inefficient,
+        //   because we can't afford to store every member's unique name, so
+        //   we want to compute it on the fly
+        assert !Bug.BugSegregateRolapCubeMemberFixed;
+        return (member != null) && isChildOrEqualTo(member.getUniqueName());
+    }
 
     /**
-     * Maps property name to property value.
-     *
-     * <p> We expect there to be a lot of members, but few of them will
-     * have properties. So to reduce memory usage, when empty, this is set to
-     * an immutable empty set.
+     * Returns whether this <code>Member</code>'s unique name is equal to, a
+     * child of, or a descendant of a member whose unique name is
+     * <code>uniqueName</code>.
      */
-    private Map<String, Object> mapPropertyNameToValue;
+    public boolean isChildOrEqualTo(String uniqueName) {
+        if (uniqueName == null) {
+            return false;
+        }
 
-    private Boolean containsAggregateFunction = null;
+        return isChildOrEqualTo(this, uniqueName);
+    }
+
+    private static boolean isChildOrEqualTo(
+        RolapMember member,
+        String uniqueName)
+    {
+        while (true) {
+            String thisUniqueName = member.getUniqueName();
+            if (thisUniqueName.equals(uniqueName)) {
+                // found a match
+                return true;
+            }
+            // try candidate's parentMember
+            member = member.getParentMember();
+            if (member == null) {
+                // have reached root
+                return false;
+            }
+        }
+    }
 
     /**
-     * Creates a RolapMemberBase.
+     * Computes the value to be returned by {@link #isCalculated()}, so it can
+     * be cached in a variable.
      *
-     * @param parentMember Parent member
-     * @param level Level this member belongs to
-     * @param key Key to this member in the underlying RDBMS
-     * @param name Name of this member
-     * @param memberType Type of member
+     * @param memberType Member type
+     * @return Whether this member is calculated
      */
+    protected boolean computeCalculated(final MemberType memberType) {
+        // If the member is not created from the "with member ..." MDX, the
+        // calculated will be null. But it may be still a calculated measure
+        // stored in the cube.
+        return isCalculatedInQuery() || memberType == MemberType.FORMULA;
+    }
+
+    public int getSolveOrder() {
+        return -1;
+    }
+
+    /**
+     * Returns the expression by which this member is calculated. The expression
+     * is not null if and only if the member is not calculated.
+     *
+     * @see #isCalculated()
+     */
+<<<<<<< HEAD
     protected RolapMemberBase(
         RolapMember parentMember,
         RolapLevel level,
@@ -116,48 +333,106 @@ public class RolapMemberBase
         }
         this.ordinal = -1;
         this.mapPropertyNameToValue = Collections.emptyMap();
+=======
+    public Exp getExpression() {
+        return null;
+    }
+>>>>>>> upstream/4.0
 
-        if (name != null
-            && !(key != null && name.equals(key.toString())))
-        {
-            // Save memory by only saving the name as a property if it's
-            // different from the key.
-            setProperty(Property.NAME.name, name);
-        } else if (key != null) {
-            setUniqueName(key);
-        }
+    // implement Member
+    public List<Member> getAncestorMembers() {
+        final SchemaReader schemaReader =
+            getDimension().getSchema().getSchemaReader();
+        final ArrayList<Member> ancestorList = new ArrayList<Member>();
+        schemaReader.getMemberAncestors(this, ancestorList);
+        return ancestorList;
     }
 
+    public RolapMember getDataMember() {
+        return null;
+    }
+
+    protected Property lookupProperty(String propertyName, boolean matchCase) {
+        Property prop = Property.lookup(propertyName, matchCase);
+        if (prop == null && getLevel().getProperties() != null) {
+            for (Property matchProp : getLevel().getProperties()) {
+                if (matchCase) {
+                    if (matchProp.getName().equals(propertyName)) {
+                      return matchProp;
+                    }
+                } else {
+                    if (matchProp.getName().equalsIgnoreCase(propertyName)) {
+                      return matchProp;
+                    }
+                }
+            }
+        }
+        return prop;
+    }
+
+<<<<<<< HEAD
     protected RolapMemberBase() {
         super();
         this.key = RolapUtil.sqlNullValue;
+=======
+    public final Object getPropertyValue(String propertyName) {
+        return getPropertyValue(propertyName, true);
     }
 
-    RolapMemberBase(RolapMember parentMember, RolapLevel level, Object value) {
-        this(parentMember, level, value, null, MemberType.REGULAR);
-        assert !(level instanceof RolapCubeLevel);
+    public final Object getPropertyValue(String propertyName, boolean matchCase)
+    {
+        Property property = lookupProperty(propertyName, matchCase);
+        if (property == null) {
+            return null;
+        }
+        return getPropertyValue(property);
+>>>>>>> upstream/4.0
+    }
+
+    public final String getPropertyFormattedValue(String propertyName) {
+        final Property property = lookupProperty(propertyName, true);
+        if (property == null) {
+            return "";
+        }
+        return getPropertyFormattedValue(property);
     }
 
     protected Logger getLogger() {
         return LOGGER;
     }
 
-    public RolapLevel getLevel() {
-        return (RolapLevel) level;
+    public final RolapCube getCube() {
+        return level.cube;
     }
 
-    public RolapHierarchy getHierarchy() {
-        return (RolapHierarchy) level.getHierarchy();
+    public RolapCubeDimension getDimension() {
+        return level.cubeDimension;
     }
 
-    public RolapMember getParentMember() {
-        return (RolapMember) super.getParentMember();
+    public boolean isVisible() {
+        return true;
+    }
+
+    public final RolapCubeLevel getLevel() {
+        return level;
+    }
+
+    public final RolapCubeHierarchy getHierarchy() {
+        return level.cubeHierarchy;
+    }
+
+    public final RolapMember getParentMember() {
+        return parentMember;
     }
 
     // Regular members do not have annotations. Measures and calculated members
     // do, so they override this method.
-    public Map<String, Annotation> getAnnotationMap() {
-        return Collections.emptyMap();
+    public Larder getLarder() {
+        return larder;
+    }
+
+    public String toString() {
+        return getUniqueName();
     }
 
     public int hashCode() {
@@ -165,20 +440,9 @@ public class RolapMemberBase
     }
 
     public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        }
-        if (o instanceof RolapMemberBase && equals((RolapMemberBase) o)) {
-            return true;
-        }
-        if (o instanceof RolapCubeMember
-                && equals(((RolapCubeMember) o).getRolapMember()))
-        {
-            // TODO: remove, RolapCubeMember should never meet RolapMember
-            assert !Bug.BugSegregateRolapCubeMemberFixed;
-            return true;
-        }
-        return false;
+        return o == this
+            || o instanceof RolapMemberBase
+            && equals((RolapMemberBase) o);
     }
 
     public boolean equals(OlapElement o) {
@@ -193,22 +457,13 @@ public class RolapMemberBase
         return this.getUniqueName().equals(that.getUniqueName());
     }
 
-    void makeUniqueName(HierarchyUsage hierarchyUsage) {
-        if (parentMember == null && key != null) {
-            String n = hierarchyUsage.getName();
-            if (n != null) {
-                String name = keyToString(key);
-                n = Util.quoteMdxIdentifier(n);
-                this.uniqueName = Util.makeFqName(n, name);
-                if (getLogger().isDebugEnabled()) {
-                    getLogger().debug(
-                        "RolapMember.makeUniqueName: uniqueName=" + uniqueName);
-                }
-            }
-        }
+    /** Call this very sparingly. */
+    protected void setUniqueName(String string) {
+        this.uniqueName = string;
     }
 
-    protected void setUniqueName(Object key) {
+    /** Call this very sparingly. */
+    protected String computeUniqueName(Object key) {
         String name = keyToString(key);
 
         // Drop the '[All Xxxx]' segment in regular members.
@@ -218,37 +473,101 @@ public class RolapMemberBase
         // as calculated, but do have a data member).
         if (parentMember == null
             || (parentMember.isAll()
-                && (!isCalculated()
-                    || this instanceof VisualTotalsFunDef.VisualTotalMember
-                    || getDataMember() != null)))
+            && (!isCalculated()
+            || this instanceof VisualTotalsFunDef.VisualTotalMember
+            || getDataMember() != null)))
         {
-            final RolapHierarchy hierarchy = getHierarchy();
-            final Dimension dimension = hierarchy.getDimension();
-            final RolapLevel level = getLevel();
-            if (dimension.getDimensionType() != null
-                && (dimension.getDimensionType().equals(
-                    DimensionType.MeasuresDimension)
-                && hierarchy.getName().equals(dimension.getName())))
+            final RolapCubeLevel level = getLevel();
+            final RolapCubeHierarchy hierarchy = level.cubeHierarchy;
+            final RolapCubeDimension dimension = hierarchy.getDimension();
+            if (dimension.getDimensionType()
+                == org.olap4j.metadata.Dimension.Type.MEASURE
+                && hierarchy.getName().equals(dimension.getName()))
             {
                 // Kludge to ensure that calc members are called
                 // [Measures].[Foo] not [Measures].[Measures].[Foo]. We can
                 // remove this code when we revisit the scheme to generate
                 // member unique names.
-                this.uniqueName = Util.makeFqName(dimension, name);
+                return Util.makeFqName(dimension, name);
             } else {
                 if (name.equals(level.getName())) {
-                    this.uniqueName =
+                    return
                         Util.makeFqName(
                             Util.makeFqName(
                                 hierarchy.getUniqueName(),
                                 level.getName()),
                             name);
                 } else {
-                    this.uniqueName = Util.makeFqName(hierarchy, name);
+                    return Util.makeFqName(hierarchy, name);
                 }
             }
         } else {
-            this.uniqueName = Util.makeFqName(parentMember, name);
+            return Util.makeFqName(parentMember, name);
+        }
+    }
+
+    /** Fast and simple way to derive unique name, if you know parent member is
+     * not null. */
+    protected static String deriveUniqueName(
+        RolapMember parentMember,
+        String name)
+    {
+        // Should call special
+        assert parentMember != null && !parentMember.isAll();
+        assert name != null;
+        return Util.makeFqName(parentMember, name);
+    }
+
+    /** More complex way to derive unique name if parent member might be null
+     * or the all member.
+     *
+     * @param parentMember Parent member
+     * @param level Level
+     * @param name Member name
+     * @param calc Whether calculated (pass false if member of a parent-child
+     *             hierarchy or a visual total member)
+     * @return Unique name of member
+     */
+    public static String deriveUniqueName(
+        RolapMember parentMember,
+        RolapCubeLevel level,
+        String name,
+        boolean calc)
+    {
+        assert name != null;
+
+        return Util.makeFqName(
+            deriveRootUniqueName(parentMember, level, name, calc),
+            name);
+    }
+
+    private static OlapElement deriveRootUniqueName(
+        RolapMember parentMember,
+        RolapLevel level,
+        String name,
+        boolean calc)
+    {
+        // Drop the '[All Xxxx]' segment in regular members.
+        // Keep the '[All Xxxx]' segment in the 'all' member.
+        // Keep the '[All Xxxx]' segment in calc members.
+        // Drop it in visual-totals and parent-child members (which are flagged
+        // as calculated, but do have a data member).
+        if (parentMember == null || (parentMember.isAll() && !calc)) {
+            final RolapHierarchy hierarchy = level.getHierarchy();
+            final RolapDimension dimension = hierarchy.getDimension();
+            if (dimension.isMeasures()) {
+                // Kludge to ensure that calc members are called
+                // [Measures].[Foo] not [Measures].[Measures].[Foo]. We can
+                // remove this code when we revisit the scheme to generate
+                // member unique names.
+                return dimension;
+            } else if (name.equals(level.getName())) {
+                return level;
+            } else {
+                return hierarchy;
+            }
+        } else {
+            return parentMember;
         }
     }
 
@@ -257,8 +576,12 @@ public class RolapMemberBase
     }
 
     public String getName() {
+<<<<<<< HEAD
         final Object name =
             getPropertyValue(Property.NAME.name);
+=======
+        final String name = (String) getPropertyValue(Property.NAME);
+>>>>>>> upstream/4.0
         return (name != null)
             ? String.valueOf(name)
             : keyToString(key);
@@ -268,51 +591,38 @@ public class RolapMemberBase
         throw new Error("unsupported");
     }
 
+    public final void setProperty(String propertyName, Object value) {
+        Property property = lookupProperty(propertyName, true);
+        if (property != null) {
+            setProperty(property, value);
+        }
+    }
+
     /**
      * Sets a property of this member to a given value.
      *
      * <p>WARNING: Setting system properties such as "$name" may have nasty
      * side-effects.
      */
-    public synchronized void setProperty(String name, Object value) {
-        if (name.equals(Property.CAPTION.name)) {
-            setCaption((String)value);
-            return;
-        }
-
-        if (mapPropertyNameToValue.isEmpty()) {
-            // the empty map is shared and immutable; create our own
-            PropertyValueMapFactory factory =
-                PropertyValueMapFactoryFactory.getPropertyValueMapFactory();
-            mapPropertyNameToValue = factory.create(this);
-        }
-        if (name.equals(Property.NAME.name)) {
-            if (value == null) {
-                value = RolapUtil.mdxNullLiteral();
-            }
-            setUniqueName(value);
-        }
-
-        if (name.equals(Property.MEMBER_ORDINAL.name)) {
+    public synchronized void setProperty(Property property, Object value) {
+        assert property != Property.NAME;
+        if (property == Property.MEMBER_ORDINAL) {
             String ordinal = (String) value;
             if (ordinal.startsWith("\"") && ordinal.endsWith("\"")) {
                 ordinal = ordinal.substring(1, ordinal.length() - 1);
             }
             final double d = Double.parseDouble(ordinal);
             setOrdinal((int) d);
+            if (isMeasure()) {
+                setOrderKey((int) d);
+            }
         }
 
-        mapPropertyNameToValue.put(name, value);
+        larder = Larders.set(larder, property, value);
     }
 
-    public Object getPropertyValue(String propertyName) {
-        return getPropertyValue(propertyName, true);
-    }
-
-    public Object getPropertyValue(String propertyName, boolean matchCase) {
-        Property property = Property.lookup(propertyName, matchCase);
+    public Object getPropertyValue(Property property) {
         if (property != null) {
-            Schema schema;
             Member parentMember;
             List<RolapMember> list;
             switch (property.ordinal) {
@@ -323,6 +633,9 @@ public class RolapMemberBase
 
             case Property.CAPTION_ORDINAL:
                 return getCaption();
+
+            case Property.DESCRIPTION_ORDINAL:
+                return getDescription();
 
             case Property.CONTRIBUTING_CHILDREN_ORDINAL:
                 list = new ArrayList<RolapMember>();
@@ -335,8 +648,7 @@ public class RolapMemberBase
                 break;
 
             case Property.SCHEMA_NAME_ORDINAL:
-                schema = getHierarchy().getDimension().getSchema();
-                return schema.getName();
+                return getHierarchy().getDimension().getSchema().getName();
 
             case Property.CUBE_NAME_ORDINAL:
                 // TODO: can't go from member to cube cube yet
@@ -374,8 +686,7 @@ public class RolapMemberBase
 
             case Property.CHILDREN_CARDINALITY_ORDINAL:
                 return Locus.execute(
-                    ((RolapSchema) level.getDimension().getSchema())
-                        .getInternalConnection(),
+                    level.getDimension().getSchema().getInternalConnection(),
                     "Member.CHILDREN_CARDINALITY",
                     new Locus.Action<Integer>() {
                         public Integer execute() {
@@ -427,32 +738,51 @@ public class RolapMemberBase
                 // fall through
             }
         }
-        return getPropertyFromMap(propertyName, matchCase);
+        return getPropertyFromMap(property);
     }
 
     /**
      * Returns the value of a property by looking it up in the property map.
      *
-     * @param propertyName Name of property
-     * @param matchCase Whether to match name case-sensitive
+     * @param property Property
      * @return Property value
      */
-    protected Object getPropertyFromMap(
-        String propertyName,
-        boolean matchCase)
-    {
+    protected Object getPropertyFromMap(Property property) {
         synchronized (this) {
-            if (matchCase) {
-                return mapPropertyNameToValue.get(propertyName);
-            } else {
-                for (String key : mapPropertyNameToValue.keySet()) {
-                    if (key.equalsIgnoreCase(propertyName)) {
-                        return mapPropertyNameToValue.get(key);
-                    }
-                }
-                return null;
+            return larder.get(property);
+        }
+    }
+
+    public String getLocalized(LocalizedProperty prop, Locale locale) {
+        final List<Larders.Resource> resources = getResources();
+        if (resources != null) {
+            final String resource =
+                Larders.Resource.lookup(prop, locale, resources);
+            if (resource != null) {
+                return resource;
             }
         }
+        return Larders.get(this, getLarder(), prop, locale);
+    }
+
+    /**
+     * Attempts to retrieve resources defined in the cube namespace
+     * first, falling back to the shared resource if not found.
+     */
+    private List<Larders.Resource> getResources() {
+        // first find the resourceMap.  If the map associated
+        // with the RolapCubeLevel is null, try
+        // the RolapLevel.
+        Map<String, List<Larders.Resource>> map =
+            level.resourceMap != null ? level.resourceMap
+                : level.getRolapLevel().resourceMap;
+        if (map != null) {
+            List<Larders.Resource> resource =
+                map.get(getCube() + "." + uniqueName + ".member");
+            return resource != null ? resource
+                : map.get(uniqueName + ".member");
+        }
+        return null;
     }
 
     protected boolean childLevelHasApproxRowCount() {
@@ -460,33 +790,38 @@ public class RolapMemberBase
             > Integer.MIN_VALUE;
     }
 
-    /**
-     * @deprecated Use {@link #isAll}; will be removed in mondrian-4.0
-     */
-    public boolean isAllMember() {
-        return getLevel().getHierarchy().hasAll()
-                && getLevel().getDepth() == 0;
-    }
-
     public Property[] getProperties() {
         return getLevel().getInheritedProperties();
     }
 
+    /**
+     * Returns the ordinal of this member within its hierarchy.
+     * The default implementation returns -1.
+     */
     public int getOrdinal() {
         return ordinal;
     }
 
+    /**
+     * Returns the order key of this member among its siblings.
+     * The default implementation returns null.
+     */
     public Comparable getOrderKey() {
         return orderKey;
     }
 
-    void setOrdinal(int ordinal) {
+    public void setOrdinal(int ordinal) {
         if (this.ordinal == -1) {
             this.ordinal = ordinal;
         }
     }
 
-    void setOrderKey(Comparable orderKey) {
+    public void setOrderKey(Comparable orderKey) {
+        if (!level.isMeasure()) {
+            assert arity(orderKey) == level.getOrderByKeyArity();
+        } else {
+            assert arity(orderKey) == 1;
+        }
         this.orderKey = orderKey;
     }
 
@@ -494,8 +829,47 @@ public class RolapMemberBase
         this.ordinal = -1;
     }
 
-    public Object getKey() {
+    public Comparable getKey() {
         return this.key;
+    }
+
+    // implement RolapMember
+    public Comparable getKeyCompact() {
+        return this.key;
+    }
+
+    public List<Comparable> getKeyAsList() {
+        return asList(getKey());
+    }
+
+    private static List<Comparable> asList(Comparable key) {
+        if (key instanceof List) {
+            return (List<Comparable>) key;
+        } else {
+            return Collections.singletonList(key);
+        }
+    }
+
+    public Object[] getKeyAsArray() {
+        return asArray(getKey());
+    }
+
+    private static Object[] asArray(Object key) {
+        if (key == null) {
+            return EMPTY_OBJECT_ARRAY;
+        } else if (key instanceof List) {
+            return ((List) key).toArray();
+        } else {
+            return new Object[] {key};
+        }
+    }
+
+    private static int arity(Object key) {
+        if (key instanceof List) {
+            return ((List<Object>) key).size();
+        } else {
+            return 1;
+        }
     }
 
     /**
@@ -512,11 +886,28 @@ public class RolapMemberBase
      * @return -1 if this is less, 0 if this is the same, 1 if this is greater
      */
     public int compareTo(Object o) {
+<<<<<<< HEAD
         RolapMemberBase other = (RolapMemberBase)o;
         assert this.key != null && other.key != null;
 
         if (this.key == RolapUtil.sqlNullValue
             && other.key == RolapUtil.sqlNullValue)
+=======
+        RolapMember other = (RolapMember)o;
+        if (this.key == null || other.getKey() == null) {
+            if (this.key != null) {
+                return 1; // not null is greater than null
+            }
+            if (other.getKey() != null) {
+                return -1; // null is less than not null
+            }
+            // compare by unique name, if both keys are null
+            return this.getUniqueName().compareTo(other.getUniqueName());
+        }
+        // compare by unique name, if one ore both members are null
+        if (this.key == RolapUtil.sqlNullValue
+            || other.getKey() == RolapUtil.sqlNullValue)
+>>>>>>> upstream/4.0
         {
             // if both keys are null, they are equal.
             // compare by unique name.
@@ -537,14 +928,14 @@ public class RolapMemberBase
         //  String, Double, Integer should be possible
         //  any key object should be "Comparable"
         // anyway - keys should be of the same class
-        if (this.key.getClass().equals(other.key.getClass())) {
+        if (this.key.getClass().equals(other.getKey().getClass())) {
             if (this.key instanceof String) {
                 // use a special case sensitive compare name which
                 // first compares w/o case, and if 0 compares with case
                 return Util.caseSensitiveCompareName(
-                    (String) this.key, (String) other.key);
+                    (String) this.key, (String) other.getKey());
             } else {
-                return Util.compareKey(this.key, other.key);
+                return Util.compareKey(this.key, other.getKey());
             }
         }
         // Compare by unique name in case of different key classes.
@@ -555,7 +946,7 @@ public class RolapMemberBase
     }
 
     public boolean isHidden() {
-        final RolapLevel rolapLevel = getLevel();
+        final RolapCubeLevel rolapLevel = getLevel();
         switch (rolapLevel.getHideMemberCondition()) {
         case Never:
             return false;
@@ -587,26 +978,31 @@ public class RolapMemberBase
     }
 
     public int getDepth() {
-        return getLevel().getDepth();
+        if (parentMember != null) {
+            return getParentMember().getDepth() + 1;
+        } else {
+            return getLevel().getDepth();
+        }
     }
 
-    public String getPropertyFormattedValue(String propertyName) {
+    public String getPropertyFormattedValue(Property property) {
+        Object val = getPropertyValue(property);
+
         // do we have a formatter ? if yes, use it
-        Property[] props = getLevel().getProperties();
-        Property prop = null;
-        for (Property prop1 : props) {
-            if (prop1.getName().equals(propertyName)) {
-                prop = prop1;
-                break;
-            }
-        }
-        PropertyFormatter pf;
-        if (prop != null && (pf = prop.getFormatter()) != null) {
-            return pf.formatProperty(
-                this, propertyName,
-                getPropertyValue(propertyName));
+        PropertyFormatter pf = property.getFormatter();
+        if (pf != null) {
+            return pf.formatProperty(this, property.name, val);
         }
 
+        if (val != null && val instanceof Number) {
+            // Numbers are a special case. We don't want any
+            // scientific notations, so we wrap in a BigDecimal
+            // before calling toString. This is cheap to perform here
+            // because this method only gets called by the GUI.
+            val = new BigDecimal(((Number)val).doubleValue());
+        }
+
+<<<<<<< HEAD
         Object val = getPropertyValue(propertyName);
 
         if (val != null && val instanceof Number) {
@@ -617,18 +1013,22 @@ public class RolapMemberBase
             val = new BigDecimal(((Number)val).doubleValue());
         }
 
+=======
+>>>>>>> upstream/4.0
         return (val == null)
             ? ""
             : val.toString();
     }
 
     public boolean isParentChildLeaf() {
-        if (isParentChildLeaf == null) {
-            isParentChildLeaf = getLevel().isParentChild()
+        if ((flags & LEAF_MASK) == 0) {
+            boolean isParentChildLeaf = getLevel().isParentChild()
                 && getDimension().getSchema().getSchemaReader()
                 .getMemberChildren(this).size() == 0;
+            flags |= isParentChildLeaf ? LEAF_YES : LEAF_NO;
+            return isParentChildLeaf;
         }
-        return isParentChildLeaf;
+        return (flags & LEAF_MASK) == LEAF_YES;
     }
 
     /**
@@ -655,8 +1055,7 @@ public class RolapMemberBase
             // Getting the members by Level is the fastest way that I could
             // find for getting all of a hierarchy's members.
             List<List<Member>> list = new ArrayList<List<Member>>();
-            Level[] levels = hierarchy.getLevels();
-            for (Level level : levels) {
+            for (Level level : hierarchy.getLevelList()) {
                 List<Member> members =
                     schemaReader.getLevelMembers(level, true);
                 if (members != null) {
@@ -678,9 +1077,8 @@ public class RolapMemberBase
         Hierarchy hierarchy)
     {
         int cardinality = 0;
-        Level[] levels = hierarchy.getLevels();
-        for (Level level1 : levels) {
-            cardinality += schemaReader.getLevelCardinality(level1, true, true);
+        for (Level level : hierarchy.getLevelList()) {
+            cardinality += schemaReader.getLevelCardinality(level, true, true);
         }
         return cardinality;
     }
@@ -711,6 +1109,7 @@ public class RolapMemberBase
         SchemaReader schemaReader,
         Member seedMember)
     {
+<<<<<<< HEAD
         seedMember = RolapUtil.strip((RolapMember) seedMember);
 
          // The following are times for executing different set ordinals
@@ -728,6 +1127,22 @@ public class RolapMemberBase
          //    Bottom-up/Top-down
          //       Foodmart: 17ms
          //       Large Data set: 4241ms
+=======
+        // The following are times for executing different set ordinals
+        // algorithms for both the FoodMart Sales cube/Store dimension
+        // and a Large Data set with a dimension with about 250,000 members.
+        //
+        // Times:
+        //    Original setOrdinals Top-down
+        //       Foodmart: 63ms
+        //       Large Data set: 651865ms
+        //    Calling getAllMembers before calling original setOrdinals Top-down
+        //       Foodmart: 32ms
+        //       Large Data set: 73880ms
+        //    Bottom-up/Top-down
+        //       Foodmart: 17ms
+        //       Large Data set: 4241ms
+>>>>>>> upstream/4.0
         long start = System.currentTimeMillis();
 
         try {
@@ -895,18 +1310,26 @@ public class RolapMemberBase
      * like it to be "20319".
      */
     protected static String keyToString(Object key) {
-        String name;
-        if (key == null || RolapUtil.sqlNullValue.equals(key)) {
-            name = RolapUtil.mdxNullLiteral();
+        if (key == null || key == RolapUtil.sqlNullValue) {
+            return RolapUtil.mdxNullLiteral();
+        } else if (key instanceof List) {
+            List list = (List) key;
+            return keyToString(list.get(list.size() - 1));
         } else if (key instanceof Id.NameSegment) {
-            name = ((Id.NameSegment) key).name;
+            return ((Id.NameSegment) key).name;
+        } else if (key instanceof Number) {
+            String name = key.toString();
+            if (name.endsWith(".0")) {
+                name = name.substring(0, name.length() - 2);
+            }
+            return name;
         } else {
-            name = key.toString();
+            return key.toString();
         }
-        if ((key instanceof Number) && name.endsWith(".0")) {
-            name = name.substring(0, name.length() - 2);
-        }
-        return name;
+    }
+
+    public Map<String, Annotation> getAnnotationMap() {
+        return getLarder().getAnnotationMap();
     }
 
     /**
@@ -928,7 +1351,7 @@ public class RolapMemberBase
          * @param member Member
          * @return the Map instance to store property/value pairs
          */
-        Map<String, Object> create(Member member);
+        Map<Property, Object> create(Member member);
     }
 
     /**
@@ -961,79 +1384,29 @@ public class RolapMemberBase
          * @return {@inheritDoc}
          */
         @SuppressWarnings({"unchecked"})
-        public Map<String, Object> create(Member member) {
+        public Map<Property, Object> create(Member member) {
             assert member != null;
             Property[] props = member.getProperties();
             if ((member instanceof RolapMeasure)
                 || (props == null)
                 || (props.length > 3))
             {
-                return new HashMap<String, Object>();
+                return new HashMap<Property, Object>();
             } else {
                 return new Flat3Map();
             }
         }
     }
 
-    /**
-     * <p>Creates the PropertyValueMapFactory which is in turn used
-     * to create property-value maps for member properties.</p>
-     *
-     * <p>The name of the PropertyValueMapFactory is drawn from
-     * {@link mondrian.olap.MondrianProperties#PropertyValueMapFactoryClass}
-     * in mondrian.properties.  If unset, it defaults to
-     * {@link RolapMemberBase.DefaultPropertyValueMapFactory}. </p>
-     */
-    public static final class PropertyValueMapFactoryFactory
-        extends ObjectFactory.Singleton<PropertyValueMapFactory>
-    {
-        /**
-         * Single instance of the <code>PropertyValueMapFactory</code>.
-         */
-        private static final PropertyValueMapFactoryFactory factory;
-        static {
-            factory = new PropertyValueMapFactoryFactory();
-        }
-
-        /**
-         * Access the <code>PropertyValueMapFactory</code> instance.
-         *
-         * @return the <code>Map</code>.
-         */
-        public static PropertyValueMapFactory getPropertyValueMapFactory() {
-            return factory.getObject();
-        }
-
-        /**
-         * The constructor for the <code>PropertyValueMapFactoryFactory</code>.
-         * This passes the <code>PropertyValueMapFactory</code> class to the
-         * <code>ObjectFactory</code> base class.
-         */
-        @SuppressWarnings({"unchecked"})
-        private PropertyValueMapFactoryFactory() {
-            super((Class) PropertyValueMapFactory.class);
-        }
-
-        protected StringProperty getStringProperty() {
-            return MondrianProperties.instance().PropertyValueMapFactoryClass;
-        }
-
-        protected PropertyValueMapFactory getDefault(
-            Class[] parameterTypes,
-            Object[] parameterValues)
-            throws CreationException
-        {
-            return new DefaultPropertyValueMapFactory();
-        }
-    }
-
     public boolean containsAggregateFunction() {
         // searching for agg functions is expensive, so cache result
-        if (containsAggregateFunction == null) {
-            containsAggregateFunction =
+        if ((flags & AGG_FUN_MASK) == 0) {
+            boolean containsAggregateFunction =
                 foundAggregateFunction(getExpression());
+            flags |= containsAggregateFunction ? AGG_FUN_YES : AGG_FUN_NO;
+            return containsAggregateFunction;
         }
-        return containsAggregateFunction;
+        return (flags & AGG_FUN_MASK) == AGG_FUN_YES;
     }
 
     /**

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2011 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.sql;
@@ -15,8 +15,7 @@ import mondrian.mdx.*;
 import mondrian.olap.*;
 import mondrian.olap.Role.RollupPolicy;
 import mondrian.olap.fun.*;
-import mondrian.olap.type.HierarchyType;
-import mondrian.olap.type.Type;
+import mondrian.olap.type.*;
 import mondrian.rolap.*;
 
 import org.apache.log4j.Logger;
@@ -32,7 +31,8 @@ import java.util.*;
 public class CrossJoinArgFactory {
     protected static final Logger LOGGER =
         Logger.getLogger(CrossJoinArgFactory.class);
-    private boolean restrictMemberTypes;
+
+    private final boolean restrictMemberTypes;
 
     public CrossJoinArgFactory(boolean restrictMemberTypes) {
         this.restrictMemberTypes = restrictMemberTypes;
@@ -185,9 +185,9 @@ public class CrossJoinArgFactory {
             return false;
         }
         Member member = ((MemberExpr) arg).getMember();
-        if (member instanceof RolapCalculatedMember) {
+        if (member instanceof CalculatedMember) {
             Exp calcExp =
-                ((RolapCalculatedMember) member).getFormula().getExpression();
+                ((CalculatedMember) member).getFormula().getExpression();
             return ((calcExp instanceof ResolvedFunCall
                 && ((ResolvedFunCall) calcExp).getFunDef()
                 instanceof TupleFunDef))
@@ -226,9 +226,9 @@ public class CrossJoinArgFactory {
     private Exp[] getCalculatedTupleArgs(Exp arg) {
         if (arg instanceof MemberExpr) {
             Member member = ((MemberExpr) arg).getMember();
-            if (member instanceof RolapCalculatedMember) {
+            if (member instanceof CalculatedMember) {
                 Exp formulaExp =
-                    ((RolapCalculatedMember) member)
+                    ((CalculatedMember) member)
                         .getFormula().getExpression();
                 if (formulaExp instanceof ResolvedFunCall) {
                     return ((ResolvedFunCall) formulaExp).getArgs();
@@ -246,9 +246,9 @@ public class CrossJoinArgFactory {
         List<CrossJoinArg> argList = new ArrayList<CrossJoinArg>();
         for (List<RolapMember> memberList : memberLists.values()) {
             if (memberList.size() == countNonLiteralMeasures(args)) {
-                //when the memberList and args list have the same length
-                //it means there must have been a constraint on each measure
-                //for this dimension.
+                // When the memberList and args list have the same length,
+                // it means there must have been a constraint on each measure
+                // for this dimension.
                 final CrossJoinArg cjArg =
                     MemberListCrossJoinArg.create(
                         evaluator,
@@ -465,8 +465,8 @@ public class CrossJoinArgFactory {
         if (member.isCalculated()) {
             return null;
         }
-        RolapLevel level = member.getLevel();
-        level = (RolapLevel) level.getChildLevel();
+        RolapCubeLevel level = member.getLevel();
+        level = level.getChildLevel();
         if (level == null || !level.isSimple()) {
             // no child level
             return null;
@@ -514,7 +514,8 @@ public class CrossJoinArgFactory {
         if (!(args[0] instanceof LevelExpr)) {
             return null;
         }
-        RolapLevel level = (RolapLevel) ((LevelExpr) args[0]).getLevel();
+        final RolapCubeLevel level =
+            (RolapCubeLevel) ((LevelExpr) args[0]).getLevel();
         if (!level.isSimple()) {
             return null;
         }
@@ -541,7 +542,6 @@ public class CrossJoinArgFactory {
         };
     }
 
-
     private static boolean isArgSizeSupported(
         RolapEvaluator evaluator,
         int argSize)
@@ -549,7 +549,7 @@ public class CrossJoinArgFactory {
         boolean argSizeNotSupported = false;
 
         // Note: arg size 0 is accepted as valid CJ argument
-        // This is used to push down the "1 = 0" predicate
+        // This is used to push down the "false" predicate
         // into the emerging CJ so that the entire CJ can
         // be natively evaluated.
 
@@ -565,8 +565,9 @@ public class CrossJoinArgFactory {
     /**
      * Checks for Descendants(&lt;member&gt;, &lt;Level&gt;)
      *
-     * @return an {@link mondrian.rolap.sql.CrossJoinArg} instance describing the Descendants
-     *         function, or null if <code>fun</code> represents something else.
+     * @return an {@link mondrian.rolap.sql.CrossJoinArg} instance describing
+     * the Descendants function, or null if <code>fun</code> represents
+     * something else.
      */
     private CrossJoinArg[] checkDescendants(
         Role role,
@@ -586,18 +587,17 @@ public class CrossJoinArgFactory {
         if (member.isCalculated()) {
             return null;
         }
-        RolapLevel level = null;
+        final RolapCubeLevel level;
         if ((args[1] instanceof LevelExpr)) {
-            level = (RolapLevel) ((LevelExpr) args[1]).getLevel();
+            level = (RolapCubeLevel) ((LevelExpr) args[1]).getLevel();
         } else if (args[1] instanceof Literal) {
-            RolapLevel[] levels = (RolapLevel[])
-                member.getHierarchy().getLevels();
+            List<? extends RolapCubeLevel> levels =
+                member.getHierarchy().getLevelList();
             int currentDepth = member.getDepth();
             Literal descendantsDepth = (Literal) args[1];
             int newDepth = currentDepth + descendantsDepth.getIntValue();
-            if (newDepth < levels.length) {
-                level = levels[newDepth];
-            }
+            assert newDepth < levels.size();
+            level = levels.get(newDepth);
         } else {
             return null;
         }
@@ -790,9 +790,9 @@ public class CrossJoinArgFactory {
      * Check whether the predicate is an IN or IS predicate and can be
      * natively evaluated.
      *
-     * @param evaluator
-     * @param predicateCall
-     * @param exclude
+     * @param evaluator Evaluator
+     * @param predicateCall Call to predicate
+     * @param exclude Whether to exclude
      * @return the array of CrossJoinArg containing the predicate.
      */
     private CrossJoinArg[] checkFilterPredicateInIs(
@@ -846,8 +846,7 @@ public class CrossJoinArgFactory {
         Type currentMemberArgType = currentMemberArg.getType();
 
         // Input to CurremntMember should be either Dimension or Hierarchy type.
-        if (!(currentMemberArgType
-            instanceof mondrian.olap.type.DimensionType
+        if (!(currentMemberArgType instanceof DimensionType
             || currentMemberArgType instanceof HierarchyType))
         {
             return null;

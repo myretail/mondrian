@@ -5,6 +5,10 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2003-2005 Julian Hyde
+<<<<<<< HEAD
+=======
+// Copyright (C) 2005-2013 Pentaho
+>>>>>>> upstream/4.0
 // Copyright (C) 2004-2005 TONBELLER AG
 // Copyright (C) 2005-2012 Pentaho
 // All Rights Reserved.
@@ -125,21 +129,13 @@ public abstract class DelegatingSchemaReader implements SchemaReader {
         int category,
         MatchType matchType)
     {
-        if (MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            return new NameResolver().resolve(
-                parent,
-                Util.toOlap4j(names),
-                failIfNotFound,
-                category,
-                matchType,
-                getNamespaces());
-        }
-        return lookupCompoundInternal(
+        return new NameResolver().resolve(
             parent,
-            names,
+            Util.toOlap4j(names),
             failIfNotFound,
             category,
-            matchType);
+            matchType,
+            getNamespaces());
     }
 
     public List<NameResolver.Namespace> getNamespaces() {

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -13,8 +13,7 @@ package mondrian.rolap;
 import mondrian.olap.*;
 import mondrian.rolap.sql.*;
 
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Creates the right constraint for common tasks.
@@ -22,7 +21,7 @@ import java.util.Set;
  * @author av
  * @since Nov 21, 2005
  */
-public class SqlConstraintFactory {
+public final class SqlConstraintFactory {
 
     static boolean enabled;
 
@@ -35,13 +34,6 @@ public class SqlConstraintFactory {
     private SqlConstraintFactory() {
     }
 
-    private boolean enabled(final Evaluator context) {
-        if (context != null) {
-            return enabled && context.nativeEnabled();
-        }
-        return enabled;
-    }
-
     public static SqlConstraintFactory instance() {
         setNativeNonEmptyValue();
         return instance;
@@ -52,18 +44,30 @@ public class SqlConstraintFactory {
     }
 
     public MemberChildrenConstraint getMemberChildrenConstraint(
-        Evaluator context)
+        RolapEvaluator context)
     {
-        if (!enabled(context)
-            || !SqlContextConstraint.isValidContext(context, false))
+        if (!enabled) {
+            return DefaultMemberChildrenConstraint.instance();
+        }
+        final List<RolapMeasureGroup> measureGroupList =
+            new ArrayList<RolapMeasureGroup>();
+        if (!SqlContextConstraint.checkValidContext(
+                context,
+                true,
+                Collections.<RolapCubeLevel>emptyList(),
+                false,
+                measureGroupList))
         {
             return DefaultMemberChildrenConstraint.instance();
         }
-        return new SqlContextConstraint((RolapEvaluator) context, false);
+        return new SqlContextConstraint(context, measureGroupList, false);
     }
 
-    public TupleConstraint getLevelMembersConstraint(Evaluator context) {
-        return getLevelMembersConstraint(context, null);
+    public TupleConstraint getLevelMembersConstraint(RolapEvaluator context) {
+        // NOTE: Always seems to be called with context == null, except tests.
+        return getLevelMembersConstraint(
+            context,
+            Collections.<RolapCubeLevel>emptyList());
     }
 
     /**
@@ -76,32 +80,38 @@ public class SqlConstraintFactory {
      * @return Constraint
      */
     public TupleConstraint getLevelMembersConstraint(
-        Evaluator context,
-        Level[] levels)
+        RolapEvaluator context,
+        List<RolapCubeLevel> levels)
     {
-        if (context == null) {
+        assert levels != null;
+        if (context == null || !enabled) {
             return DefaultTupleConstraint.instance();
         }
-        if (!enabled(context)) {
-            return DefaultTupleConstraint.instance();
-        }
-        if (!SqlContextConstraint.isValidContext(
-                context, false, levels, false))
+        final List<RolapMeasureGroup> measureGroupList =
+            new ArrayList<RolapMeasureGroup>();
+        if (!SqlContextConstraint.checkValidContext(
+                context,
+                false,
+                levels,
+                false,
+                measureGroupList))
         {
             return DefaultTupleConstraint.instance();
         }
         if (context.isNonEmpty()) {
             Set<CrossJoinArg> joinArgs =
                 new CrossJoinArgFactory(false).buildConstraintFromAllAxes(
-                    (RolapEvaluator) context);
+                    context);
             if (joinArgs.size() > 0) {
                 return new RolapNativeCrossJoin.NonEmptyCrossJoinConstraint(
                     joinArgs.toArray(
                         new CrossJoinArg[joinArgs.size()]),
-                    (RolapEvaluator) context);
+                    context,
+                    measureGroupList);
             }
         }
-        return new SqlContextConstraint((RolapEvaluator) context, false);
+        return new SqlContextConstraint(
+            context, measureGroupList, false);
     }
 
     public MemberChildrenConstraint getChildByNameConstraint(

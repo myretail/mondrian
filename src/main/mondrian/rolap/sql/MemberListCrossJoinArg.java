@@ -5,14 +5,13 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2011 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.sql;
 
 import mondrian.olap.MondrianProperties;
 import mondrian.rolap.*;
-import mondrian.rolap.aggmatcher.AggStar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +22,7 @@ import java.util.List;
  */
 public class MemberListCrossJoinArg implements CrossJoinArg {
     private final List<RolapMember> members;
-    private final RolapLevel level;
+    private final RolapCubeLevel level;
     private final boolean restrictMemberTypes;
     private final boolean hasCalcMembers;
     private final boolean hasNonCalcMembers;
@@ -31,7 +30,7 @@ public class MemberListCrossJoinArg implements CrossJoinArg {
     private final boolean exclude;
 
     private MemberListCrossJoinArg(
-        RolapLevel level,
+        RolapCubeLevel level,
         List<RolapMember> members,
         boolean restrictMemberTypes,
         boolean hasCalcMembers,
@@ -55,7 +54,7 @@ public class MemberListCrossJoinArg implements CrossJoinArg {
         boolean argSizeNotSupported = false;
 
         // Note: arg size 0 is accepted as valid CJ argument
-        // This is used to push down the "1 = 0" predicate
+        // This is used to push down the "false" predicate
         // into the emerging CJ so that the entire CJ can
         // be natively evaluated.
 
@@ -102,8 +101,8 @@ public class MemberListCrossJoinArg implements CrossJoinArg {
             return null;
         }
 
-        RolapLevel level = null;
-        RolapLevel nullLevel = null;
+        RolapCubeLevel level = null;
+        RolapCubeLevel nullLevel = null;
         boolean hasCalcMembers = false;
         boolean hasNonCalcMembers = false;
 
@@ -198,7 +197,7 @@ public class MemberListCrossJoinArg implements CrossJoinArg {
         return false;
     }
 
-    public RolapLevel getLevel() {
+    public RolapCubeLevel getLevel() {
         return level;
     }
 
@@ -213,18 +212,17 @@ public class MemberListCrossJoinArg implements CrossJoinArg {
             return hasCalcMembers && !hasNonCalcMembers;
         } else {
             // For non-join usage, always prefer non-native
-            // eval, since the members are already known.
+            // evaluation, since the members are already known.
             return true;
         }
     }
 
     public void addConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar)
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet)
     {
         SqlConstraintUtils.addMemberConstraint(
-            sqlQuery, baseCube, aggStar,
+            queryBuilder, starSet,
             members, restrictMemberTypes, true, exclude);
     }
 

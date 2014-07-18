@@ -4,12 +4,13 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2012 Pentaho
+// Copyright (C) 2006-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.util;
 
-import mondrian.olap.MondrianProperties;
+import mondrian.olap.*;
+import mondrian.rolap.RolapSchemaLoader;
 import mondrian.spi.Dialect;
 
 import org.apache.log4j.Logger;
@@ -51,11 +52,6 @@ public class Bug {
      * we want to fix, log a bug, add a new {@code BugMondrianXxxFixed} constant
      * to this class, and make the test case conditional on that constant
      * instead.
-     *
-     * <p>See also the property
-     * {@link mondrian.olap.MondrianProperties#SsasCompatibleNaming},
-     * which allows the user to choose certain behaviors which are compatible
-     * with SSAS 2005 but incompatible with Mondrian's previous behavior.
      */
     public static final boolean Ssas2005Compatible = false;
 
@@ -65,6 +61,7 @@ public class Bug {
      * It will always return false.
      */
     public static boolean olap4jUpgrade(String reason) {
+        Util.discard(reason);
         return false;
     }
 
@@ -75,16 +72,6 @@ public class Bug {
      * is fixed.
      */
     public static final boolean BugMondrian229Fixed = false;
-
-    // Properties relating to checkin 7641.
-    // This is part of the junit test Checkin_7641 that
-    // shows that there is a difference when the default
-    // member is not the one used in an axis.
-    // When Checkin 7641 is resolved, then this System property access and
-    // boolean should go away.
-    // (What's the bug associated with this??)
-
-    public static final boolean Checkin7641UseOptimizer = false;
 
     /**
      * Whether
@@ -100,22 +87,6 @@ public class Bug {
      * is fixed.
      */
     public static final boolean BugMondrian446Fixed = false;
-
-    /**
-     * Whether
-     * <a href="http://jira.pentaho.com/browse/MONDRIAN-313">bug MONDRIAN-313,
-     * "Predicate references RolapStar.Column when used in AggStar"</a>
-     * is fixed.
-     */
-    public static final boolean BugMondrian313Fixed = false;
-
-    /**
-     * Whether
-     * <a href="http://jira.pentaho.com/browse/MONDRIAN-314">bug MONDRIAN-314,
-     * "Predicate sometimes has null RolapStar.Column"</a>
-     * is fixed.
-     */
-    public static final boolean BugMondrian314Fixed = false;
 
     /**
      * Whether
@@ -233,10 +204,36 @@ public class Bug {
 
     /**
      * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-941">bug MONDRIAN-951,
+     * "Support for member unique names containing primary keys (e.g.
+     * [Customer].[Customer Id].&amp;1234)"</a> is fixed.
+     */
+    public static final boolean BugMondrian951Fixed = false;
+
+    /**
+     * Whether
      * <a href="http://jira.pentaho.com/browse/MONDRIAN-1001">bug MONDRIAN-1001,
      * "Tests disabled due to property trigger issues"</a> is fixed.
      */
     public static final boolean BugMondrian1001Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1315">MONDRIAN-1315</a>
+     * is fixed.
+     */
+    public static final boolean BugMondrian1315Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1173">bug MONDRIAN-1173,
+     * "Revisit member ordinals in mondrian version 4"</a>
+     * is fixed.
+     *
+     * <p>In a few cases, members come out sorted wrong. Not assigning ordinal
+     * correctly?</p>
+     */
+    public static final boolean BugMondrian1173Fixed = false;
 
     /**
      * Whether RolapCubeMember and RolapMember have been fully segregated; any
@@ -284,6 +281,171 @@ public class Bug {
             && !Logger.getLogger("mondrian.test.PerformanceTest")
                 .isDebugEnabled();
     }
+
+    // Mondrian 4 tasks
+
+    private static final boolean Enable = false;
+
+    /**
+     * Tests that call TestContext.createSubstitutingCube. 66 uses.
+     */
+    public static final boolean ModifiedSchema = Enable;
+
+    /**
+     * Cube [Store] not found
+     */
+    public static final boolean CubeStoreFeature = Enable;
+
+     /**
+     * Layout wrong cardinality (error 'invalid key ... for level')
+     */
+     public static final boolean LayoutWrongCardinalty = Enable;
+
+    /**
+     * Cube [Sales Ragged] not found
+     */
+    public static final boolean CubeRaggedFeature = Enable;
+
+    /**
+     * Visual totals:
+     *  NPE in RolapSchemaReader.getMemberChildren
+     *  or NPE in Key.isValid
+     */
+    public static final boolean VisualTotalsFixed = Enable;
+
+    /**
+     * UnsupportedOperationException in getBaseStarKeyColumn
+     */
+    public static final boolean BaseStarKeyColumnFixed = Enable;
+
+    /**
+     * Whether the bug is fixed that causes upgrade of virtual cubes to fail
+     * if calculated members or sets depend on dimensions and members in their
+     * base cube that are not exposed in the virtual cube.
+     */
+    public static final boolean VirtualCubeConversionMissesHiddenFixed = true;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1324">bug MONDRIAN-1324,
+     * Using the same table in multiple dimensions yields incorrect results
+     * </a> is fixed.
+     */
+    public static final boolean BugMondrian1324Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1329">bug MONDRIAN-1329,
+     * Level Types for TimeHalfYears do not work
+     * </a> is fixed.
+     */
+    public static final boolean BugMondrian1329Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1330">bug MONDRIAN-1330,
+     * NumberFormatException when using ColumnDef with binary value
+     * </a> is fixed.
+     */
+    public static final boolean BugMondrian1330Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1332">bug MONDRIAN-1333,
+     * Levels should be functionally dependent on the level immediately below
+     * </a> is fixed.
+     */
+    public static final boolean BugMondrian1333Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1281">bug MONDRIAN-1281,
+     * "custom role injection" </a> is fixed.
+     */
+    public static final boolean BugMondrian1281Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1335">bug MONDRIAN-1335,
+     * 3-way snowflake yielding incorrect results
+     * </a> is fixed.
+     */
+    public static final boolean BugMondrian1335Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1416">bug MONDRIAN-1416,
+     * Inline calculated members defined as a child of an existing member
+     * cannot be referenced in the mdx query
+     * </a> is fixed.
+     */
+    public static final boolean BugMondrian1420Fixed = false;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1420">bug MONDRIAN-1420,
+     * Add support for native evaluation of compound slicers to Mondrian 4.0
+     * </a> is fixed.
+     */
+    public static final boolean BugMondrian1416Fixed = false;
+
+    /**
+     * Whether
+     * <a href="https://sourceforge.net/p/olap4j/feature-requests/31/">bug
+     * OLAP4J-31, "Schema and Catalog should implement MetadataElement"</a> is
+     * fixed.
+     */
+    public static final boolean BugOlap4j31Fixed = false;
+
+    /**
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1338">Bug 1338</a><br/>
+     * Mondrian isn't optimizing member fetching according to query constraints
+     */
+    public static final boolean FetchMembersOptimizationFixed = Enable;
+
+    /**
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1337">Bug 1337</a><br/>
+     * Handling of ReferenceLink schema elements is not yet implemented
+     * in {@link RolapSchemaLoader}
+     */
+    public static final boolean ReferenceLinkNotImplementedFixed = Enable;
+
+    /**
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1339">Bug 1339</a><br/>
+     * Childless snowflake members are always being filtered irregardless of
+     * FilterChildlessSnowflakeMembers's value
+     */
+    public static final boolean ShowChildlessSnowflakeMembersFixed = Enable;
+
+    /**
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1340">Bug 1340</a><br/>
+     * MemberCacheHelper#mapMemberToChildren not populated when reading level
+     * members due to SqlTupleReader.Target#members never being set
+     */
+    public static final boolean PopulateChildrenCacheOnLevelMembersFixed =
+        Enable;
+
+    /**
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1375">Bug 1375:</a><br/>
+     * AggregationManager and native set functions not using measure groups
+     * for aggregates in lagunitas.
+     */
+    public static final boolean BugMondrian1375Fixed = Enable;
+
+
+    /**
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1372">Bug 1372:</a><br/>
+     * SqlTupleReader doesn't use aggregate tables in lagunitas
+     */
+    public static final boolean BugMondrian1372Fixed = Enable;
+
+    /**
+     * Whether
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1502">bug MONDRIAN-1502,
+     * Parent-child hierarchies don't use closure tables in lagunitas</a> is
+     * fixed.
+     */
+    public static final boolean BugMondrian1502Fixed = false;
 }
 
 // End Bug.java

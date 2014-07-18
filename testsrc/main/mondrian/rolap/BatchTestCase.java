@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -19,20 +19,16 @@ import mondrian.server.Locus;
 import mondrian.spi.Dialect;
 import mondrian.test.*;
 
-import org.apache.log4j.Logger;
-
 import org.eigenbase.util.property.IntegerProperty;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Future;
 
 /**
  * To support all <code>Batch</code> related tests.
  *
  * @author Thiyagu
-  * @since 06-Jun-2007
+ * @since 06-Jun-2007
  */
 public class BatchTestCase extends FoodMartTestCase {
 
@@ -43,129 +39,148 @@ public class BatchTestCase extends FoodMartTestCase {
     public BatchTestCase() {
     }
 
-    protected final String tableTime = "time_by_day";
-    protected final String tableProductClass = "product_class";
-    protected final String tableCustomer = "customer";
-    protected final String fieldYear = "the_year";
-    protected final String fieldProductFamily = "product_family";
-    protected final String fieldProductDepartment = "product_department";
-    protected final String[] fieldValuesYear = {"1997"};
-    protected final String[] fieldValuesProductFamily = {
-        "Food", "Non-Consumable", "Drink"
-    };
-    protected final String[] fieldValueProductDepartment = {
-        "Alcoholic Beverages", "Baked Goods", "Baking Goods",
-         "Beverages", "Breakfast Foods", "Canned Foods",
-        "Canned Products", "Carousel", "Checkout", "Dairy",
-        "Deli", "Eggs", "Frozen Foods", "Health and Hygiene",
-        "Household", "Meat", "Packaged Foods", "Periodicals",
-        "Produce", "Seafood", "Snack Foods", "Snacks",
-        "Starchy Foods"
-    };
-    protected final String[] fieldValuesGender = {"M", "F"};
-    protected final String cubeNameSales = "Sales";
-    protected final String measureUnitSales = "[Measures].[Unit Sales]";
-    protected String fieldGender = "gender";
+    protected static final String tableTime = "time_by_day";
+    protected static final String tableProductClass = "product_class";
+    protected static final String tableCustomer = "customer";
+    protected static final String fieldYear = "the_year";
+    protected static final String fieldProductFamily = "product_family";
+    protected static final String fieldProductDepartment = "product_department";
+    protected static final List<String> fieldValuesYear = list("1997");
+    protected static final List<String> fieldValuesProductFamily =
+        list("Food", "Non-Consumable", "Drink");
+    protected static final List<String> fieldValueProductDepartment =
+        list(
+            "Alcoholic Beverages", "Baked Goods", "Baking Goods",
+            "Beverages", "Breakfast Foods", "Canned Foods",
+            "Canned Products", "Carousel", "Checkout", "Dairy",
+            "Deli", "Eggs", "Frozen Foods", "Health and Hygiene",
+            "Household", "Meat", "Packaged Foods", "Periodicals",
+            "Produce", "Seafood", "Snack Foods", "Snacks",
+            "Starchy Foods");
+    protected static final List<String> fieldValuesGender = list("M", "F");
+    protected static final String cubeNameSales = "Sales";
+    protected static final String measureUnitSales = "[Measures].[Unit Sales]";
+    protected static String fieldGender = "gender";
 
-    protected BatchLoader.Batch createBatch(
+    protected static BatchLoader.Batch createBatch(
+        TestContext testContext,
         BatchLoader fbcr,
-        String[] tableNames, String[] fieldNames, String[][] fieldValues,
-        String cubeName, String measure)
+        List<String> tableNames,
+        List<String> fieldNames,
+        List<List<String>> fieldValues,
+        String cubeName,
+        String measure)
     {
         List<String> values = new ArrayList<String>();
-        for (int i = 0; i < tableNames.length; i++) {
-            values.add(fieldValues[i][0]);
+        for (int i = 0; i < tableNames.size(); i++) {
+            values.add(fieldValues.get(i).get(0));
         }
         BatchLoader.Batch batch = fbcr.new Batch(
             createRequest(
-                cubeName, measure, tableNames, fieldNames,
-                values.toArray(new String[values.size()])));
+                testContext, cubeName, measure, tableNames, fieldNames,
+                values));
 
         addRequests(
-            batch, cubeName, measure, tableNames, fieldNames,
+            testContext, batch, cubeName, measure, tableNames, fieldNames,
             fieldValues, new ArrayList<String>(), 0);
         return batch;
     }
 
-    protected BatchLoader.Batch createBatch(
+    protected static BatchLoader.Batch createBatch(
+        TestContext testContext,
         BatchLoader fbcr,
-        String[] tableNames, String[] fieldNames, String[][] fieldValues,
-        String cubeName, String measure, CellRequestConstraint constraint)
+        List<String> tableNames,
+        List<String> fieldNames,
+        List<List<String>> fieldValues,
+        String cubeName,
+        String measure,
+        CellRequestConstraint constraint)
     {
         List<String> values = new ArrayList<String>();
-        for (int i = 0; i < tableNames.length; i++) {
-            values.add(fieldValues[i][0]);
+        for (int i = 0; i < tableNames.size(); i++) {
+            values.add(fieldValues.get(i).get(0));
         }
         BatchLoader.Batch batch = fbcr.new Batch(
             createRequest(
-                cubeName, measure, tableNames, fieldNames,
-                values.toArray(new String[values.size()]), constraint));
+                testContext, cubeName, measure, tableNames, fieldNames,
+                values, constraint));
 
         addRequests(
+            testContext,
             batch, cubeName, measure, tableNames, fieldNames,
             fieldValues, new ArrayList<String>(), 0, constraint);
         return batch;
     }
 
-    private void addRequests(
+    private static void addRequests(
+        TestContext testContext,
         BatchLoader.Batch batch,
         String cubeName,
         String measure,
-        String[] tableNames,
-        String[] fieldNames,
-        String[][] fieldValues,
+        List<String> tableNames,
+        List<String> fieldNames,
+        List<List<String>> fieldValues,
         List<String> selectedValues,
         int currPos)
     {
-        if (currPos < fieldNames.length) {
-            for (int j = 0; j < fieldValues[currPos].length; j++) {
-                selectedValues.add(fieldValues[currPos][j]);
+        if (currPos < fieldNames.size()) {
+            final List<String> values = fieldValues.get(currPos);
+            for (String value : values) {
+                selectedValues.add(value);
                 addRequests(
-                    batch, cubeName, measure, tableNames,
+                    testContext, batch, cubeName, measure, tableNames,
                     fieldNames, fieldValues, selectedValues, currPos + 1);
-                selectedValues.remove(fieldValues[currPos][j]);
+                selectedValues.remove(value);
             }
         } else {
             batch.add(
                 createRequest(
-                    cubeName, measure, tableNames, fieldNames,
-                    selectedValues.toArray(new String[selectedValues.size()])));
+                    testContext, cubeName, measure, tableNames, fieldNames,
+                    selectedValues));
         }
     }
 
-    private void addRequests(
+    private static void addRequests(
+        TestContext testContext,
         BatchLoader.Batch batch,
         String cubeName,
         String measure,
-        String[] tableNames,
-        String[] fieldNames,
-        String[][] fieldValues,
+        List<String> tableNames,
+        List<String> fieldNames,
+        List<List<String>> fieldValues,
         List<String> selectedValues,
         int currPos,
         CellRequestConstraint constraint)
     {
-        if (currPos < fieldNames.length) {
-            for (int j = 0; j < fieldValues[currPos].length; j++) {
-                selectedValues.add(fieldValues[currPos][j]);
+        if (currPos < fieldNames.size()) {
+            List<String> values = fieldValues.get(currPos);
+            for (String value : values) {
+                selectedValues.add(value);
                 addRequests(
-                    batch, cubeName, measure, tableNames,
+                    testContext, batch, cubeName, measure, tableNames,
                     fieldNames, fieldValues, selectedValues, currPos + 1,
                     constraint);
-                selectedValues.remove(fieldValues[currPos][j]);
+                selectedValues.remove(value);
             }
         } else {
             batch.add(
                 createRequest(
-                    cubeName, measure, tableNames, fieldNames,
-                    selectedValues.toArray(
-                        new String[selectedValues.size()]), constraint));
+                    testContext, cubeName, measure, tableNames, fieldNames,
+                    selectedValues, constraint));
         }
     }
 
     protected GroupingSet getGroupingSet(
+<<<<<<< HEAD
         final String[] tableNames,
         final String[] fieldNames,
         final String[][] fieldValues,
+=======
+        final TestContext testContext,
+        final List<String> tableNames,
+        final List<String> fieldNames,
+        final List<List<String>> fieldValues,
+>>>>>>> upstream/4.0
         final String cubeName,
         final String measure)
     {
@@ -174,16 +189,28 @@ public class BatchTestCase extends FoodMartTestCase {
             "BatchTestCase.getGroupingSet",
             new Locus.Action<GroupingSet>() {
                 public GroupingSet execute() {
+<<<<<<< HEAD
                     final RolapCube cube = getCube(cubeName);
+=======
+                    final RolapCube cube = getCube(testContext, cubeName);
+>>>>>>> upstream/4.0
                     final BatchLoader fbcr =
                         new BatchLoader(
                             Locus.peek(),
                             ((RolapConnection)getConnection()).getServer()
                                 .getAggregationManager().cacheMgr,
+<<<<<<< HEAD
                             cube.getStar().getSqlQueryDialect(),
                             cube);
                     BatchLoader.Batch batch =
                         createBatch(
+=======
+                            cube.getSchema().getDialect(),
+                            cube);
+                    BatchLoader.Batch batch =
+                        createBatch(
+                            testContext,
+>>>>>>> upstream/4.0
                             fbcr,
                             tableNames, fieldNames,
                             fieldValues, cubeName,
@@ -211,14 +238,17 @@ public class BatchTestCase extends FoodMartTestCase {
      * times, and expects to see each SQL statement appear. If there are no
      * patterns in this dialect, the test trivially succeeds.
      *
+     * @param testContext Test context
      * @param requests Sequence of cell requests
      * @param patterns Set of patterns
      */
     protected void assertRequestSql(
+        TestContext testContext,
         CellRequest[] requests,
         SqlPattern[] patterns)
     {
-        assertRequestSql(requests, patterns, false);
+        propSaver.set(propSaver.props.GenerateFormattedSql, true);
+        assertRequestSql(testContext, requests, patterns, false);
     }
 
     /**
@@ -237,14 +267,15 @@ public class BatchTestCase extends FoodMartTestCase {
      * @param negative Set to false in order to 'expect' a query or
      * true to 'forbid' a query.
      */
-    protected void assertRequestSql(
+    protected static void assertRequestSql(
+        TestContext testContext,
         CellRequest[] requests,
         SqlPattern[] patterns,
         boolean negative)
     {
         final RolapStar star = requests[0].getMeasure().getStar();
         final String cubeName = requests[0].getMeasure().getCubeName();
-        final RolapCube cube = lookupCube(cubeName);
+        final RolapCube cube = lookupCube(testContext, cubeName);
         final Dialect sqlDialect = star.getSqlQueryDialect();
         Dialect.DatabaseProduct d = sqlDialect.getDatabaseProduct();
         SqlPattern sqlPattern = SqlPattern.getPattern(d, patterns);
@@ -262,7 +293,7 @@ public class BatchTestCase extends FoodMartTestCase {
 
             patternFound = true;
 
-            clearCache(cube);
+            clearCache(testContext, cube);
 
             String sql = sqlPattern.getSql();
             String trigger = sqlPattern.getTriggerSql();
@@ -284,7 +315,8 @@ public class BatchTestCase extends FoodMartTestCase {
             Bomb bomb;
             final Execution execution =
                 new Execution(
-                    ((RolapConnection) getConnection()).getInternalStatement(),
+                    ((RolapConnection) testContext.getConnection())
+                        .getInternalStatement(),
                     1000);
             final AggregationManager aggMgr =
                 execution.getMondrianStatement()
@@ -298,7 +330,9 @@ public class BatchTestCase extends FoodMartTestCase {
             try {
                 FastBatchingCellReader fbcr =
                     new FastBatchingCellReader(
-                        execution, getCube(cubeName), aggMgr);
+                        execution,
+                        getCube(testContext, cubeName),
+                        aggMgr);
                 for (CellRequest request : requests) {
                     fbcr.recordCellRequest(request);
                 }
@@ -345,8 +379,11 @@ public class BatchTestCase extends FoodMartTestCase {
         }
     }
 
-    private RolapCube lookupCube(String cubeName) {
-        Connection connection = TestContext.instance().getConnection();
+    private static RolapCube lookupCube(
+        TestContext testContext,
+        String cubeName)
+    {
+        Connection connection = testContext.getConnection();
         for (Cube cube : connection.getSchema().getCubes()) {
             if (cube.getName().equals(cubeName)) {
                 return (RolapCube) cube;
@@ -357,17 +394,22 @@ public class BatchTestCase extends FoodMartTestCase {
 
     /**
      * Checks that a given MDX query results in a particular SQL statement
-     * being generated.
+     * being generated, in the
+     * {@link mondrian.spi.Dialect.DatabaseProduct#MYSQL} dialect.
      *
-     * @param mdxQuery MDX query
-     * @param patterns Set of patterns for expected SQL statements
+     * @param testContext Test context
+     * @param mdx MDX query
+     * @param sql Expected SQL statement
      */
     protected void assertQuerySql(
-        String mdxQuery,
-        SqlPattern[] patterns)
+        TestContext testContext,
+        String mdx,
+        String sql)
     {
-        assertQuerySqlOrNot(
-            getTestContext(), mdxQuery, patterns, false, false, true);
+        SqlPattern[] patterns = {
+            new SqlPattern(Dialect.DatabaseProduct.MYSQL, sql, sql)
+        };
+        assertQuerySql(testContext, mdx, patterns);
     }
 
     /**
@@ -383,6 +425,7 @@ public class BatchTestCase extends FoodMartTestCase {
         String mdxQuery,
         SqlPattern[] patterns)
     {
+        propSaver.set(propSaver.props.GenerateFormattedSql, true);
         assertQuerySqlOrNot(
             testContext, mdxQuery, patterns, false, false, true);
     }
@@ -391,32 +434,36 @@ public class BatchTestCase extends FoodMartTestCase {
      * Checks that a given MDX query does not result in a particular SQL
      * statement being generated.
      *
+     * @param testContext Test context
      * @param mdxQuery MDX query
      * @param patterns Set of patterns for expected SQL statements
      */
-    protected void assertNoQuerySql(
+    protected static void assertNoQuerySql(
+        TestContext testContext,
         String mdxQuery,
         SqlPattern[] patterns)
     {
         assertQuerySqlOrNot(
-            getTestContext(), mdxQuery, patterns, true, false, true);
+            testContext, mdxQuery, patterns, true, false, true);
     }
 
     /**
      * Checks that a given MDX query results in a particular SQL statement
      * being generated.
      *
+     * @param testContext Test context
      * @param mdxQuery MDX query
      * @param patterns Set of patterns, one for each dialect.
      * @param clearCache whether to clear cache before running the query
      */
-    protected void assertQuerySql(
+    protected static void assertQuerySql(
+        TestContext testContext,
         String mdxQuery,
         SqlPattern[] patterns,
         boolean clearCache)
     {
         assertQuerySqlOrNot(
-            getTestContext(), mdxQuery, patterns, false, false, clearCache);
+            testContext, mdxQuery, patterns, false, false, clearCache);
     }
 
     /**
@@ -437,7 +484,7 @@ public class BatchTestCase extends FoodMartTestCase {
      *        schema cache before parsing the MDX query
      * @param clearCache whether to clear cache before executing the MDX query
      */
-    protected void assertQuerySqlOrNot(
+    protected static void assertQuerySqlOrNot(
         TestContext testContext,
         String mdxQuery,
         SqlPattern[] patterns,
@@ -483,7 +530,7 @@ public class BatchTestCase extends FoodMartTestCase {
                 }
                 final Query query = connection.parseQuery(mdxQuery);
                 if (clearCache) {
-                    clearCache((RolapCube)query.getCube());
+                    clearCache(testContext, (RolapCube)query.getCube());
                 }
                 final Result result = connection.execute(query);
                 Util.discard(result);
@@ -531,7 +578,7 @@ public class BatchTestCase extends FoodMartTestCase {
         }
     }
 
-    protected String dialectize(Dialect.DatabaseProduct d, String sql) {
+    protected static String dialectize(Dialect.DatabaseProduct d, String sql) {
         sql = sql.replaceAll("\r\n", "\n");
         switch (d) {
         case ORACLE:
@@ -551,28 +598,50 @@ public class BatchTestCase extends FoodMartTestCase {
         }
     }
 
-    private void clearCache(RolapCube cube) {
+    private static void clearCache(
+        TestContext testContext,
+        RolapCube cube)
+    {
         // Clear the cache for the Sales cube, so the query runs as if
         // for the first time. (TODO: Cleaner way to do this.)
         final Cube salesCube =
-            getConnection().getSchema().lookupCube("Sales", true);
-        RolapHierarchy hierarchy =
-            (RolapHierarchy) salesCube.lookupHierarchy(
-                new Id.NameSegment("Store", Id.Quoting.UNQUOTED),
-                false);
-        SmartMemberReader memberReader =
-            (SmartMemberReader) hierarchy.getMemberReader();
-        MemberCacheHelper cacheHelper = memberReader.cacheHelper;
-        cacheHelper.mapLevelToMembers.cache.clear();
-        cacheHelper.mapMemberToChildren.cache.clear();
+            testContext.getConnection().getSchema().lookupCube("Sales", false);
+        if (salesCube != null) {
+            // the sales cube may not be present in some tests which use
+            // withSchema().
+            RolapCubeHierarchy hierarchy =
+                (RolapCubeHierarchy) salesCube.lookupHierarchy(
+                    new Id.NameSegment("Stores", Id.Quoting.UNQUOTED),
+                    false);
+            if (hierarchy == null) {
+                // In legacy schema, hierarchy is called "Store".
+                hierarchy =
+                    (RolapCubeHierarchy) salesCube.lookupHierarchy(
+                        new Id.NameSegment("Store", Id.Quoting.UNQUOTED),
+                        false);
+            }
 
+            if (hierarchy.getMemberReader() instanceof SmartMemberReader) {
+                clear((SmartMemberReader) hierarchy.getMemberReader());
+            }
+            clear((SmartMemberReader) hierarchy.getMemberReader());
+        }
         // Flush the cache, to ensure that the query gets executed.
-        cube.clearCachedAggregations(true);
+        for (RolapStar star : cube.getStars()) {
+            star.clearCachedAggregations(true);
+        }
 
-        CacheControl cacheControl = getConnection().getCacheControl(null);
+        CacheControl cacheControl =
+            testContext.getConnection().getCacheControl(null);
         final CacheControl.CellRegion measuresRegion =
             cacheControl.createMeasuresRegion(cube);
         cacheControl.flush(measuresRegion);
+    }
+
+    private static void clear(SmartMemberReader memberReader) {
+        MemberCacheHelper cacheHelper = memberReader.cacheHelper;
+        cacheHelper.mapLevelToMembers.cache.clear();
+        cacheHelper.mapMemberToChildren.cache.clear();
     }
 
     private static String replaceQuotes(String s) {
@@ -582,76 +651,134 @@ public class BatchTestCase extends FoodMartTestCase {
     }
 
     protected CellRequest createRequest(
-        final String cube, final String measure,
-        final String table, final String column, final String value)
+        TestContext testContext,
+        final String cube,
+        final String measure,
+        final String table,
+        final String column,
+        final String value)
     {
         return createRequest(
+            testContext,
             cube, measure,
-            new String[]{table}, new String[]{column}, new String[]{value});
+            list(table), list(column), list(value));
     }
 
-    protected CellRequest createRequest(
-        final String cube, final String measureName,
-        final String[] tables, final String[] columns, final String[] values)
+    protected static CellRequest createRequest(
+        TestContext testContext,
+        final String cube,
+        final String measureName,
+        final List<String> tables,
+        final List<String> columns,
+        final List<String> values)
     {
-        RolapStar.Measure starMeasure = getMeasure(cube, measureName);
+        RolapStar.Measure starMeasure =
+            getMeasure(testContext, cube, measureName);
         CellRequest request = new CellRequest(starMeasure, false, false);
         final RolapStar star = starMeasure.getStar();
-        for (int i = 0; i < tables.length; i++) {
-            String table = tables[i];
+        for (int i = 0; i < tables.size(); i++) {
+            String table = tables.get(i);
             if (table != null && table.length() > 0) {
-                String column = columns[i];
-                String value = values[i];
+                String column = columns.get(i);
+                String value = values.get(i);
                 final RolapStar.Column storeTypeColumn =
                     star.lookupColumn(table, column);
                 request.addConstrainedColumn(
                     storeTypeColumn,
-                    new ValueColumnPredicate(storeTypeColumn, value));
+                    new ValueColumnPredicate(
+                        new PredicateColumn(
+                            getRouter(testContext, cube, column),
+                            storeTypeColumn.getExpression()),
+                        value));
             }
         }
         return request;
     }
 
-    protected CellRequest createRequest(
-        final String cube, final String measure,
-        final String table, final String column, final String value,
+    private static RolapSchema.PhysRouter getRouter(
+        TestContext testContext, String cube, String column)
+    {
+        RolapCube rolapCube = getCube(testContext, cube);
+        RolapCubeDimension dim = lookupDimension(rolapCube, column);
+        if (dim != null) {
+            // assumes the first measure group.
+            return new RolapSchema.CubeRouter(
+                rolapCube.getMeasureGroups().get(0), dim);
+        }
+        return RolapSchema.BadRouter.INSTANCE;
+    }
+
+    private static RolapCubeDimension lookupDimension(
+        RolapCube cube, String column)
+    {
+        for (RolapCubeDimension dim : cube.getDimensionList()) {
+            for (RolapHierarchy hier : dim.getHierarchies()) {
+                for (RolapLevel level :  hier.getLevelList()) {
+                    if (level.getAttribute().getNameExp() != null
+                        && level.getAttribute().getNameExp()
+                        .toSql().equals(column))
+                    {
+                        return dim;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    protected static CellRequest createRequest(
+        final TestContext testContext,
+        final String cube,
+        final String measure,
+        final String table,
+        final String column,
+        final String value,
         CellRequestConstraint aggConstraint)
     {
         return createRequest(
-            cube, measure,
-            new String[]{table}, new String[]{column}, new String[]{value},
+            testContext,
+            cube,
+            measure,
+            list(table),
+            list(column),
+            list(value),
             aggConstraint);
     }
 
-    protected CellRequest createRequest(
-        final String cube, final String measureName,
-        final String[] tables, final String[] columns, final String[] values,
+    protected static CellRequest createRequest(
+        final TestContext testContext,
+        final String cube,
+        final String measureName,
+        final List<String> tables,
+        final List<String> columns,
+        final List<String> values,
         CellRequestConstraint aggConstraint)
     {
-        RolapStar.Measure starMeasure = getMeasure(cube, measureName);
-
+        RolapStar.Measure starMeasure =
+            getMeasure(testContext, cube, measureName);
         CellRequest request =
-            createRequest(cube, measureName, tables, columns, values);
+            createRequest(
+                testContext, cube, measureName, tables, columns, values);
         final RolapStar star = starMeasure.getStar();
 
         request.addAggregateList(
             aggConstraint.getBitKey(star),
-            aggConstraint.toPredicate(star));
+            aggConstraint.toPredicate(star, cube, testContext));
 
         return request;
     }
 
     static CellRequestConstraint makeConstraintYearQuarterMonth(
-        List<String[]> values)
+        List<List<String>> values)
     {
-        String[] aggConstraintTables =
-            new String[] { "time_by_day", "time_by_day", "time_by_day" };
-        String[] aggConstraintColumns =
-            new String[] { "the_year", "quarter", "month_of_year" };
-        List<String[]> aggConstraintValues = new ArrayList<String[]>();
+        List<String> aggConstraintTables =
+            list("time_by_day", "time_by_day", "time_by_day");
+        List<String> aggConstraintColumns =
+            list("the_year", "quarter", "month_of_year");
+        List<List<String>> aggConstraintValues = new ArrayList<List<String>>();
 
-        for (String[] value : values) {
-            assert value.length == 3;
+        for (List<String> value : values) {
+            assert value.size() == 3;
             aggConstraintValues.add(value);
         }
 
@@ -660,16 +787,15 @@ public class BatchTestCase extends FoodMartTestCase {
     }
 
     static CellRequestConstraint makeConstraintCountryState(
-        List<String[]> values)
+        List<List<String>> values)
     {
-        String[] aggConstraintTables =
-            new String[] { "store", "store"};
-        String[] aggConstraintColumns =
-            new String[] { "store_country", "store_state"};
-        List<String[]> aggConstraintValues = new ArrayList<String[]>();
+        List<String> aggConstraintTables = list("store", "store");
+        List<String> aggConstraintColumns =
+            list("store_country", "store_state");
+        List<List<String>> aggConstraintValues = new ArrayList<List<String>>();
 
-        for (String[] value : values) {
-            assert value.length == 2;
+        for (List<String> value : values) {
+            assert value.size() == 2;
             aggConstraintValues.add(value);
         }
 
@@ -678,16 +804,16 @@ public class BatchTestCase extends FoodMartTestCase {
     }
 
     static CellRequestConstraint makeConstraintProductFamilyDepartment(
-        List<String[]> values)
+        List<List<String>> values)
     {
-        String[] aggConstraintTables =
-            new String[] { "product_class", "product_class"};
-        String[] aggConstraintColumns =
-            new String[] { "product_family", "product_department"};
-        List<String[]> aggConstraintValues = new ArrayList<String[]>();
+        List<String> aggConstraintTables =
+            list("product_class", "product_class");
+        List<String> aggConstraintColumns =
+            list("product_family", "product_department");
+        List<List<String>> aggConstraintValues = new ArrayList<List<String>>();
 
-        for (String[] value : values) {
-            assert value.length == 2;
+        for (List<String> value : values) {
+            assert value.size() == 2;
             aggConstraintValues.add(value);
         }
 
@@ -695,21 +821,24 @@ public class BatchTestCase extends FoodMartTestCase {
             aggConstraintTables, aggConstraintColumns, aggConstraintValues);
     }
 
-    protected RolapStar.Measure getMeasure(String cube, String measureName) {
-        final Connection connection = getFoodMartConnection();
+    protected static RolapStar.Measure getMeasure(
+        TestContext testContext,
+        String cubeName,
+        String measureName)
+    {
+        final Connection connection = testContext.getConnection();
         final boolean fail = true;
-        Cube salesCube = connection.getSchema().lookupCube(cube, fail);
-        Member measure = salesCube.getSchemaReader(null).getMemberByUniqueName(
+        Cube cube = connection.getSchema().lookupCube(cubeName, fail);
+        Member measure = cube.getSchemaReader(null).getMemberByUniqueName(
             Util.parseIdentifier(measureName), fail);
         return RolapStar.getStarMeasure(measure);
     }
 
-    protected Connection getFoodMartConnection() {
-        return TestContext.instance().getConnection();
-    }
-
-    protected RolapCube getCube(final String cube) {
-        final Connection connection = getFoodMartConnection();
+    protected static RolapCube getCube(
+        TestContext testContext,
+        final String cube)
+    {
+        final Connection connection = testContext.getConnection();
         final boolean fail = true;
         return (RolapCube) connection.getSchema().lookupCube(cube, fail);
     }
@@ -717,28 +846,35 @@ public class BatchTestCase extends FoodMartTestCase {
     /**
      * Make sure the mdx runs correctly and not in native mode.
      *
+     * @param testContext Test context
      * @param rowCount number of rows returned
      * @param mdx      query
      */
-    protected void checkNotNative(int rowCount, String mdx) {
-        checkNotNative(rowCount, mdx, null);
+    protected static void checkNotNative(
+        TestContext testContext,
+        int rowCount,
+        String mdx)
+    {
+        checkNotNative(testContext, rowCount, mdx, null);
     }
 
     /**
      * Makes sure the MDX runs correctly and not in native mode.
      *
+     * @param testContext Test context
      * @param rowCount       Number of rows returned
      * @param mdx            Query
      * @param expectedResult Expected result string
      */
-    protected void checkNotNative(
+    protected static void checkNotNative(
+        final TestContext testContext,
         int rowCount,
         String mdx,
         String expectedResult)
     {
-        getConnection().getCacheControl(null).flushSchemaCache();
+        testContext.getConnection().getCacheControl(null).flushSchemaCache();
         Connection con =
-            getTestContext().withSchemaPool(false).getConnection();
+            testContext.withSchemaPool(false).getConnection();
         RolapNativeRegistry reg = getRegistry(con);
         reg.setListener(
             new Listener() {
@@ -753,7 +889,7 @@ public class BatchTestCase extends FoodMartTestCase {
                 }
             });
 
-        TestCase c = new TestCase(con, 0, rowCount, mdx);
+        LimitedQuery c = new LimitedQuery(con, 0, rowCount, mdx);
         Result result = c.run();
 
         if (expectedResult != null) {
@@ -769,7 +905,7 @@ public class BatchTestCase extends FoodMartTestCase {
         }
     }
 
-    RolapNativeRegistry getRegistry(Connection connection) {
+    static RolapNativeRegistry getRegistry(Connection connection) {
         RolapCube cube =
             (RolapCube) connection.getSchema().lookupCube("Sales", true);
         RolapSchemaReader schemaReader =
@@ -788,15 +924,18 @@ public class BatchTestCase extends FoodMartTestCase {
      * @param rowCount    Number of rows returned
      * @param mdx         Query
      */
-    protected void checkNative(
-        int resultLimit, int rowCount, String mdx)
+    protected static void checkNative(
+        TestContext testContext,
+        int resultLimit,
+        int rowCount,
+        String mdx)
     {
-        checkNative(resultLimit, rowCount, mdx, null, false);
+        checkNative(testContext, resultLimit, rowCount, mdx, null, false);
     }
 
     /**
      * Runs a query twice, with native crossjoin optimization enabled and
-     * disabled. If both results are equal,and both aggree with the expected
+     * disabled. If both results are equal, and both agree with the expected
      * result, it is considered correct.
      *
      * <p>Optionally the query can be run with
@@ -815,7 +954,8 @@ public class BatchTestCase extends FoodMartTestCase {
      * @param expectedResult  Expected result string
      * @param freshConnection Whether fresh connection is required
      */
-    protected void checkNative(
+    protected static void checkNative(
+        final TestContext testContext,
         int resultLimit,
         int rowCount,
         String mdx,
@@ -829,12 +969,15 @@ public class BatchTestCase extends FoodMartTestCase {
             return;
         }
 
-        getConnection().getCacheControl(null).flushSchemaCache();
+        final CacheControl cacheControl =
+            testContext.getConnection().getCacheControl(null);
+        cacheControl.flushSchemaCache();
+
         try {
-            Logger.getLogger(getClass()).debug("*** Native: " + mdx);
+            testContext.getLogger().debug("*** Native: " + mdx);
             boolean reuseConnection = !freshConnection;
             Connection con =
-                getTestContext()
+                testContext
                     .withSchemaPool(reuseConnection)
                     .getConnection();
             RolapNativeRegistry reg = getRegistry(con);
@@ -842,7 +985,7 @@ public class BatchTestCase extends FoodMartTestCase {
             TestListener listener = new TestListener();
             reg.setListener(listener);
             reg.setEnabled(true);
-            TestCase c = new TestCase(con, resultLimit, rowCount, mdx);
+            LimitedQuery c = new LimitedQuery(con, resultLimit, rowCount, mdx);
             Result result = c.run();
             String nativeResult = TestContext.toString(result);
             if (!listener.isFoundEvaluator()) {
@@ -851,22 +994,19 @@ public class BatchTestCase extends FoodMartTestCase {
             if (!listener.isExecuteSql()) {
                 fail("cache is empty: expected SQL query to be executed");
             }
-            if (MondrianProperties.instance().EnableRolapCubeMemberCache.get())
-            {
-                // run once more to make sure that the result comes from cache
-                // now
-                listener.setExecuteSql(false);
-                c.run();
-                if (listener.isExecuteSql()) {
-                    fail("expected result from cache when query runs twice");
-                }
+            // run once more to make sure that the result comes from cache
+            // now
+            listener.setExecuteSql(false);
+            c.run();
+            if (listener.isExecuteSql()) {
+                fail("expected result from cache when query runs twice");
             }
             con.close();
 
-            Logger.getLogger(getClass()).debug("*** Interpreter: " + mdx);
+            testContext.getLogger().debug("*** Interpreter: " + mdx);
 
-            getConnection().getCacheControl(null).flushSchemaCache();
-            con = getTestContext().withSchemaPool(false).getConnection();
+            cacheControl.flushSchemaCache();
+            con = testContext.withSchemaPool(false).getConnection();
             reg = getRegistry(con);
             listener.setFoundEvaluator(false);
             reg.setListener(listener);
@@ -902,24 +1042,24 @@ public class BatchTestCase extends FoodMartTestCase {
                     + "interpreter; MDX=" + mdx);
             }
         } finally {
-            Connection con = getConnection();
-            RolapNativeRegistry reg = getRegistry(con);
-            reg.setEnabled(true);
-            reg.useHardCache(false);
+            final RolapNativeRegistry reg0 =
+                getRegistry(testContext.getConnection());
+            reg0.setEnabled(true);
+            reg0.useHardCache(false);
         }
     }
 
     public static void checkNotNative(String mdx, Result expectedResult) {
-        BatchTestCase test = new BatchTestCase();
-        test.checkNotNative(
+        checkNotNative(
+            TestContext.instance(),
             getRowCount(expectedResult),
             mdx,
             TestContext.toString(expectedResult));
     }
 
     public static void checkNative(String mdx, Result expectedResult) {
-        BatchTestCase test = new BatchTestCase();
-        test.checkNative(
+        checkNative(
+            TestContext.instance(),
             0,
             getRowCount(expectedResult),
             mdx,
@@ -932,7 +1072,7 @@ public class BatchTestCase extends FoodMartTestCase {
             .getPositions().size();
     }
 
-    protected Result executeQuery(String mdx, Connection connection) {
+    protected static Result executeQuery(String mdx, Connection connection) {
         Query query = connection.parseQuery(mdx);
         query.setResultStyle(ResultStyle.LIST);
         return connection.execute(query);
@@ -941,15 +1081,27 @@ public class BatchTestCase extends FoodMartTestCase {
     /**
      * Convenience method for debugging; please do not delete.
      */
-    public void assertNotNative(String mdx) {
-        new BatchTestCase().checkNotNative(0, mdx, null);
+    public static void assertNotNative(String mdx) {
+        checkNotNative(TestContext.instance(), 0, mdx, null);
     }
 
     /**
      * Convenience method for debugging; please do not delete.
      */
-    public void assertNative(String mdx) {
-        new BatchTestCase().checkNative(0, 0, mdx, null, true);
+    public static void assertNative(String mdx) {
+        checkNative(TestContext.instance(), 0, 0, mdx, null, true);
+    }
+
+    protected static <T> List<T> list(T... ts) {
+        // Always unmodifiable, whatever the length.
+        switch (ts.length) {
+        case 0:
+            return Collections.emptyList();
+        case 1:
+            return Collections.singletonList(ts[0]);
+        default:
+            return Collections.unmodifiableList(Arrays.asList(ts));
+        }
     }
 
     /**
@@ -957,7 +1109,7 @@ public class BatchTestCase extends FoodMartTestCase {
      * positions of the row axis. The reduced resultLimit ensures that the
      * optimization is present.
      */
-    protected class TestCase {
+    protected static class LimitedQuery {
         /**
          * Maximum number of rows to be read from SQL. If more than this number
          * of rows are read, the test will fail.
@@ -979,14 +1131,16 @@ public class BatchTestCase extends FoodMartTestCase {
          */
         final Connection con;
 
-        public TestCase(int resultLimit, int rowCount, String query) {
-            this.con = getConnection();
-            this.resultLimit = resultLimit;
-            this.rowCount = rowCount;
-            this.query = query;
+        public LimitedQuery(
+            TestContext testContext,
+            int resultLimit,
+            int rowCount,
+            String query)
+        {
+            this(testContext.getConnection(), resultLimit, rowCount, query);
         }
 
-        public TestCase(
+        public LimitedQuery(
             Connection con, int resultLimit, int rowCount, String query)
         {
             this.con = con;
@@ -996,7 +1150,7 @@ public class BatchTestCase extends FoodMartTestCase {
         }
 
         protected Result run() {
-            getConnection().getCacheControl(null).flushSchemaCache();
+            con.getCacheControl(null).flushSchemaCache();
             IntegerProperty monLimit =
                 MondrianProperties.instance().ResultLimit;
             int oldLimit = monLimit.get();
@@ -1006,8 +1160,8 @@ public class BatchTestCase extends FoodMartTestCase {
 
                 // Check the number of positions on the last axis, which is
                 // the ROWS axis in a 2 axis query.
-                int numAxes = result.getAxes().length;
-                Axis a = result.getAxes()[numAxes - 1];
+                int axisCount = result.getAxes().length;
+                Axis a = result.getAxes()[axisCount - 1];
                 final int positionCount = a.getPositions().size();
                 assertEquals(rowCount, positionCount);
                 return result;
@@ -1035,11 +1189,15 @@ public class BatchTestCase extends FoodMartTestCase {
         private final String trigger;
 
         public TriggerHook(String trigger) {
+<<<<<<< HEAD
             this.trigger =
                 trigger
                     .replaceAll("\r\n", "")
                     .replaceAll("\r", "")
                     .replaceAll("\n", "");
+=======
+            this.trigger = trigger.replaceAll("\r\n", "\n");
+>>>>>>> upstream/4.0
         }
 
         private boolean matchTrigger(String sql) {
@@ -1047,11 +1205,15 @@ public class BatchTestCase extends FoodMartTestCase {
                 return true;
             }
             // Cleanup the endlines.
+<<<<<<< HEAD
             sql =
                 sql
                     .replaceAll("\r\n", "")
                     .replaceAll("\r", "")
                     .replaceAll("\n", "");
+=======
+            sql = sql.replaceAll("\r\n", "\n");
+>>>>>>> upstream/4.0
             // different versions of mysql drivers use different quoting, so
             // ignore quotes
             String s = replaceQuotes(sql);
@@ -1067,14 +1229,14 @@ public class BatchTestCase extends FoodMartTestCase {
     }
 
     static class CellRequestConstraint {
-        String[] tables;
-        String[] columns;
-        List<String[]> valueList;
+        List<String> tables;
+        List<String> columns;
+        List<List<String>> valueList;
 
         CellRequestConstraint(
-            String[] tables,
-            String[] columns,
-            List<String[]> valueList)
+            List<String> tables,
+            List<String> columns,
+            List<List<String>> valueList)
         {
             this.tables = tables;
             this.columns = columns;
@@ -1085,33 +1247,35 @@ public class BatchTestCase extends FoodMartTestCase {
             return star.getBitKey(tables, columns);
         }
 
-        StarPredicate toPredicate(RolapStar star) {
-            RolapStar.Column starColumn[] = new RolapStar.Column[tables.length];
-            for (int i = 0; i < tables.length; i++) {
-                String table = tables[i];
-                String column = columns[i];
+        StarPredicate toPredicate(
+            RolapStar star, String cubeName, TestContext testContext)
+        {
+            RolapStar.Column starColumn[] = new RolapStar.Column[tables.size()];
+            for (int i = 0; i < tables.size(); i++) {
+                String table = tables.get(i);
+                String column = columns.get(i);
                 starColumn[i] = star.lookupColumn(table, column);
             }
-
             List<StarPredicate> orPredList = new ArrayList<StarPredicate>();
-            for (String[] values : valueList) {
-                assert (values.length == tables.length);
+            for (List<String> values : valueList) {
+                assert values.size() == tables.size();
                 List<StarPredicate> andPredList =
                     new ArrayList<StarPredicate>();
-                for (int i = 0; i < values.length; i++) {
+                for (int i = 0; i < values.size(); i++) {
                     andPredList.add(
-                        new ValueColumnPredicate(starColumn[i], values[i]));
+                        new ValueColumnPredicate(
+                            new PredicateColumn(
+                                getRouter(
+                                    testContext, cubeName,
+                                    starColumn[i].getExpression().toSql()),
+                                starColumn[i].getExpression()),
+                            values.get(i)));
                 }
-                final StarPredicate predicate =
-                    andPredList.size() == 1
-                        ? andPredList.get(0)
-                        : new AndPredicate(andPredList);
+                final StarPredicate predicate = Predicates.and(andPredList);
                 orPredList.add(predicate);
             }
 
-            return orPredList.size() == 1
-                ? orPredList.get(0)
-                : new OrPredicate(orPredList);
+            return Predicates.or(orPredList);
         }
     }
 
@@ -1132,8 +1296,8 @@ public class BatchTestCase extends FoodMartTestCase {
             return executeSql;
         }
 
-        void setExecuteSql(boolean excecuteSql) {
-            this.executeSql = excecuteSql;
+        void setExecuteSql(boolean executeSql) {
+            this.executeSql = executeSql;
         }
 
         boolean isFoundEvaluator() {

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 //
 // jhyde, 10 August, 2001
@@ -92,9 +92,9 @@ public class RolapEvaluator implements Evaluator {
      */
     protected final List<List<List<Member>>> aggregationLists;
 
-    private final List<Member> slicerMembers;
+    private final List<RolapMember> slicerMembers;
     private boolean nativeEnabled;
-    private Member[] nonAllMembers;
+    private RolapMember[] nonAllMembers;
     private int commandCount;
     private Object[] commands;
 
@@ -147,7 +147,7 @@ public class RolapEvaluator implements Evaluator {
         currentMembers = parent.currentMembers.clone();
         calculations = parent.calculations.clone();
         calculationCount = parent.calculationCount;
-        slicerMembers = new ArrayList<Member>(parent.slicerMembers);
+        slicerMembers = new ArrayList<RolapMember>(parent.slicerMembers);
 
         commands = new Object[10];
         commands[0] = Command.SAVEPOINT; // sentinel
@@ -194,7 +194,7 @@ public class RolapEvaluator implements Evaluator {
         currentMembers = root.defaultMembers.clone();
         calculations = new RolapCalculation[currentMembers.length];
         calculationCount = 0;
-        slicerMembers = new ArrayList<Member>();
+        slicerMembers = new ArrayList<RolapMember>();
         aggregationLists = null;
 
         commands = new Object[10];
@@ -218,10 +218,10 @@ public class RolapEvaluator implements Evaluator {
         return new RolapEvaluator(root);
     }
 
-    public RolapCube getMeasureCube() {
+    public RolapMeasureGroup getMeasureGroup() {
         final RolapMember measure = currentMembers[0];
         if (measure instanceof RolapStoredMeasure) {
-            return ((RolapStoredMeasure) measure).getCube();
+            return ((RolapStoredMeasure) measure).getMeasureGroup();
         }
         return null;
     }
@@ -232,24 +232,26 @@ public class RolapEvaluator implements Evaluator {
         {
             return false;
         }
-        RolapCube virtualCube = getCube();
-        return virtualCube.isVirtual();
+
+        final List<RolapMeasureGroup> measureGroups =
+            getCube().getMeasureGroups();
+        return  measureGroups != null && measureGroups.size() > 1;
     }
 
     public boolean needToReturnNullForUnrelatedDimension(Member[] members) {
         assert mightReturnNullForUnrelatedDimension()
             : "Should not even call this method if nulls are impossible";
-        RolapCube baseCube = getMeasureCube();
-        if (baseCube == null) {
+        RolapMeasureGroup measureGroup = getMeasureGroup();
+        if (measureGroup == null) {
             return false;
         }
-        RolapCube virtualCube = getCube();
-        if (virtualCube.shouldIgnoreUnrelatedDimensions(baseCube.getName())) {
+        if (measureGroup.ignoreUnrelatedDimensions) {
             return false;
         }
-        Set<Dimension> nonJoiningDimensions =
-            baseCube.nonJoiningDimensions(members);
-        return !nonJoiningDimensions.isEmpty();
+        return measureGroup
+            .nonJoiningDimensions(Arrays.asList(members))
+            .iterator()
+            .hasNext();
     }
 
     public boolean nativeEnabled() {
@@ -262,7 +264,7 @@ public class RolapEvaluator implements Evaluator {
         if (o == Util.nullValue || o == null) {
             return true;
         }
-        final RolapCube measureCube = getMeasureCube();
+        final RolapMeasureGroup measureCube = getMeasureGroup();
         if (measureCube == null) {
             return false;
         }
@@ -324,11 +326,11 @@ public class RolapEvaluator implements Evaluator {
         return LOGGER;
     }
 
-    public final Member[] getMembers() {
+    public final RolapMember[] getMembers() {
         return currentMembers;
     }
 
-    public final Member[] getNonAllMembers() {
+    public final RolapMember[] getNonAllMembers() {
         if (nonAllMembers == null) {
             nonAllMembers = new RolapMember[root.nonAllPositionCount];
             for (int i = 0; i < root.nonAllPositionCount; i++) {
@@ -377,7 +379,7 @@ public class RolapEvaluator implements Evaluator {
     }
 
     public Dialect getDialect() {
-        return root.currentDialect;
+        return root.dialect;
     }
 
     public final RolapEvaluator push(Member[] members) {
@@ -468,7 +470,7 @@ public class RolapEvaluator implements Evaluator {
     }
 
     public final int hashCode() {
-        return Util.hashArray(0, this.currentMembers);
+        return Arrays.hashCode(this.currentMembers);
     }
 
     /**
@@ -481,14 +483,14 @@ public class RolapEvaluator implements Evaluator {
      */
     public final void setSlicerContext(Member member) {
         setContext(member);
-        slicerMembers.add(member);
+        slicerMembers.add((RolapMember) member);
     }
 
     /**
      * Return the list of slicer members in the current evaluator context.
      * @return slicerMembers
      */
-    public final List<Member> getSlicerMembers() {
+    public final List<RolapMember> getSlicerMembers() {
         return slicerMembers;
     }
 
@@ -496,7 +498,7 @@ public class RolapEvaluator implements Evaluator {
         // Note: the body of this function is identical to calling
         // 'setContext(member, true)'. We inline the logic for performance.
 
-        final RolapMemberBase m = (RolapMemberBase) member;
+        final RolapMember m = (RolapMember) member;
         final int ordinal = m.getHierarchy().getOrdinalInCube();
         final RolapMember previous = currentMembers[ordinal];
 
@@ -504,7 +506,7 @@ public class RolapEvaluator implements Evaluator {
         // a mistake to use equals here; we might treat the visual total member
         // 'Gender.All' the same as the true 'Gender.All' because they have the
         // same unique name, and that would be wrong.
-        if (m == previous) {
+        if (same(m, previous)) {
             return previous;
         }
         // We call 'exists' before 'removeCalcMember' for efficiency.
@@ -532,7 +534,7 @@ public class RolapEvaluator implements Evaluator {
     }
 
     public final void setContext(Member member, boolean safe) {
-        final RolapMemberBase m = (RolapMemberBase) member;
+        final RolapMember m = (RolapMember) member;
         final int ordinal = m.getHierarchy().getOrdinalInCube();
         final RolapMember previous = currentMembers[ordinal];
 
@@ -566,6 +568,35 @@ public class RolapEvaluator implements Evaluator {
             addCalculation(m, false);
         }
         nonAllMembers = null;
+    }
+
+    /**
+     * Whether this member is the same as another member.
+     *
+     * <p>Weaker than == but stronger than {@link #equals(Object)}. For
+     * example:</p>
+     *
+     * <ul>
+     *
+     * <li>Returns false when comparing the member [Gender].[F] to the visual
+     * total member [Gender].[F].</li>
+     *
+     * <li>Returns true when applied to the same object.</li>
+     *
+     * </ul>
+     *
+     * @param m0 First member
+     * @param m1 Second member
+     * @return Whether m0 and m1 represent the same MDX object
+     */
+    private static boolean same(RolapMember m0, RolapMember m1) {
+        if (m0 == m1) {
+            return true;
+        }
+        if (m0.getClass() != m1.getClass()) {
+            return false;
+        }
+        return m0.equals(m1);
     }
 
     /**
@@ -635,8 +666,9 @@ public class RolapEvaluator implements Evaluator {
         }
     }
 
-    public final RolapMember getContext(Hierarchy hierarchy) {
-        return currentMembers[((RolapHierarchy) hierarchy).getOrdinalInCube()];
+    public final RolapMember getContext(Hierarchy _hierarchy) {
+        final RolapCubeHierarchy hierarchy = (RolapCubeHierarchy) _hierarchy;
+        return currentMembers[hierarchy.getOrdinalInCube()];
     }
 
     /**
@@ -646,7 +678,7 @@ public class RolapEvaluator implements Evaluator {
      * @param hierarchy Hierarchy
      * @return current member
      */
-    public final RolapMember getContext(RolapHierarchy hierarchy) {
+    public final RolapMember getContext(RolapCubeHierarchy hierarchy) {
         return currentMembers[hierarchy.getOrdinalInCube()];
     }
 
@@ -822,11 +854,11 @@ public class RolapEvaluator implements Evaluator {
         return buf.toString();
     }
 
-    public final Object getProperty(String name, Object defaultValue) {
+    public final Object getProperty(Property property, Object defaultValue) {
         Object o = defaultValue;
         int maxSolve = Integer.MIN_VALUE;
         int i = -1;
-        for (Member member : getNonAllMembers()) {
+        for (RolapMember member : getNonAllMembers()) {
             i++;
             // more than one usage
             if (member == null) {
@@ -846,7 +878,7 @@ public class RolapEvaluator implements Evaluator {
             // difference.
             final int solve = member.getSolveOrder();
             if (solve > maxSolve) {
-                final Object p = member.getPropertyValue(name);
+                final Object p = member.getPropertyValue(property);
                 if (p != null) {
                     o = p;
                     maxSolve = solve;
@@ -865,7 +897,7 @@ public class RolapEvaluator implements Evaluator {
      */
     public final String getFormatString() {
         final Exp formatExp =
-            (Exp) getProperty(Property.FORMAT_EXP_PARSED.name, null);
+            (Exp) getProperty(Property.FORMAT_EXP_PARSED, null);
         if (formatExp == null) {
             return "Standard";
         }
@@ -1238,14 +1270,8 @@ public class RolapEvaluator implements Evaluator {
         return h;
     }
 
-    /**
-     * Checks if unrelated dimensions to the measure in the current context
-     * should be ignored.
-     * @return boolean
-     */
     public boolean shouldIgnoreUnrelatedDimensions() {
-        return getCube().shouldIgnoreUnrelatedDimensions(
-            getMeasureCube().getName());
+        return getMeasureGroup().ignoreUnrelatedDimensions;
     }
 
     private enum Command {

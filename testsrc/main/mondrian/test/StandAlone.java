@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -17,7 +17,7 @@ import java.text.MessageFormat;
 import java.util.*;
 
 public class StandAlone {
-    private static final String[] indents = new String[]{
+    private static final String[] indents = {
         "    ", "        ", "            ", "                "
     };
 
@@ -32,7 +32,7 @@ public class StandAlone {
     public static final String ConnectionString =
         "Provider=mondrian;"
         + "Jdbc=jdbc:JSQLConnect://engdb04:1433/database=MondrianFoodmart/user=mondrian/password=password;"
-        + "Catalog=file:demo\\FoodMart.xml;"
+        + "Catalog=file:demo\\FoodMart.mondrian.xml;"
         + "JdbcDrivers=com.jnetdirect.jsql.JSQLDriver;";
 
     public static void main(String[] args) {
@@ -238,9 +238,9 @@ public class StandAlone {
             System.out.print("(" + cellPropValue + ")");
         }
 
-
         System.out.println(cell.getFormattedValue());
     }
+
     private static void printMembers(Position pos) {
         boolean needComma = false;
 
@@ -265,7 +265,7 @@ public class StandAlone {
 
                         System.out.print(
                             prop.getName() + ": "
-                            + member.getPropertyValue(prop.getName()));
+                            + member.getPropertyValue(prop));
                     }
                     System.out.print("}");
                 }
@@ -364,12 +364,12 @@ public class StandAlone {
 
     private static void printSchema(Schema schema) {
         Cube[] cubes = schema.getCubes();
-        Hierarchy[] hierarchies = schema.getSharedHierarchies();
+        Dimension[] dimensions = schema.getSharedDimensions();
 
         System.out.println(
             "Schema: " + schema.getName() + " "
             + cubes.length + " cubes and "
-            + hierarchies.length + " shared hierarchies");
+            + dimensions.length + " shared hierarchies");
 
         System.out.println("---Cubes ");
         for (int idx = 0; idx < cubes.length; idx++) {
@@ -378,31 +378,27 @@ public class StandAlone {
         }
 
         System.out.println("---Shared hierarchies");
-        for (int idx = 0; idx < hierarchies.length; idx++) {
-            printHierarchy(0, hierarchies[idx]);
+        for (int idx = 0; idx < dimensions.length; idx++) {
+            printDimension(dimensions[idx]);
         }
     }
 
     private static void printCube(Cube cube) {
         System.out.println("Cube " + cube.getName());
 
-        Dimension[] dims = cube.getDimensions();
-
-        for (Dimension dim : dims) {
+        for (Dimension dim : cube.getDimensionList()) {
             printDimension(dim);
         }
     }
 
     private static void printDimension(Dimension dim) {
-        DimensionType dimensionType = dim.getDimensionType();
         System.out.println(
             "\tDimension " + dim.getName()
-            + " type: " + dimensionType.name());
+            + " type: " + dim.getDimensionType().name());
 
         System.out.println("\t    Description: " + dim.getDescription());
-        Hierarchy[] hierarchies = dim.getHierarchies();
 
-        for (Hierarchy hierarchy : hierarchies) {
+        for (Hierarchy hierarchy : dim.getHierarchyList()) {
             printHierarchy(1, hierarchy);
         }
     }
@@ -418,9 +414,7 @@ public class StandAlone {
             indentString + "    Default member: "
             + hierarchy.getDefaultMember().getUniqueName());
 
-        Level[] levels = hierarchy.getLevels();
-
-        for (Level level : levels) {
+        for (Level level : hierarchy.getLevelList()) {
             printLevel(indent + 1, level);
         }
     }

@@ -27,12 +27,8 @@ import junit.framework.Assert;
  * @since March 30, 2005
  */
 public class CompatibilityTest extends FoodMartTestCase {
-    private boolean originalNeedDimensionPrefix;
-    private final MondrianProperties props = MondrianProperties.instance();
-
     public CompatibilityTest(String name) {
         super(name);
-        originalNeedDimensionPrefix = props.NeedDimensionPrefix.get();
     }
 
     /**
@@ -98,10 +94,18 @@ public class CompatibilityTest extends FoodMartTestCase {
         checkAxis("[Measures].[Unit Sales]", "[mEaSuReS].[Unit Sales]");
         checkAxis("[Measures].[Unit Sales]", "[measures].[Unit Sales]");
 
-        checkAxis("[Customers].[All Customers]", "[Customers].[All Customers]");
-        checkAxis("[Customers].[All Customers]", "[CUSTOMERS].[All Customers]");
-        checkAxis("[Customers].[All Customers]", "[cUsToMeRs].[All Customers]");
-        checkAxis("[Customers].[All Customers]", "[customers].[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[Customers].[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[CUSTOMERS].[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[cUsToMeRs].[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[customers].[All Customers]");
     }
 
     /**
@@ -113,10 +117,18 @@ public class CompatibilityTest extends FoodMartTestCase {
         checkAxis("[Measures].[Unit Sales]", "mEaSuReS.[Unit Sales]");
         checkAxis("[Measures].[Unit Sales]", "measures.[Unit Sales]");
 
-        checkAxis("[Customers].[All Customers]", "Customers.[All Customers]");
-        checkAxis("[Customers].[All Customers]", "CUSTOMERS.[All Customers]");
-        checkAxis("[Customers].[All Customers]", "cUsToMeRs.[All Customers]");
-        checkAxis("[Customers].[All Customers]", "customers.[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "Customers.[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "CUSTOMERS.[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "cUsToMeRs.[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "customers.[All Customers]");
     }
 
     /**
@@ -132,22 +144,30 @@ public class CompatibilityTest extends FoodMartTestCase {
         checkAxis("[Measures].[Profit]", "[Measures].[PROFIT]");
         checkAxis("[Measures].[Profit]", "[Measures].[profit]");
 
-        checkAxis("[Customers].[All Customers]", "[Customers].[All Customers]");
-        checkAxis("[Customers].[All Customers]", "[Customers].[ALL CUSTOMERS]");
-        checkAxis("[Customers].[All Customers]", "[Customers].[aLl CuStOmErS]");
-        checkAxis("[Customers].[All Customers]", "[Customers].[all customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[Customers].[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[Customers].[ALL CUSTOMERS]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[Customers].[aLl CuStOmErS]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[Customers].[all customers]");
 
-        checkAxis("[Customers].[Mexico]", "[Customers].[Mexico]");
-        checkAxis("[Customers].[Mexico]", "[Customers].[MEXICO]");
-        checkAxis("[Customers].[Mexico]", "[Customers].[mExIcO]");
-        checkAxis("[Customers].[Mexico]", "[Customers].[mexico]");
+        checkAxis("[Customer].[Customers].[Mexico]", "[Customers].[Mexico]");
+        checkAxis("[Customer].[Customers].[Mexico]", "[Customers].[MEXICO]");
+        checkAxis("[Customer].[Customers].[Mexico]", "[Customers].[mExIcO]");
+        checkAxis("[Customer].[Customers].[Mexico]", "[Customers].[mexico]");
     }
 
     /**
      * Calculated member names are case insensitive.
      */
     public void testCalculatedMemberCase() {
-        propSaver.set(MondrianProperties.instance().CaseSensitive, false);
+        propSaver.set(propSaver.props.CaseSensitive, false);
         assertQueryReturns(
             "with member [Measures].[CaLc] as '1'\n"
             + " select {[Measures].[CaLc]} on columns from Sales",
@@ -186,7 +206,8 @@ public class CompatibilityTest extends FoodMartTestCase {
     private void checkSolveOrder(String keyword) {
         assertQueryReturns(
             "WITH\n"
-            + "   MEMBER [Store].[StoreCalc] as '0', " + keyword + "=0\n"
+            + "   MEMBER [Store].[Stores].[StoreCalc] as '0', "
+            + keyword + "=0\n"
             + "   MEMBER [Product].[ProdCalc] as '1', " + keyword + "=1\n"
             + "SELECT\n"
             + "   { [Product].[ProdCalc] } ON columns,\n"
@@ -196,9 +217,9 @@ public class CompatibilityTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[ProdCalc]}\n"
+            + "{[Product].[Products].[ProdCalc]}\n"
             + "Axis #2:\n"
-            + "{[Store].[StoreCalc]}\n"
+            + "{[Store].[Stores].[StoreCalc]}\n"
             + "Row #0: 1\n");
     }
 
@@ -212,16 +233,16 @@ public class CompatibilityTest extends FoodMartTestCase {
         checkAxis("[Measures].[Profit]", "[Measures].profit");
 
         checkAxis(
-            "[Customers].[Mexico]",
+            "[Customer].[Customers].[Mexico]",
             "[Customers].Mexico");
         checkAxis(
-            "[Customers].[Mexico]",
+            "[Customer].[Customers].[Mexico]",
             "[Customers].MEXICO");
         checkAxis(
-            "[Customers].[Mexico]",
+            "[Customer].[Customers].[Mexico]",
             "[Customers].mExIcO");
         checkAxis(
-            "[Customers].[Mexico]",
+            "[Customer].[Customers].[Mexico]",
             "[Customers].mexico");
     }
 
@@ -230,20 +251,22 @@ public class CompatibilityTest extends FoodMartTestCase {
      * Dim.Hier are accepted.
      */
     public void testHierarchyNames() {
-        checkAxis("[Customers].[All Customers]", "[Customers].[All Customers]");
         checkAxis(
-            "[Customers].[All Customers]",
-            "[Customers].[Customers].[All Customers]");
+            "[Customer].[Customers].[All Customers]",
+            "[Customers].[All Customers]");
         checkAxis(
-            "[Customers].[All Customers]",
-            "Customers.[Customers].[All Customers]");
+            "[Customer].[Customers].[All Customers]",
+            "[Customer].[Customers].[All Customers]");
         checkAxis(
-            "[Customers].[All Customers]",
-            "[Customers].Customers.[All Customers]");
+            "[Customer].[Customers].[All Customers]",
+            "Customer.[Customers].[All Customers]");
+        checkAxis(
+            "[Customer].[Customers].[All Customers]",
+            "[Customer].Customers.[All Customers]");
         if (false) {
             // don't know if this makes sense
             checkAxis(
-                "[Customers].[All Customers]",
+                "[Customer].[Customers].[All Customers]",
                 "[Customers.Customers].[All Customers]");
         }
     }
@@ -271,7 +294,7 @@ public class CompatibilityTest extends FoodMartTestCase {
             return;
         }
         final String cubeName = "Sales_inline";
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = TestContext.instance().legacy().create(
             null,
             "<Cube name=\"" + cubeName + "\">\n"
             + "  <Table name=\"sales_fact_1997\"/>\n"
@@ -307,7 +330,7 @@ public class CompatibilityTest extends FoodMartTestCase {
             null);
 
         // This test should work irrespective of the case-sensitivity setting.
-        Util.discard(props.CaseSensitive.get());
+        Util.discard(propSaver.props.CaseSensitive.get());
 
         testContext.assertQueryReturns(
             "select {[Measures].[Unit Sales]} ON COLUMNS,\n"
@@ -318,7 +341,7 @@ public class CompatibilityTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Alternative Promotion].[#null]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[#null]}\n"
             + "Row #0: \n");
     }
 
@@ -356,7 +379,7 @@ public class CompatibilityTest extends FoodMartTestCase {
             return;
         }
         final String cubeName = "Sales_inline";
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = TestContext.instance().legacy().create(
             null,
             "<Cube name=\"" + cubeName + "\">\n"
             + "  <Table name=\"sales_fact_1997\"/>\n"
@@ -395,8 +418,8 @@ public class CompatibilityTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Alternative Promotion].[#null]}\n"
-            + "{[Alternative Promotion].[Promo1]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[#null]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[Promo1]}\n"
             + "Row #0: 195,448\n"
             + "Row #0: \n");
     }
@@ -405,7 +428,7 @@ public class CompatibilityTest extends FoodMartTestCase {
      * Tests that NULL values sort last on all platforms. On some platforms,
      * such as MySQL, NULLs naturally come before other values, so we have to
      * generate a modified ORDER BY clause.
-      */
+     */
     public void testNullCollation() {
         if (!getTestContext().getDialect().supportsGroupByExpressions()) {
             // Derby does not support expressions in the GROUP BY clause,
@@ -414,16 +437,16 @@ public class CompatibilityTest extends FoodMartTestCase {
             return;
         }
         final String cubeName = "Store_NullsCollation";
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = TestContext.instance().legacy().create(
             null,
             "<Cube name=\"" + cubeName + "\">\n"
             + "  <Table name=\"store\"/>\n"
-            + "  <Dimension name=\"Store\" foreignKey=\"store_id\">\n"
-            + "    <Hierarchy hasAll=\"true\" primaryKey=\"store_id\">\n"
+            + "  <Dimension name=\"Store\">\n"
+            + "    <Hierarchy hasAll=\"true\">\n"
             + "      <Level name=\"Store Name\" column=\"store_name\"  uniqueMembers=\"true\">\n"
             + "       <OrdinalExpression>\n"
             + "        <SQL dialect=\"access\">\n"
-            + "           Iif(store_name = 'HQ', null, store_name)\n"
+            + "           Iif(<Column table=\"store\" name=\"store_name\"/>  = 'HQ', null, <Column table=\"store\" name=\"store_name\"/>)\n"
             + "       </SQL>\n"
             + "        <SQL dialect=\"oracle\">\n"
             + "           case \"store_name\" when 'HQ' then null else \"store_name\" end\n"
@@ -465,11 +488,11 @@ public class CompatibilityTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Store Sqft]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Store 3]}\n"
-            + "{[Store].[Store 18]}\n"
-            + "{[Store].[Store 9]}\n"
-            + "{[Store].[Store 10]}\n"
-            + "{[Store].[Store 20]}\n"
+            + "{[Store].[Store].[Store 3]}\n"
+            + "{[Store].[Store].[Store 18]}\n"
+            + "{[Store].[Store].[Store 9]}\n"
+            + "{[Store].[Store].[Store 10]}\n"
+            + "{[Store].[Store].[Store 20]}\n"
             + "Row #0: 39,696\n"
             + "Row #1: 38,382\n"
             + "Row #2: 36,509\n"
@@ -486,7 +509,7 @@ public class CompatibilityTest extends FoodMartTestCase {
      * and once with mondrian.olap.case.sensitive=false.
      */
     public void testPropertyCaseSensitivity() {
-        boolean caseSensitive = props.CaseSensitive.get();
+        boolean caseSensitive = propSaver.props.CaseSensitive.get();
 
         // A user-defined property of a member.
         assertExprReturns(
@@ -537,26 +560,22 @@ public class CompatibilityTest extends FoodMartTestCase {
     }
 
     private void assertAxisWithDimensionPrefix(boolean prefixNeeded) {
-        propSaver.set(
-            props.NeedDimensionPrefix,
-            prefixNeeded);
-        assertAxisReturns("[Gender].[M]", "[Gender].[M]");
-        assertAxisReturns("[Gender].[All Gender].[M]", "[Gender].[M]");
-        assertAxisReturns("[Store].[USA]", "[Store].[USA]");
-        assertAxisReturns("[Store].[All Stores].[USA]", "[Store].[USA]");
+        propSaver.set(propSaver.props.NeedDimensionPrefix, prefixNeeded);
+        assertAxisReturns("[Gender].[M]", "[Customer].[Gender].[M]");
+        assertAxisReturns(
+            "[Gender].[All Gender].[M]", "[Customer].[Gender].[M]");
+        assertAxisReturns("[Store].[USA]", "[Store].[Stores].[USA]");
+        assertAxisReturns(
+            "[Store].[All Stores].[USA]", "[Store].[Stores].[USA]");
     }
 
     public void testWithNoDimensionPrefix() {
-        propSaver.set(
-            props.NeedDimensionPrefix,
-            false);
-        assertAxisReturns("{[M]}", "[Gender].[M]");
-        assertAxisReturns("{M}", "[Gender].[M]");
-        assertAxisReturns("{[USA].[CA]}", "[Store].[USA].[CA]");
-        assertAxisReturns("{USA.CA}", "[Store].[USA].[CA]");
-        propSaver.set(
-            props.NeedDimensionPrefix,
-            true);
+        propSaver.set(propSaver.props.NeedDimensionPrefix, false);
+        assertAxisReturns("{[M]}", "[Customer].[Gender].[M]");
+        assertAxisReturns("{M}", "[Customer].[Gender].[M]");
+        assertAxisReturns("{[USA].[CA]}", "[Store].[Stores].[USA].[CA]");
+        assertAxisReturns("{USA.CA}", "[Store].[Stores].[USA].[CA]");
+        propSaver.set(propSaver.props.NeedDimensionPrefix, true);
         assertAxisThrows(
             "{[M]}",
             "Mondrian Error:MDX object '[M]' not found in cube 'Sales'");

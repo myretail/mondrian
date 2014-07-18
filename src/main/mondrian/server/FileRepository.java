@@ -61,9 +61,13 @@ public class FileRepository implements Repository {
         assert repositoryContentFinder != null;
         final Pair<Long, TimeUnit> interval =
             Util.parseInterval(
+<<<<<<< HEAD
                 String.valueOf(
                     MondrianProperties.instance()
                         .XmlaSchemaRefreshInterval.get()),
+=======
+                MondrianProperties.instance().XmlaSchemaRefreshInterval.get(),
+>>>>>>> upstream/4.0
                 TimeUnit.MILLISECONDS);
         scheduledFuture = executorService.scheduleWithFixedDelay(
             new Runnable() {
@@ -157,7 +161,8 @@ public class FileRepository implements Repository {
         // Make sure we load the Mondrian driver into
         // the ClassLoader.
         try {
-            Class.forName(MondrianOlap4jDriver.class.getName());
+            ClassResolver.INSTANCE.forName(
+                MondrianOlap4jDriver.class.getName(), true);
         } catch (ClassNotFoundException e) {
             throw new OlapException("Cannot find mondrian olap4j driver.");
         }

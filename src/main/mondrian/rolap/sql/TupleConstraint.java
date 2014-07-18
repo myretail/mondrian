@@ -5,19 +5,20 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.sql;
 
 import mondrian.olap.Evaluator;
 import mondrian.rolap.*;
-import mondrian.rolap.aggmatcher.AggStar;
+
+import java.util.List;
 
 /**
  * Restricts the SQL result of {@link mondrian.rolap.TupleReader}. This is also
  * used by
- * {@link SqlMemberSource#getMembersInLevel(RolapLevel, TupleConstraint)}.
+ * {@link mondrian.rolap.MemberReader#getMembersInLevel(mondrian.rolap.RolapCubeLevel, TupleConstraint)}.
  *
  * @see mondrian.rolap.TupleReader
  * @see mondrian.rolap.SqlMemberSource
@@ -25,17 +26,16 @@ import mondrian.rolap.aggmatcher.AggStar;
  * @author av
  */
 public interface TupleConstraint extends SqlConstraint {
+
     /**
      * Modifies a Level.Members query.
      *
-     * @param sqlQuery the query to modify
-     * @param aggStar aggregate star to use
-     * @param baseCube base cube for virtual cube constraints
+     * @param queryBuilder Query builder
+     * @param starSet Star set
      */
     public void addConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar);
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet);
 
     /**
      * Will be called multiple times for every "group by" level in
@@ -45,15 +45,13 @@ public interface TupleConstraint extends SqlConstraint {
      * it may join the levels table to the fact table.
      *
      * @param sqlQuery the query to modify
-     * @param baseCube base cube for virtual cube constraints
-     * @param aggStar Aggregate table, or null if query is against fact table
+     * @param starSet Star set
      * @param level the level which is accessed in the Level.Members query
      */
     public void addLevelConstraint(
         SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar,
-        RolapLevel level);
+        RolapStarSet starSet,
+        RolapCubeLevel level);
 
     /**
      * When the members of a level are fetched, the result is grouped
@@ -77,6 +75,23 @@ public interface TupleConstraint extends SqlConstraint {
      * if there is no associated evaluator
      */
     public Evaluator getEvaluator();
+
+    /**
+     * Returns the list of measure groups that this constraint joins to.
+     *
+     * @return list of measure groups, never null
+     */
+    List<RolapMeasureGroup> getMeasureGroupList();
+
+    /**
+     * Returns whether a join with the fact table is required. A join is
+     * required if the context contains members from dimensions other than
+     * level. If we are interested in the members of a level or a members
+     * children then it does not make sense to join only one dimension (the one
+     * that contains the requested members) with the fact table for NON EMPTY
+     * optimization.
+     */
+    boolean isJoinRequired();
 }
 
 // End TupleConstraint.java

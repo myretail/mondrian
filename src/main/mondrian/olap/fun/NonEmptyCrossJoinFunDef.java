@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // Copyright (C) 2004-2005 SAS Institute, Inc.
 // All Rights Reserved.
 */
@@ -76,7 +76,10 @@ public class NonEmptyCrossJoinFunDef extends CrossJoinFunDef {
                         schemaReader.getNativeSetEvaluator(
                             call.getFunDef(), call.getArgs(), evaluator, this);
                     if (nativeEvaluator != null) {
+<<<<<<< HEAD
                         evaluator.restore(savepoint);
+=======
+>>>>>>> upstream/4.0
                         return
                             (TupleList) nativeEvaluator.execute(
                                 ResultStyle.LIST);
@@ -84,7 +87,10 @@ public class NonEmptyCrossJoinFunDef extends CrossJoinFunDef {
 
                     final TupleList list1 = listCalc1.evaluateList(evaluator);
                     if (list1.isEmpty()) {
+<<<<<<< HEAD
                         evaluator.restore(savepoint);
+=======
+>>>>>>> upstream/4.0
                         return list1;
                     }
                     final TupleList list2 = listCalc2.evaluateList(evaluator);

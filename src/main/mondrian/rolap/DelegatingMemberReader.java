@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2003-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho
+// Copyright (C) 2005-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -43,7 +43,7 @@ class DelegatingMemberReader implements MemberReader {
     }
 
     public RolapMember getMemberByKey(
-        RolapLevel level, List<Comparable> keyValues)
+        RolapCubeLevel level, List<Comparable> keyValues)
     {
         return memberReader.getMemberByKey(level, keyValues);
     }
@@ -53,7 +53,7 @@ class DelegatingMemberReader implements MemberReader {
     }
 
     public List<RolapMember> getMembersInLevel(
-        RolapLevel level)
+        RolapCubeLevel level)
     {
         return memberReader.getMembersInLevel(level);
     }
@@ -75,7 +75,7 @@ class DelegatingMemberReader implements MemberReader {
         return memberReader.compare(m1, m2, siblingsAreEqual);
     }
 
-    public RolapHierarchy getHierarchy() {
+    public RolapCubeHierarchy getHierarchy() {
         return memberReader.getHierarchy();
     }
 
@@ -136,13 +136,13 @@ class DelegatingMemberReader implements MemberReader {
     }
 
     public List<RolapMember> getMembersInLevel(
-        RolapLevel level, TupleConstraint constraint)
+        RolapCubeLevel level, TupleConstraint constraint)
     {
         return memberReader.getMembersInLevel(
             level, constraint);
     }
 
-    public int getLevelMemberCount(RolapLevel level) {
+    public int getLevelMemberCount(RolapCubeLevel level) {
         return memberReader.getLevelMemberCount(level);
     }
 

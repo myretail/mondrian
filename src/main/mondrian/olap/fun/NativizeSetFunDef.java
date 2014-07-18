@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2009-2012 Pentaho and others
+// Copyright (C) 2009-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -32,9 +32,8 @@ import static mondrian.olap.fun.NativizeSetFunDef.NativeElementType.*;
  * @since Oct 14, 2009
  */
 public class NativizeSetFunDef extends FunDefBase {
-    /*
-     * Static final fields.
-     */
+
+    // Static final fields.
     protected static final Logger LOGGER =
         Logger.getLogger(NativizeSetFunDef.class);
 
@@ -55,18 +54,14 @@ public class NativizeSetFunDef extends FunDefBase {
         new String[] {"fxx"},
         NativizeSetFunDef.class);
 
-    /*
-     * Instance final fields.
-     */
+    // Instance final fields.
     private final SubstitutionMap substitutionMap = new SubstitutionMap();
-    private final HashSet<Dimension> dimensions =
-        new LinkedHashSet<Dimension>();
+    private final HashSet<Hierarchy> hierarchies =
+        new LinkedHashSet<Hierarchy>();
 
     private boolean isFirstCompileCall = true;
 
-    /*
-     * Instance non-final fields.
-     */
+    // Instance non-final fields.
     private Exp originalExp;
     private static final String ESTIMATE_MESSAGE =
         "isHighCardinality=%b: estimate=%,d threshold=%,d";
@@ -82,7 +77,7 @@ public class NativizeSetFunDef extends FunDefBase {
         LOGGER.debug("NativizeSetFunDef createCall");
         ResolvedFunCall call =
             (ResolvedFunCall) super.createCall(validator, args);
-        call.accept(new FindLevelsVisitor(substitutionMap, dimensions));
+        call.accept(new FindLevelsVisitor(substitutionMap, hierarchies));
         return call;
     }
 
@@ -120,7 +115,7 @@ public class NativizeSetFunDef extends FunDefBase {
             originalExp = funArg.clone();
             Query query = compiler.getEvaluator().getQuery();
             call.accept(
-                new AddFormulasVisitor(query, substitutionMap, dimensions));
+                new AddFormulasVisitor(query, substitutionMap, hierarchies));
             call.accept(new TransformToFormulasVisitor(query));
             query.resolve();
         }
@@ -145,7 +140,7 @@ public class NativizeSetFunDef extends FunDefBase {
     }
 
     private Level findLevel(Exp exp) {
-        exp.accept(new FindLevelsVisitor(substitutionMap, dimensions));
+        exp.accept(new FindLevelsVisitor(substitutionMap, hierarchies));
         final Collection<Level> levels = substitutionMap.values();
         if (levels.size() == 1) {
             return levels.iterator().next();
@@ -312,8 +307,7 @@ public class NativizeSetFunDef extends FunDefBase {
 
         private TupleList evaluateNonNative(Evaluator evaluator) {
             LOGGER.debug(
-                "Disabling native evaluation. originalExp="
-                    + originalExp);
+                "Disabling native evaluation. originalExp=" + originalExp);
             ListCalc calc =
                 compiler.compileList(getOriginalExp(evaluator.getQuery()));
             final int savepoint = evaluator.savepoint();
@@ -364,9 +358,9 @@ public class NativizeSetFunDef extends FunDefBase {
             originalExp.accept(
                 new TransformFromFormulasVisitor(query, compiler));
             if (originalExp instanceof NamedSetExpr) {
-                //named sets get their evaluator cached in RolapResult.
-                //We do not want to use the cached evaluator, so pass along the
-                //expression instead.
+                // named sets get their evaluator cached in RolapResult.
+                // We do not want to use the cached evaluator, so pass along the
+                // expression instead.
                 return ((NamedSetExpr) originalExp).getNamedSet().getExp();
             }
             return originalExp;
@@ -387,8 +381,7 @@ public class NativizeSetFunDef extends FunDefBase {
                 String memberName = member.getName();
                 if (memberName.startsWith(MEMBER_NAME_PREFIX)) {
                     Level level = member.getLevel();
-                    Dimension dimension = level.getDimension();
-                    Hierarchy hierarchy = dimension.getHierarchy();
+                    Hierarchy hierarchy = level.getHierarchy();
 
                     String levelName = getLevelNameFromMemberName(memberName);
                     Level hierarchyLevel =
@@ -443,13 +436,13 @@ public class NativizeSetFunDef extends FunDefBase {
 
     static class FindLevelsVisitor extends MdxVisitorImpl {
         private final SubstitutionMap substitutionMap;
-        private final Set<Dimension> dimensions;
+        private final Set<Hierarchy> hierarchies;
 
         public FindLevelsVisitor(
-            SubstitutionMap substitutionMap, HashSet<Dimension> dimensions)
+            SubstitutionMap substitutionMap, Set<Hierarchy> hierarchies)
         {
             this.substitutionMap = substitutionMap;
-            this.dimensions = dimensions;
+            this.hierarchies = hierarchies;
         }
 
         @Override
@@ -458,7 +451,7 @@ public class NativizeSetFunDef extends FunDefBase {
                 if (call.getArg(0) instanceof LevelExpr) {
                     Level level = ((LevelExpr) call.getArg(0)).getLevel();
                     substitutionMap.put(createMemberId(level), level);
-                    dimensions.add(level.getDimension());
+                    hierarchies.add(level.getHierarchy());
                 }
             } else if (
                 functionWhitelist.contains(call.getFunDef().getClass()))
@@ -474,7 +467,7 @@ public class NativizeSetFunDef extends FunDefBase {
 
         @Override
         public Object visit(MemberExpr member) {
-            dimensions.add(member.getMember().getDimension());
+            hierarchies.add(member.getMember().getHierarchy());
             return null;
         }
     }
@@ -482,17 +475,17 @@ public class NativizeSetFunDef extends FunDefBase {
     static class AddFormulasVisitor extends MdxVisitorImpl {
         private final Query query;
         private final Collection<Level> levels;
-        private final Set<Dimension> dimensions;
+        private final Set<Hierarchy> hierarchies;
 
         public AddFormulasVisitor(
             Query query,
             SubstitutionMap substitutionMap,
-            Set<Dimension> dimensions)
+            Set<Hierarchy> hierarchies)
         {
             LOGGER.debug("---- AddFormulasVisitor constructor");
             this.query = query;
             this.levels = substitutionMap.values();
-            this.dimensions = dimensions;
+            this.hierarchies = hierarchies;
         }
 
         @Override
@@ -514,8 +507,8 @@ public class NativizeSetFunDef extends FunDefBase {
                 formulas.add(createNamedSetFormula(level, memberFormula));
             }
 
-            for (Dimension dim : dimensions) {
-                Level level = dim.getHierarchy().getLevels()[0];
+            for (Hierarchy hierarchy : hierarchies) {
+                Level level = hierarchy.getLevelList().get(0);
                 formulas.add(createSentinelFormula(level));
             }
 
@@ -658,7 +651,8 @@ public class NativizeSetFunDef extends FunDefBase {
                         element = ((MemberExpr) curr).getMember();
                     }
                     if (element != null) {
-                        Level level = element.getHierarchy().getLevels()[0];
+                        Level level =
+                            element.getHierarchy().getLevelList().get(0);
                         Id memberId = createSentinelId(level);
                         Formula formula =
                             query.findFormula(memberId.toString());
@@ -1153,9 +1147,7 @@ public class NativizeSetFunDef extends FunDefBase {
 
             // The mergeCalcMembers method in this file assumes that the
             // resultList is random access - that calls to get(n) are constant
-            // cost, regardless of n. Unfortunately, the TraversalList objects
-            // created by HighCardSqlTupleReader are implemented using linked
-            // lists, leading to pathologically long run times.
+            // cost, regardless of n.
             // This presumes that the ResultStyle is LIST
             if (LOGGER.isDebugEnabled()) {
                 String sourceListType =
@@ -1538,9 +1530,7 @@ public class NativizeSetFunDef extends FunDefBase {
 
     private static Id hierarchyId(Level level) {
         Id id = new Id(q(level.getDimension().getName()));
-        if (MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            id = id.append(q(level.getHierarchy().getName()));
-        }
+        id = id.append(q(level.getHierarchy().getName()));
         return id;
     }
 

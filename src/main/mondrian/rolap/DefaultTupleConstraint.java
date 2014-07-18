@@ -5,14 +5,16 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.olap.Evaluator;
-import mondrian.rolap.aggmatcher.AggStar;
 import mondrian.rolap.sql.*;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * TupleConstraint which does not restrict the result.
@@ -22,21 +24,30 @@ public class DefaultTupleConstraint implements TupleConstraint {
     private static final TupleConstraint instance =
         new DefaultTupleConstraint();
 
-    protected DefaultTupleConstraint() {
+    /**
+     * Creates the singleton instance.
+     */
+    private DefaultTupleConstraint() {
+    }
+
+    public List<RolapMeasureGroup> getMeasureGroupList() {
+        return Collections.emptyList();
+    }
+
+    public boolean isJoinRequired() {
+        return false;
     }
 
     public void addConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar)
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet)
     {
     }
 
     public void addLevelConstraint(
         SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar,
-        RolapLevel level)
+        RolapStarSet starSet,
+        RolapCubeLevel level)
     {
     }
 
@@ -55,6 +66,11 @@ public class DefaultTupleConstraint implements TupleConstraint {
         return this;
     }
 
+    /**
+     * Returns the singleton instance.
+     *
+     * @return the instance
+     */
     public static TupleConstraint instance() {
         return instance;
     }

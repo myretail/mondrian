@@ -5,13 +5,14 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
 
 import mondrian.rolap.*;
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.rolap.sql.*;
+import mondrian.util.Pair;
 
 import java.util.*;
 
@@ -22,12 +23,12 @@ import java.util.*;
  * @author jhyde
  * @author Richard M. Emberson
  */
-class SegmentArrayQuerySpec extends AbstractQuerySpec {
+public class SegmentArrayQuerySpec extends AbstractQuerySpec {
     private final List<Segment> segments;
     private final Segment segment0;
     private final GroupingSetsList groupingSetsList;
 
-    /*
+    /**
      * Compound member predicates.
      * Each list constrains one dimension.
      */
@@ -40,7 +41,7 @@ class SegmentArrayQuerySpec extends AbstractQuerySpec {
      * @param compoundPredicateList list of predicates representing the
      * compound member constraints
      */
-    SegmentArrayQuerySpec(
+    public SegmentArrayQuerySpec(
         GroupingSetsList groupingSetsList,
         List<StarPredicate> compoundPredicateList)
     {
@@ -62,6 +63,13 @@ class SegmentArrayQuerySpec extends AbstractQuerySpec {
     private boolean isValid(boolean fail) {
         assert segments.size() > 0;
         for (Segment segment : segments) {
+            if (!Arrays.equals(segment0.predicates, segment.predicates)) {
+                assert !fail;
+                return false;
+            }
+            if (true) {
+                continue;
+            }
             int n = segment.predicates.length;
             if (n != segment0.predicates.length) {
                 assert !fail;
@@ -80,29 +88,29 @@ class SegmentArrayQuerySpec extends AbstractQuerySpec {
         return true;
     }
 
-    public int getMeasureCount() {
-        return segments.size();
+    public List<Pair<RolapStar.Measure, String>> getMeasures() {
+        return new AbstractList<Pair<RolapStar.Measure, String>>() {
+            public int size() {
+                return segments.size();
+            }
+
+            public Pair<RolapStar.Measure, String> get(int index) {
+                return Pair.of(segments.get(index).aggMeasure, "m" + index);
+            }
+        };
     }
 
-    public RolapStar.Measure getMeasure(final int i) {
-        return segments.get(i).measure;
-    }
+    public List<Pair<RolapStar.Column, String>> getColumns() {
+        return new AbstractList<Pair<RolapStar.Column, String>>() {
+            public int size() {
+                return segment0.aggColumns.length;
+            }
 
-    public String getMeasureAlias(final int i) {
-        return "m" + Integer.toString(i);
-    }
-
-    public RolapStar.Column[] getColumns() {
-        return segment0.getColumns();
-    }
-
-    /**
-     * SqlQuery relies on "c" and index. All this should go into SqlQuery!
-     *
-     * @see mondrian.rolap.sql.SqlQuery#addOrderBy
-     */
-    public String getColumnAlias(final int i) {
-        return "c" + Integer.toString(i);
+            public Pair<RolapStar.Column, String> get(int index) {
+                // FIXME: SqlQuery relies on "c" and index.
+                return Pair.of(segment0.aggColumns[index], "c" + index);
+            }
+        };
     }
 
     public StarColumnPredicate getColumnPredicate(final int i) {
@@ -117,23 +125,24 @@ class SegmentArrayQuerySpec extends AbstractQuerySpec {
         }
     }
 
-    protected void addGroupingFunction(SqlQuery sqlQuery) {
+    protected void addGroupingFunction(SqlQueryBuilder queryBuilder) {
         List<RolapStar.Column> list = groupingSetsList.getRollupColumns();
         for (RolapStar.Column column : list) {
-            sqlQuery.addGroupingFunction(column.generateExprString(sqlQuery));
+            queryBuilder.sqlQuery.addGroupingFunction(
+                column.getExpression().toSql());
         }
     }
 
     protected void addGroupingSets(
-        SqlQuery sqlQuery,
+        SqlQueryBuilder queryBuilder,
         Map<String, String> groupingSetsAliases)
     {
         List<RolapStar.Column[]> groupingSetsColumns =
             groupingSetsList.getGroupingSetsColumns();
         for (RolapStar.Column[] groupingSetsColumn : groupingSetsColumns) {
-            ArrayList<String> groupingColumnsExpr = new ArrayList<String>();
-            for (RolapStar.Column aColumn : groupingSetsColumn) {
-                final String columnExpr = aColumn.generateExprString(sqlQuery);
+            List<String> groupingColumnsExpr = new ArrayList<String>();
+            for (RolapStar.Column column : groupingSetsColumn) {
+                final String columnExpr = column.getExpression().toSql();
                 if (groupingSetsAliases.containsKey(columnExpr)) {
                     groupingColumnsExpr.add(
                         groupingSetsAliases.get(columnExpr));
@@ -141,7 +150,7 @@ class SegmentArrayQuerySpec extends AbstractQuerySpec {
                     groupingColumnsExpr.add(columnExpr);
                 }
             }
-            sqlQuery.addGroupingSet(groupingColumnsExpr);
+            queryBuilder.sqlQuery.addGroupingSet(groupingColumnsExpr);
         }
     }
 

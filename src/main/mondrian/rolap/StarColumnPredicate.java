@@ -4,10 +4,12 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2009 Pentaho
+// Copyright (C) 2007-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap;
+
+import mondrian.rolap.agg.PredicateColumn;
 
 import java.util.Collection;
 
@@ -39,7 +41,7 @@ public interface StarColumnPredicate extends StarPredicate {
      *
      * @return Column constrained by this predicate.
      */
-    RolapStar.Column getConstrainedColumn();
+    PredicateColumn getColumn();
 
     /**
      * Applies this predicate to a predicate from the axis of
@@ -76,19 +78,6 @@ public interface StarColumnPredicate extends StarPredicate {
      * @return Union predicate on this column
      */
     StarColumnPredicate orColumn(StarColumnPredicate predicate);
-
-    /**
-     * This method is required because unfortunately some ColumnPredicate
-     * objects are created without a column.
-     *
-     * <p>We call this method to provide a fake column, then call
-     * {@link #toSql(mondrian.rolap.sql.SqlQuery, StringBuilder)}.
-     *
-     * <p>todo: remove this method when
-     * {@link mondrian.util.Bug#BugMondrian313Fixed bug MONDRIAN-313} and
-     * {@link mondrian.util.Bug#BugMondrian314Fixed bug MONDRIAN-314} are fixed.
-     */
-    StarColumnPredicate cloneWithColumn(RolapStar.Column column);
 
     /**
      * Returned by

@@ -5,30 +5,24 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.calc.*;
-import mondrian.calc.impl.DelegatingTupleList;
 import mondrian.olap.*;
 import mondrian.parser.MdxParserValidator;
 import mondrian.resource.MondrianResource;
 import mondrian.server.*;
 import mondrian.spi.*;
-import mondrian.spi.impl.JndiDataSourceResolver;
 import mondrian.util.*;
 
 import org.apache.log4j.Logger;
 
-import org.eigenbase.util.property.StringProperty;
-
 import org.olap4j.Scenario;
 
 import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
@@ -70,9 +64,9 @@ public class RolapConnection extends ConnectionBase {
     private Scenario scenario;
     private boolean closed = false;
 
-    private static DataSourceResolver dataSourceResolver;
     private final int id;
     private final Statement internalStatement;
+    final Dialect dialect; // set only for internal connections
 
     /**
      * Creates a connection.
@@ -93,7 +87,11 @@ public class RolapConnection extends ConnectionBase {
     /**
      * Creates a RolapConnection.
      *
+<<<<<<< HEAD
      * <p>Only {@link RolapSchemaPool#get} calls this with
+=======
+     * <p>Only {@link mondrian.rolap.RolapSchemaPool#get} calls this with
+>>>>>>> upstream/4.0
      * schema != null (to create a schema's internal connection).
      * Other uses retrieve a schema from the cache based upon
      * the <code>Catalog</code> property.
@@ -131,14 +129,20 @@ public class RolapConnection extends ConnectionBase {
         final String strDataSource =
             connectInfo.get(RolapConnectionProperties.DataSource.name());
         StringBuilder buf = new StringBuilder();
+        DataServicesProvider dataServicesProvider =
+            DataServicesLocator.getDataServicesProvider(
+                connectInfo.get(
+                    RolapConnectionProperties.DataServicesProvider.name()));
         this.dataSource =
-            createDataSource(dataSource, connectInfo, buf);
-        Role role = null;
+            dataServicesProvider.createDataSource(dataSource, connectInfo, buf);
+        RolapSchema.RoleFactory roleFactory = null;
 
         // Register this connection before we register its internal statement.
         server.addConnection(this);
 
         if (schema == null) {
+            this.dialect = null;
+
             // If RolapSchema.Pool.get were to call this with schema == null,
             // we would loop.
             Statement bootstrapStatement = createInternalStatement(false);
@@ -179,38 +183,23 @@ public class RolapConnection extends ConnectionBase {
                 connectInfo.get(RolapConnectionProperties.Role.name());
             if (roleNameList != null) {
                 List<String> roleNames = Util.parseCommaList(roleNameList);
-                List<Role> roleList = new ArrayList<Role>();
+                List<RolapSchema.RoleFactory> roleList =
+                    new ArrayList<RolapSchema.RoleFactory>();
                 for (String roleName : roleNames) {
-                    final LockBox.Entry entry =
-                        server.getLockBox().get(roleName);
-                    Role role1;
-                    if (entry != null) {
-                        try {
-                            role1 = (Role) entry.getValue();
-                        } catch (ClassCastException e) {
-                            role1 = null;
-                        }
-                    } else {
-                        role1 = schema.lookupRole(roleName);
-                    }
-                    if (role1 == null) {
-                        throw Util.newError(
-                            "Role '" + roleName + "' not found");
-                    }
-                    roleList.add(role1);
+                    roleList.add(getRoleFactory(server, schema, roleName));
                 }
                 switch (roleList.size()) {
                 case 0:
                     // If they specify 'Role=;', the list of names will be
                     // empty, and the effect will be as if they did specify
                     // Role at all.
-                    role = null;
+                    roleFactory = null;
                     break;
                 case 1:
-                    role = roleList.get(0);
+                    roleFactory = roleList.get(0);
                     break;
                 default:
-                    role = RoleImpl.union(roleList);
+                    roleFactory = new RolapSchema.UnionRoleFactory(roleList);
                     break;
                 }
             }
@@ -222,47 +211,46 @@ public class RolapConnection extends ConnectionBase {
             // connection and for external connections built on top of this.
             Connection conn = null;
             java.sql.Statement statement = null;
+            Dialect dialect = null;
             try {
                 conn = this.dataSource.getConnection();
-                Dialect dialect =
-                    DialectManager.createDialect(this.dataSource, conn);
+                final String dialectClassName =
+                    connectInfo.get(RolapConnectionProperties.Dialect.name());
+                dialect = DialectManager.createDialect(
+                    this.dataSource, conn, dialectClassName);
                 if (dialect.getDatabaseProduct()
                     == Dialect.DatabaseProduct.DERBY)
                 {
                     // Derby requires a little extra prodding to do the
                     // validation to detect an error.
                     statement = conn.createStatement();
-                    statement.executeQuery("select * from bogustable");
+                    try {
+                        statement.executeQuery("select * from bogustable");
+                    } catch (SQLException e) {
+                        if (e.getMessage().equals(
+                                "Table/View 'BOGUSTABLE' does not exist."))
+                        {
+                            // Ignore. This exception comes from Derby when the
+                            // connection is valid. If the connection were
+                            // invalid, we would receive an error such as
+                            // "Schema 'BOGUSUSER' does not exist"
+                        } else {
+                            throw e;
+                        }
+                    }
                 }
             } catch (SQLException e) {
-                if (e.getMessage().equals(
-                        "Table/View 'BOGUSTABLE' does not exist."))
-                {
-                    // Ignore. This exception comes from Derby when the
-                    // connection is valid. If the connection were invalid, we
-                    // would receive an error such as "Schema 'BOGUSUSER' does
-                    // not exist"
-                } else {
-                    throw Util.newError(
-                        e,
-                        "Error while creating SQL connection: " + buf);
-                }
+                throw Util.newError(
+                    e,
+                    "Error while creating SQL connection: " + buf);
             } finally {
-                try {
-                    if (statement != null) {
-                        statement.close();
-                    }
-                    if (conn != null) {
-                        conn.close();
-                    }
-                } catch (SQLException e) {
-                    // ignore
-                }
+                this.dialect = dialect;
+                Util.close(null, statement, conn);
             }
         }
 
-        if (role == null) {
-            role = schema.getDefaultRole();
+        if (roleFactory == null) {
+            roleFactory = schema.getDefaultRole();
         }
 
         // Set the locale.
@@ -274,7 +262,49 @@ public class RolapConnection extends ConnectionBase {
         }
 
         this.schema = schema;
+        final Map<String, Object> context = new HashMap<String, Object>();
+        for (Pair<String, String> pair : connectInfo) {
+            if (pair.left.startsWith(
+                    RolapConnectionProperties.RolePropertyPrefix))
+            {
+                context.put(
+                    pair.left.substring(
+                        RolapConnectionProperties.RolePropertyPrefix.length()),
+                    pair.right);
+            }
+        }
+        Role role = roleFactory.create(context);
         setRole(role);
+    }
+
+    private RolapSchema.RoleFactory getRoleFactory(
+        MondrianServer server,
+        RolapSchema schema,
+        String roleName)
+    {
+        // First look in lock-box
+        final LockBox.Entry entry =
+            server.getLockBox().get(roleName);
+        if (entry != null) {
+            try {
+                final Object value = entry.getValue();
+                if (value instanceof RolapSchema.RoleFactory) {
+                    return (RolapSchema.RoleFactory) value;
+                } else {
+                    return new RolapSchema.ConstantRoleFactory((Role) value);
+                }
+            } catch (ClassCastException e) {
+                // ignore lock box
+            }
+        }
+
+        // Now look up role factory in schema
+        RolapSchema.RoleFactory factory =
+            schema.mapNameToRole.get(roleName);
+        if (factory != null) {
+            return factory;
+        }
+        throw Util.newError("Role '" + roleName + "' not found");
     }
 
     @Override
@@ -305,212 +335,6 @@ public class RolapConnection extends ConnectionBase {
     }
 
     /**
-     * Creates a JDBC data source from the JDBC credentials contained within a
-     * set of mondrian connection properties.
-     *
-     * <p>This method is package-level so that it can be called from the
-     * RolapConnectionTest unit test.
-     *
-     * @param dataSource Anonymous data source from user, or null
-     * @param connectInfo Mondrian connection properties
-     * @param buf Into which method writes a description of the JDBC credentials
-     * @return Data source
-     */
-    static DataSource createDataSource(
-        DataSource dataSource,
-        Util.PropertyList connectInfo,
-        StringBuilder buf)
-    {
-        assert buf != null;
-        final String jdbcConnectString =
-            connectInfo.get(RolapConnectionProperties.Jdbc.name());
-        final String jdbcUser =
-            connectInfo.get(RolapConnectionProperties.JdbcUser.name());
-        final String jdbcPassword =
-            connectInfo.get(RolapConnectionProperties.JdbcPassword.name());
-        final String dataSourceName =
-            connectInfo.get(RolapConnectionProperties.DataSource.name());
-
-        if (dataSource != null) {
-            appendKeyValue(buf, "Anonymous data source", dataSource);
-            appendKeyValue(
-                buf, RolapConnectionProperties.JdbcUser.name(), jdbcUser);
-            appendKeyValue(
-                buf,
-                RolapConnectionProperties.JdbcPassword.name(),
-                jdbcPassword);
-            if (jdbcUser != null || jdbcPassword != null) {
-                dataSource =
-                    new UserPasswordDataSource(
-                        dataSource, jdbcUser, jdbcPassword);
-            }
-            return dataSource;
-
-        } else if (jdbcConnectString != null) {
-            // Get connection through own pooling datasource
-            appendKeyValue(
-                buf, RolapConnectionProperties.Jdbc.name(), jdbcConnectString);
-            appendKeyValue(
-                buf, RolapConnectionProperties.JdbcUser.name(), jdbcUser);
-            appendKeyValue(
-                buf,
-                RolapConnectionProperties.JdbcPassword.name(),
-                jdbcPassword);
-            String jdbcDrivers =
-                connectInfo.get(RolapConnectionProperties.JdbcDrivers.name());
-            if (jdbcDrivers != null) {
-                RolapUtil.loadDrivers(jdbcDrivers);
-            }
-            final String jdbcDriversProp =
-                    MondrianProperties.instance().JdbcDrivers.get();
-            RolapUtil.loadDrivers(jdbcDriversProp);
-
-            Properties jdbcProperties = getJdbcProperties(connectInfo);
-            final Map<String, String> map = Util.toMap(jdbcProperties);
-            for (Map.Entry<String, String> entry : map.entrySet()) {
-                // FIXME ordering is non-deterministic
-                appendKeyValue(buf, entry.getKey(), entry.getValue());
-            }
-
-            if (jdbcUser != null) {
-                jdbcProperties.put("user", jdbcUser);
-            }
-            if (jdbcPassword != null) {
-                jdbcProperties.put("password", jdbcPassword);
-            }
-
-            // JDBC connections are dumb beasts, so we assume they're not
-            // pooled. Therefore the default is true.
-            final boolean poolNeeded =
-                connectInfo.get(
-                    RolapConnectionProperties.PoolNeeded.name(),
-                    "true").equalsIgnoreCase("true");
-
-            if (!poolNeeded) {
-                // Connection is already pooled; don't pool it again.
-                return new DriverManagerDataSource(
-                    jdbcConnectString,
-                    jdbcProperties);
-            }
-
-            if (jdbcConnectString.toLowerCase().indexOf("mysql") > -1) {
-                // mysql driver needs this autoReconnect parameter
-                jdbcProperties.setProperty("autoReconnect", "true");
-            }
-            return RolapConnectionPool.instance()
-                .getDriverManagerPoolingDataSource(
-                    jdbcConnectString, jdbcProperties);
-
-        } else if (dataSourceName != null) {
-            appendKeyValue(
-                buf,
-                RolapConnectionProperties.DataSource.name(),
-                dataSourceName);
-            appendKeyValue(
-                buf,
-                RolapConnectionProperties.JdbcUser.name(),
-                jdbcUser);
-            appendKeyValue(
-                buf,
-                RolapConnectionProperties.JdbcPassword.name(),
-                jdbcPassword);
-
-            // Data sources are fairly smart, so we assume they look after
-            // their own pooling. Therefore the default is false.
-            final boolean poolNeeded =
-                connectInfo.get(
-                    RolapConnectionProperties.PoolNeeded.name(),
-                    "false").equalsIgnoreCase("true");
-
-            // Get connection from datasource.
-            DataSourceResolver dataSourceResolver = getDataSourceResolver();
-            try {
-                dataSource = dataSourceResolver.lookup(dataSourceName);
-            } catch (Exception e) {
-                throw Util.newInternal(
-                    e,
-                    "Error while looking up data source ("
-                    + dataSourceName + ")");
-            }
-            if (poolNeeded) {
-                dataSource =
-                    RolapConnectionPool.instance()
-                        .getDataSourcePoolingDataSource(
-                            dataSource, dataSourceName, jdbcUser, jdbcPassword);
-            } else {
-                if (jdbcUser != null || jdbcPassword != null) {
-                    dataSource =
-                        new UserPasswordDataSource(
-                            dataSource, jdbcUser, jdbcPassword);
-                }
-            }
-            return dataSource;
-        } else {
-            throw Util.newInternal(
-                "Connect string '" + connectInfo.toString()
-                + "' must contain either '" + RolapConnectionProperties.Jdbc
-                + "' or '" + RolapConnectionProperties.DataSource + "'");
-        }
-    }
-
-    /**
-     * Returns the instance of the {@link mondrian.spi.DataSourceResolver}
-     * plugin.
-     *
-     * @return data source resolver
-     */
-    private static synchronized DataSourceResolver getDataSourceResolver() {
-        if (dataSourceResolver == null) {
-            final StringProperty property =
-                MondrianProperties.instance().DataSourceResolverClass;
-            final String className =
-                property.get(
-                    JndiDataSourceResolver.class.getName());
-            try {
-                final Class<?> clazz;
-                clazz = Class.forName(className);
-                if (!DataSourceResolver.class.isAssignableFrom(clazz)) {
-                    throw Util.newInternal(
-                        "Plugin class specified by property "
-                        + property.getPath() + " must implement "
-                        + DataSourceResolver.class.getName());
-                }
-                dataSourceResolver = (DataSourceResolver) clazz.newInstance();
-            } catch (ClassNotFoundException e) {
-                throw Util.newInternal(
-                    e, "Error while loading plugin class '" + className + "'");
-            } catch (IllegalAccessException e) {
-                throw Util.newInternal(
-                    e, "Error while loading plugin class '" + className + "'");
-            } catch (InstantiationException e) {
-                throw Util.newInternal(
-                    e, "Error while loading plugin class '" + className + "'");
-            }
-        }
-        return dataSourceResolver;
-    }
-
-    /**
-     * Appends "key=value" to a buffer, if value is not null.
-     *
-     * @param buf Buffer
-     * @param key Key
-     * @param value Value
-     */
-    private static void appendKeyValue(
-        StringBuilder buf,
-        String key,
-        Object value)
-    {
-        if (value != null) {
-            if (buf.length() > 0) {
-                buf.append("; ");
-            }
-            buf.append(key).append('=').append(value);
-        }
-    }
-
-    /**
      * Creates a {@link Properties} object containing all of the JDBC
      * connection properties present in the
      * {@link mondrian.olap.Util.PropertyList connectInfo}.
@@ -518,7 +342,7 @@ public class RolapConnection extends ConnectionBase {
      * @param connectInfo Connection properties
      * @return The JDBC connection properties.
      */
-    private static Properties getJdbcProperties(Util.PropertyList connectInfo) {
+    static Properties getJdbcProperties(Util.PropertyList connectInfo) {
         Properties jdbcProperties = new Properties();
         for (Pair<String, String> entry : connectInfo) {
             if (entry.left.startsWith(
@@ -674,9 +498,12 @@ public class RolapConnection extends ConnectionBase {
             final Locus locus = new Locus(execution, null, "Loading cells");
             Locus.push(locus);
             Result result;
+            final RolapCube cube = (RolapCube) query.getCube();
             try {
                 statement.start(execution);
-                ((RolapCube) query.getCube()).clearCachedAggregations(true);
+                for (RolapStar star : cube.getStars()) {
+                    star.clearCachedAggregations(true);
+                }
                 result = new RolapResult(execution, true);
                 int i = 0;
                 for (QueryAxis axis : query.getAxes()) {
@@ -687,7 +514,9 @@ public class RolapConnection extends ConnectionBase {
                 }
             } finally {
                 Locus.pop(locus);
-                ((RolapCube) query.getCube()).clearCachedAggregations(true);
+                for (RolapStar star : cube.getStars()) {
+                    star.clearCachedAggregations(true);
+                }
             }
             statement.end(execution);
             return result;
@@ -817,97 +646,6 @@ public class RolapConnection extends ConnectionBase {
         return statement;
     }
 
-    /**
-     * Implementation of {@link DataSource} which calls the good ol'
-     * {@link java.sql.DriverManager}.
-     *
-     * <p>Overrides {@link #hashCode()} and {@link #equals(Object)} so that
-     * {@link Dialect} objects can be cached more effectively.
-     */
-    private static class DriverManagerDataSource implements DataSource {
-        private final String jdbcConnectString;
-        private PrintWriter logWriter;
-        private int loginTimeout;
-        private Properties jdbcProperties;
-
-        public DriverManagerDataSource(
-            String jdbcConnectString,
-            Properties properties)
-        {
-            this.jdbcConnectString = jdbcConnectString;
-            this.jdbcProperties = properties;
-        }
-
-        @Override
-        public int hashCode() {
-            int h = loginTimeout;
-            h = Util.hash(h, jdbcConnectString);
-            h = Util.hash(h, jdbcProperties);
-            return h;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof DriverManagerDataSource) {
-                DriverManagerDataSource
-                    that = (DriverManagerDataSource) obj;
-                return this.loginTimeout == that.loginTimeout
-                    && this.jdbcConnectString.equals(that.jdbcConnectString)
-                    && this.jdbcProperties.equals(that.jdbcProperties);
-            }
-            return false;
-        }
-
-        public Connection getConnection() throws SQLException {
-            return new org.apache.commons.dbcp.DelegatingConnection(
-                java.sql.DriverManager.getConnection(
-                    jdbcConnectString, jdbcProperties));
-        }
-
-        public Connection getConnection(String username, String password)
-            throws SQLException
-        {
-            if (jdbcProperties == null) {
-                return java.sql.DriverManager.getConnection(
-                    jdbcConnectString, username, password);
-            } else {
-                Properties temp = (Properties)jdbcProperties.clone();
-                temp.put("user", username);
-                temp.put("password", password);
-                return java.sql.DriverManager.getConnection(
-                    jdbcConnectString, temp);
-            }
-        }
-
-        public PrintWriter getLogWriter() throws SQLException {
-            return logWriter;
-        }
-
-        public void setLogWriter(PrintWriter out) throws SQLException {
-            logWriter = out;
-        }
-
-        public void setLoginTimeout(int seconds) throws SQLException {
-            loginTimeout = seconds;
-        }
-
-        public int getLoginTimeout() throws SQLException {
-            return loginTimeout;
-        }
-
-        public java.util.logging.Logger getParentLogger() {
-            return java.util.logging.Logger.getLogger("");
-        }
-
-        public <T> T unwrap(Class<T> iface) throws SQLException {
-            throw new SQLException("not a wrapper");
-        }
-
-        public boolean isWrapperFor(Class<?> iface) throws SQLException {
-            return false;
-        }
-    }
-
     public DataSource getDataSource() {
         return dataSource;
     }
@@ -919,9 +657,17 @@ public class RolapConnection extends ConnectionBase {
      * @return new Scenario
      */
     public ScenarioImpl createScenario() {
-        final ScenarioImpl scenario = new ScenarioImpl();
-        scenario.register(schema);
-        return scenario;
+        return Locus.execute(
+            this,
+            "createScenario",
+            new Locus.Action<ScenarioImpl>() {
+                public ScenarioImpl execute() {
+                    final ScenarioImpl scenario = new ScenarioImpl();
+                    scenario.register(schema);
+                    return scenario;
+                }
+            }
+        );
     }
 
     /**
@@ -956,31 +702,15 @@ public class RolapConnection extends ConnectionBase {
                 ((RolapAxis) underlying.getAxes()[axis]).getTupleList();
 
             final TupleList filteredTupleList;
-            if (!tupleList.isEmpty()
-                && tupleList.get(0).get(0).getDimension().isHighCardinality())
-            {
-                filteredTupleList =
-                    new DelegatingTupleList(
-                        tupleList.getArity(),
-                        new FilteredIterableList<List<Member>>(
-                            tupleList,
-                            new FilteredIterableList.Filter<List<Member>>() {
-                                public boolean accept(final List<Member> p) {
-                                    return p.get(0) != null;
-                                }
-                            }
-                        ));
-            } else {
-                filteredTupleList =
-                    TupleCollections.createList(tupleList.getArity());
-                int i = -1;
-                TupleCursor tupleCursor = tupleList.tupleCursor();
-                while (tupleCursor.forward()) {
-                    ++i;
-                    if (! isEmpty(i, axis)) {
-                        map.put(filteredTupleList.size(), i);
-                        filteredTupleList.addCurrent(tupleCursor);
-                    }
+            filteredTupleList =
+                TupleCollections.createList(tupleList.getArity());
+            int i = -1;
+            TupleCursor tupleCursor = tupleList.tupleCursor();
+            while (tupleCursor.forward()) {
+                ++i;
+                if (! isEmpty(i, axis)) {
+                    map.put(filteredTupleList.size(), i);
+                    filteredTupleList.addCurrent(tupleCursor);
                 }
             }
             this.axes[axis] = new RolapAxis(filteredTupleList);
@@ -1043,148 +773,6 @@ public class RolapConnection extends ConnectionBase {
 
         public void close() {
             underlying.close();
-        }
-    }
-
-    /**
-     * Data source that delegates all methods to an underlying data source.
-     */
-    private static abstract class DelegatingDataSource implements DataSource {
-        protected final DataSource dataSource;
-
-        public DelegatingDataSource(DataSource dataSource) {
-            this.dataSource = dataSource;
-        }
-
-        public Connection getConnection() throws SQLException {
-            return dataSource.getConnection();
-        }
-
-        public Connection getConnection(
-            String username,
-            String password)
-            throws SQLException
-        {
-            return dataSource.getConnection(username, password);
-        }
-
-        public PrintWriter getLogWriter() throws SQLException {
-            return dataSource.getLogWriter();
-        }
-
-        public void setLogWriter(PrintWriter out) throws SQLException {
-            dataSource.setLogWriter(out);
-        }
-
-        public void setLoginTimeout(int seconds) throws SQLException {
-            dataSource.setLoginTimeout(seconds);
-        }
-
-        public int getLoginTimeout() throws SQLException {
-            return dataSource.getLoginTimeout();
-        }
-
-        // JDBC 4.0 support (JDK 1.6 and higher)
-        public <T> T unwrap(Class<T> iface) throws SQLException {
-            if (Util.JdbcVersion >= 0x0400) {
-                // Do
-                //              return dataSource.unwrap(iface);
-                // via reflection.
-                try {
-                    Method method =
-                        DataSource.class.getMethod("unwrap", Class.class);
-                    return iface.cast(method.invoke(dataSource, iface));
-                } catch (IllegalAccessException e) {
-                    throw Util.newInternal(e, "While invoking unwrap");
-                } catch (InvocationTargetException e) {
-                    throw Util.newInternal(e, "While invoking unwrap");
-                } catch (NoSuchMethodException e) {
-                    throw Util.newInternal(e, "While invoking unwrap");
-                }
-            } else {
-                if (iface.isInstance(dataSource)) {
-                    return iface.cast(dataSource);
-                } else {
-                    return null;
-                }
-            }
-        }
-
-        // JDBC 4.0 support (JDK 1.6 and higher)
-        public boolean isWrapperFor(Class<?> iface) throws SQLException {
-            if (Util.JdbcVersion >= 0x0400) {
-                // Do
-                //              return dataSource.isWrapperFor(iface);
-                // via reflection.
-                try {
-                    Method method =
-                        DataSource.class.getMethod(
-                            "isWrapperFor", boolean.class);
-                    return (Boolean) method.invoke(dataSource, iface);
-                } catch (IllegalAccessException e) {
-                    throw Util.newInternal(e, "While invoking isWrapperFor");
-                } catch (InvocationTargetException e) {
-                    throw Util.newInternal(e, "While invoking isWrapperFor");
-                } catch (NoSuchMethodException e) {
-                    throw Util.newInternal(e, "While invoking isWrapperFor");
-                }
-            } else {
-                return iface.isInstance(dataSource);
-            }
-        }
-
-        // JDBC 4.1 support (JDK 1.7 and higher)
-        public java.util.logging.Logger getParentLogger() {
-            if (Util.JdbcVersion >= 0x0401) {
-                // Do
-                //              return dataSource.getParentLogger();
-                // via reflection.
-                try {
-                    Method method =
-                        DataSource.class.getMethod("getParentLogger");
-                    return (java.util.logging.Logger) method.invoke(dataSource);
-                } catch (IllegalAccessException e) {
-                    throw Util.newInternal(e, "While invoking getParentLogger");
-                } catch (InvocationTargetException e) {
-                    throw Util.newInternal(e, "While invoking getParentLogger");
-                } catch (NoSuchMethodException e) {
-                    throw Util.newInternal(e, "While invoking getParentLogger");
-                }
-            } else {
-                // Can't throw SQLFeatureNotSupportedException... it doesn't
-                // exist before JDBC 4.1.
-                throw new UnsupportedOperationException();
-            }
-        }
-    }
-
-    /**
-     * Data source that gets connections from an underlying data source but
-     * with different user name and password.
-     */
-    private static class UserPasswordDataSource extends DelegatingDataSource {
-        private final String jdbcUser;
-        private final String jdbcPassword;
-
-        /**
-         * Creates a UserPasswordDataSource
-         *
-         * @param dataSource Underlying data source
-         * @param jdbcUser User name
-         * @param jdbcPassword Password
-         */
-        public UserPasswordDataSource(
-            DataSource dataSource,
-            String jdbcUser,
-            String jdbcPassword)
-        {
-            super(dataSource);
-            this.jdbcUser = jdbcUser;
-            this.jdbcPassword = jdbcPassword;
-        }
-
-        public Connection getConnection() throws SQLException {
-            return dataSource.getConnection(jdbcUser, jdbcPassword);
         }
     }
 

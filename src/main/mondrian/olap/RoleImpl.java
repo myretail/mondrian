@@ -5,15 +5,23 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho and others
+=======
+// Copyright (C) 2005-2013 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.olap;
 
 import mondrian.rolap.RolapCube;
 import mondrian.rolap.RolapCubeDimension;
+<<<<<<< HEAD
 
 import org.apache.log4j.Logger;
+=======
+import mondrian.rolap.RolapCubeHierarchy;
+>>>>>>> upstream/4.0
 
 import java.util.*;
 
@@ -211,9 +219,9 @@ public class RoleImpl implements Role {
         if (access == Access.CUSTOM) {
             // For legacy reasons, if there are no accessible hierarchies
             // and the dimension has an access level of custom, we deny.
-            // TODO Remove for Mondrian 4.0
+            Util.deprecated("TODO Remove for Mondrian 4.0", false);
             boolean canAccess = false;
-            for (Hierarchy hierarchy : dimension.getHierarchies()) {
+            for (Hierarchy hierarchy : dimension.getHierarchyList()) {
                 final HierarchyAccessImpl hierarchyAccess =
                     hierarchyGrants.get(hierarchy);
                 if (hierarchyAccess != null
@@ -307,8 +315,7 @@ public class RoleImpl implements Role {
             if (access == Access.NONE || access == Access.CUSTOM) {
                 continue;
             }
-            final Dimension[] dimensions = cubeGrant.getKey().getDimensions();
-            for (Dimension dimension1 : dimensions) {
+            for (Dimension dimension1 : cubeGrant.getKey().getDimensionList()) {
                 // If the dimensions have the same identity,
                 // we found an access rule.
                 if (dimension == dimension1) {
@@ -383,17 +390,29 @@ public class RoleImpl implements Role {
             hierarchy,
             new HierarchyAccessImpl(
                 this, hierarchy, access, topLevel, bottomLevel, rollupPolicy));
-        // Cascade the access right to 'custom' on the parent dim if necessary
-        final Access dimAccess =
-            toAccess(dimensionGrants.get(hierarchy.getDimension()));
+
+        // Cascade the access right to 'custom' on the parent dim if necessary.
+        Access dimAccess = dimensionGrants.get(hierarchy.getDimension());
         if (dimAccess == Access.NONE) {
+<<<<<<< HEAD
             LOGGER.debug(
                 "Cascading grant CUSTOM on dimension "
                 + hierarchy.getDimension().getUniqueName()
                 + " because of the grant to hierarchy"
                 + hierarchy.getUniqueName());
             grant(hierarchy.getDimension(), Access.CUSTOM);
+=======
+            dimAccess = Access.CUSTOM;
         }
+        if (dimAccess == null && hierarchy instanceof RolapCubeHierarchy) {
+            RolapCube cube = ((RolapCubeHierarchy) hierarchy).getCube();
+            dimAccess = cubeGrants.get(cube);
+>>>>>>> upstream/4.0
+        }
+        if (dimAccess == null) {
+            dimAccess = Access.ALL;
+        }
+        grant(hierarchy.getDimension(), dimAccess);
     }
 
     public Access getAccess(Hierarchy hierarchy) {
@@ -445,8 +464,8 @@ public class RoleImpl implements Role {
             this,
             hierarchy,
             hierarchyAccess,
-            null,
-            null,
+            hierarchy.getLevelList().get(0),
+            Util.last(hierarchy.getLevelList()),
             RollupPolicy.HIDDEN);
     }
 
@@ -583,9 +602,11 @@ public class RoleImpl implements Role {
      * @return element representing all access to a given hierarchy
      */
     public static HierarchyAccess createAllAccess(Hierarchy hierarchy) {
+        final List<? extends Level> levels = hierarchy.getLevelList();
         return new HierarchyAccessImpl(
             Util.createRootRole(hierarchy.getDimension().getSchema()),
-            hierarchy, Access.ALL, null, null, Role.RollupPolicy.FULL);
+            hierarchy, Access.ALL, levels.get(0),
+            Util.last(levels), Role.RollupPolicy.FULL);
     }
 
     /**
@@ -642,10 +663,10 @@ public class RoleImpl implements Role {
             this.access = access;
             this.rollupPolicy = rollupPolicy;
             this.topLevel = topLevel == null
-                ? hierarchy.getLevels()[0]
+                ? hierarchy.getLevelList().get(0)
                 : topLevel;
             this.bottomLevel = bottomLevel == null
-                ? hierarchy.getLevels()[hierarchy.getLevels().length - 1]
+                ? Util.last(hierarchy.getLevelList())
                 : bottomLevel;
         }
 
@@ -668,6 +689,7 @@ public class RoleImpl implements Role {
             Util.assertTrue(member.getHierarchy() == hierarchy);
 
             // Remove any existing grants to descendants of "member"
+<<<<<<< HEAD
             for (Iterator<MemberAccess> memberIter =
                 memberGrants.values().iterator(); memberIter.hasNext();)
             {
@@ -678,6 +700,14 @@ public class RoleImpl implements Role {
                         + " removed because a grant on "
                         + member.getUniqueName()
                         + " overrides it.");
+=======
+
+            for (Iterator<MemberAccess> memberIter =
+                memberGrants.values().iterator(); memberIter.hasNext();)
+            {
+                Member m = memberIter.next().member;
+                if (m.isChildOrEqualTo(member)) {
+>>>>>>> upstream/4.0
                     memberIter.remove();
                 }
             }
@@ -699,7 +729,11 @@ public class RoleImpl implements Role {
                 {
                     MemberAccess mAccess =
                         memberGrants.get(m.getUniqueName());
+<<<<<<< HEAD
                     final Access parentAccess =
+=======
+                    final Access memberAccess =
+>>>>>>> upstream/4.0
                         mAccess == null ? null : mAccess.access;
                     // If no current access is allowed, upgrade to "custom"
                     // which means nothing unless explicitly allowed.
@@ -734,7 +768,11 @@ public class RoleImpl implements Role {
                             + member.getUniqueName());
                         memberGrants.put(
                             m.getUniqueName(),
+<<<<<<< HEAD
                             new MemberAccess(m, Access.RESTRICTED));
+=======
+                            new MemberAccess(m, Access.CUSTOM));
+>>>>>>> upstream/4.0
                     }
                 }
             } else {
@@ -789,9 +827,17 @@ public class RoleImpl implements Role {
             if (this.access != Access.CUSTOM) {
                 return this.access;
             }
+<<<<<<< HEAD
             MemberAccess mAccess =
                 memberGrants.get(member.getUniqueName());
             Access access = mAccess == null ? null : mAccess.access;
+=======
+
+            MemberAccess mAccess =
+                memberGrants.get(member.getUniqueName());
+            Access access = mAccess == null ? null : mAccess.access;
+
+>>>>>>> upstream/4.0
             // Check for an explicit deny.
             if (access == Access.NONE) {
                 LOGGER.debug(
@@ -931,6 +977,7 @@ public class RoleImpl implements Role {
     private static class MemberAccess {
         private final Member member;
         private final Access access;
+<<<<<<< HEAD
         // We use a weak hash map so that it naturally clears
         // when more memory is required by other parts.
         // This cache is useful for optimization, but cannot be
@@ -938,6 +985,10 @@ public class RoleImpl implements Role {
         // on high cardinality dimensions.
         private final Map<String, Boolean> parentsCache =
             new WeakHashMap<String, Boolean>();
+=======
+        private final Map<String, Boolean> parentsCache =
+            new HashMap<String, Boolean>();
+>>>>>>> upstream/4.0
         public MemberAccess(
             Member member,
             Access access)
@@ -953,6 +1004,7 @@ public class RoleImpl implements Role {
          * very often.
          */
         private boolean isSubGrant(Member parentMember) {
+<<<<<<< HEAD
             if (parentsCache.containsKey(parentMember.getUniqueName())) {
                 return parentsCache.get(parentMember.getUniqueName());
             }
@@ -982,6 +1034,30 @@ public class RoleImpl implements Role {
                 + " : "
                 + access.toString()
                 + "}";
+=======
+            boolean disableCaching = MondrianProperties
+                .instance().DisableCaching.get();
+            if (!disableCaching
+                && parentsCache.containsKey(parentMember.getUniqueName()))
+            {
+                return parentsCache.get(parentMember.getUniqueName());
+            }
+            boolean foundParent = false;
+            for (Member m = member; m != null; m = m.getParentMember()) {
+                if (m.equals(parentMember)) {
+                    // We have proved that this granted member is a
+                    // descendant of 'member'.
+                    foundParent = true;
+                    break;
+                }
+            }
+            // Not a parent. Cache it and return.
+            if (!disableCaching) {
+                parentsCache.put(
+                    parentMember.getUniqueName(), foundParent);
+            }
+            return foundParent;
+>>>>>>> upstream/4.0
         }
     }
 

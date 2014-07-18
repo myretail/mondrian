@@ -5,10 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 1998-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
+
+import org.olap4j.impl.Named;
 
 import java.util.Locale;
 
@@ -18,9 +20,8 @@ import java.util.Locale;
  *
  * @author jhyde, 21 January, 1999
  */
-public interface OlapElement {
+public interface OlapElement extends Named {
     String getUniqueName();
-    String getName();
 
     String getDescription();
 
@@ -38,6 +39,10 @@ public interface OlapElement {
      */
     String getQualifiedName();
 
+    /**
+     * Returns the display name of this catalog element.
+     * If no caption is defined, the name is returned.
+     */
     String getCaption();
 
     /**
@@ -49,6 +54,9 @@ public interface OlapElement {
      */
     String getLocalized(LocalizedProperty prop, Locale locale);
 
+    /**
+     * Returns the hierarchy of an expression.
+     */
     Hierarchy getHierarchy();
 
     /**
@@ -63,11 +71,11 @@ public interface OlapElement {
      *
      * <p>Example 2:
      * <blockquote><pre>
-     * order(except([Promotion Media].[Media Type].members,
-     *              {[Promotion Media].[Media Type].[No Media]}),
+     * order(except([Promotion].[Media Type].members,
+     *              {[Promotion].[Media Type].[No Media]}),
      *       [Measures].[Unit Sales], DESC)
      * </pre></blockquote>
-     * has dimension [Promotion Media].</p>
+     * has dimension [Promotion].</p>
      *
      * <p>Example 3:
      * <blockquote><pre>
@@ -89,10 +97,6 @@ public interface OlapElement {
      */
     boolean isVisible();
 
-    enum LocalizedProperty {
-        CAPTION,
-        DESCRIPTION
-    }
 }
 
 // End OlapElement.java

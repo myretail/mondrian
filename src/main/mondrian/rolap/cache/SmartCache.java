@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.cache;
@@ -62,14 +62,21 @@ public interface SmartCache <K, V> {
 
     /**
      * Executes a task over the contents of the cache and guarantees
+<<<<<<< HEAD
      * exclusive write access while processing.
+=======
+     * synchronization.
+>>>>>>> upstream/4.0
      * @param task The task to execute.
      */
     void execute(SmartCacheTask<K, V> task);
 
     /**
      * Defines a task to be run over the entries of the cache.
+<<<<<<< HEAD
      * Used in conjunction with {@link #execute(Iterator)}.
+=======
+>>>>>>> upstream/4.0
      */
     public interface SmartCacheTask<K, V> {
         void execute(

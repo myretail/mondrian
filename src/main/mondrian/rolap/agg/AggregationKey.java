@@ -51,7 +51,7 @@ public class AggregationKey
      * List of StarPredicate (representing the predicate
      * defining the compound member).
      *
-     * <p>In sorted order of BitKey. This ensures that the map is deternimistic
+     * <p>In sorted order of BitKey. This ensures that the map is deterministic
      * (otherwise different runs generate SQL statements in different orders),
      * and speeds up comparison.
      */
@@ -61,18 +61,31 @@ public class AggregationKey
 
     /**
      * Creates an AggregationKey.
+     */
+    public AggregationKey(
+        BitKey constrainedColumnsBitKey,
+        RolapStar star,
+        List<StarPredicate> compoundPredicateList)
+    {
+        this.constrainedColumnsBitKey = constrainedColumnsBitKey;
+        this.star = star;
+        this.compoundPredicateList = compoundPredicateList;
+    }
+
+    /**
+     * Creates an AggregationKey from a cell request.
      *
      * @param request Cell request
      */
-    public AggregationKey(CellRequest request) {
-        this.constrainedColumnsBitKey = request.getConstrainedColumnsBitKey();
-        this.star = request.getMeasure().getStar();
+    public static AggregationKey create(CellRequest request) {
         Map<BitKey, StarPredicate> compoundPredicateMap =
             request.getCompoundPredicateMap();
-        this.compoundPredicateList =
+        return new AggregationKey(
+            request.getConstrainedColumnsBitKey(),
+            request.getMeasure().getStar(),
             compoundPredicateMap == null
                 ? Collections.<StarPredicate>emptyList()
-                : new ArrayList<StarPredicate>(compoundPredicateMap.values());
+                : new ArrayList<StarPredicate>(compoundPredicateMap.values()));
     }
 
     public final int computeHashCode() {
@@ -208,10 +221,7 @@ public class AggregationKey
         final StringBuilder buf = new StringBuilder();
         for (StarPredicate compoundPredicate : compoundPredicateList) {
             buf.setLength(0);
-            SqlQuery query =
-                new SqlQuery(
-                    star.getSqlQueryDialect());
-            compoundPredicate.toSql(query, buf);
+            compoundPredicate.toSql(star.getSqlQueryDialect(), buf);
             cp.add(buf.toString());
         }
         return cp;

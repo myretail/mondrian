@@ -4,16 +4,26 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2008-2014 Pentaho
+=======
+// Copyright (C) 2008-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.spi.impl;
 
 import mondrian.olap.MondrianProperties;
 import mondrian.olap.Util;
+import mondrian.rolap.SqlStatement;
 import mondrian.spi.Dialect;
+<<<<<<< HEAD
 import mondrian.spi.Dialect.DatabaseProduct;
 import mondrian.spi.StatisticsProvider;
+=======
+import mondrian.spi.StatisticsProvider;
+import mondrian.util.ClassResolver;
+>>>>>>> upstream/4.0
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -21,6 +31,7 @@ import org.apache.commons.logging.LogFactory;
 import java.sql.*;
 import java.sql.Date;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * Implementation of {@link Dialect} based on a JDBC connection and metadata.
@@ -87,6 +98,11 @@ public class JdbcDialectImpl implements Dialect {
      */
     private final List<StatisticsProvider> statisticsProviders;
 
+<<<<<<< HEAD
+=======
+    private final Pattern unquotedIdentifierRegexp;
+
+>>>>>>> upstream/4.0
     private static final int[] RESULT_SET_TYPE_VALUES = {
         ResultSet.TYPE_FORWARD_ONLY,
         ResultSet.TYPE_SCROLL_INSENSITIVE,
@@ -105,6 +121,22 @@ public class JdbcDialectImpl implements Dialect {
      * Two strings are quoted and the character '.' is placed between them.
      */
     private static final int DOUBLE_QUOTE_SIZE = 2 * SINGLE_QUOTE_SIZE + 1;
+
+    /**
+     * The default mapping of java.sql.Types to SqlStatement.Type
+     */
+    private static final Map<Types, SqlStatement.Type> DEFAULT_TYPE_MAP;
+    static {
+        Map typeMapInitial = new HashMap<Types, SqlStatement.Type>();
+        typeMapInitial.put(Types.SMALLINT, SqlStatement.Type.INT);
+        typeMapInitial.put(Types.INTEGER, SqlStatement.Type.INT);
+        typeMapInitial.put(Types.BOOLEAN, SqlStatement.Type.INT);
+        typeMapInitial.put(Types.DOUBLE, SqlStatement.Type.DOUBLE);
+        typeMapInitial.put(Types.FLOAT, SqlStatement.Type.DOUBLE);
+        typeMapInitial.put(Types.BIGINT, SqlStatement.Type.DOUBLE);
+
+        DEFAULT_TYPE_MAP = Collections.unmodifiableMap(typeMapInitial);
+    }
 
     /**
      * Creates a JdbcDialectImpl.
@@ -134,6 +166,28 @@ public class JdbcDialectImpl implements Dialect {
         this.permitsSelectNotInGroupBy =
             deduceSupportsSelectNotInGroupBy(connection);
         this.statisticsProviders = computeStatisticsProviders();
+<<<<<<< HEAD
+=======
+        this.unquotedIdentifierRegexp =
+            Pattern.compile(
+                "[A-Za-z0-9_" + metaData.getExtraNameCharacters() + "]*");
+
+        // for future use
+        boolean supportsMixedCaseQuotedIdentifiers =
+            metaData.supportsMixedCaseQuotedIdentifiers();
+        boolean supportsMixedCaseUnquotedIdentifiers =
+            metaData.supportsMixedCaseIdentifiers();
+        Case quotedIdentifierCase =
+            metaData.storesUpperCaseQuotedIdentifiers() ? Case.UPPER
+                : metaData.storesLowerCaseQuotedIdentifiers() ? Case.LOWER
+                : metaData.storesMixedCaseQuotedIdentifiers() ? Case.MIXED
+                : Case.UNKNOWN;
+        Case unquotedIdentifierCase =
+            metaData.storesUpperCaseIdentifiers() ? Case.UPPER
+                : metaData.storesLowerCaseIdentifiers() ? Case.LOWER
+                : metaData.storesMixedCaseIdentifiers() ? Case.MIXED
+                : Case.UNKNOWN;
+>>>>>>> upstream/4.0
     }
 
     public JdbcDialectImpl() {
@@ -146,6 +200,10 @@ public class JdbcDialectImpl implements Dialect {
         databaseProduct = null;
         permitsSelectNotInGroupBy = true;
         statisticsProviders = null;
+<<<<<<< HEAD
+=======
+        unquotedIdentifierRegexp = null;
+>>>>>>> upstream/4.0
     }
 
     public DatabaseProduct getDatabaseProduct() {
@@ -259,18 +317,18 @@ public class JdbcDialectImpl implements Dialect {
         return supports;
     }
 
-     /**
-      * <p>Detects whether the database is configured to permit queries
-      * that include columns in the SELECT that are not also in the GROUP BY.
-      * MySQL is an example of one that does, though this is configurable.</p>
-      *
-      * <p>The expectation is that this will not change while Mondrian is
-      * running, though some databases (MySQL) allow changing it on the fly.</p>
-      *
-      * @param conn The database connection
-      * @return Whether the feature is enabled.
-      * @throws SQLException on error
-      */
+    /**
+     * <p>Detects whether the database is configured to permit queries
+     * that include columns in the SELECT that are not also in the GROUP BY.
+     * MySQL is an example of one that does, though this is configurable.</p>
+     *
+     * <p>The expectation is that this will not change while Mondrian is
+     * running, though some databases (MySQL) allow changing it on the fly.</p>
+     *
+     * @param conn The database connection
+     * @return Whether the feature is enabled.
+     * @throws SQLException on error
+     */
     protected boolean deduceSupportsSelectNotInGroupBy(Connection conn)
         throws SQLException
     {
@@ -288,84 +346,32 @@ public class JdbcDialectImpl implements Dialect {
     }
 
     public String quoteIdentifier(final String val) {
-        int size = val.length() + SINGLE_QUOTE_SIZE;
-        StringBuilder buf = new StringBuilder(size);
-
-        quoteIdentifier(val, buf);
-
-        return buf.toString();
+        return quoteIdentifierImpl(
+            getQuoteIdentifierString(),
+            needToQuoteFunction(this),
+            val);
     }
 
-    public void quoteIdentifier(final String val, final StringBuilder buf) {
-        String q = getQuoteIdentifierString();
-        if (q == null) {
-            // quoting is not supported
-            buf.append(val);
-            return;
-        }
-        // if the value is already quoted, do nothing
-        //  if not, then check for a dot qualified expression
-        //  like "owner.table".
-        //  In that case, prefix the single parts separately.
-        if (val.startsWith(q) && val.endsWith(q)) {
-            // already quoted - nothing to do
-            buf.append(val);
-            return;
-        }
-
-        int k = val.indexOf('.');
-        if (k > 0) {
-            // qualified
-            String val1 = Util.replace(val.substring(0, k), q, q + q);
-            String val2 = Util.replace(val.substring(k + 1), q, q + q);
-            buf.append(q);
-            buf.append(val1);
-            buf.append(q);
-            buf.append(".");
-            buf.append(q);
-            buf.append(val2);
-            buf.append(q);
-
-        } else {
-            // not Qualified
-            String val2 = Util.replace(val, q, q + q);
-            buf.append(q);
-            buf.append(val2);
-            buf.append(q);
-        }
+    public void quoteIdentifier(String val, StringBuilder buf) {
+        quoteIdentifierImpl(
+            getQuoteIdentifierString(), needToQuoteFunction(this), buf, val);
     }
 
     public String quoteIdentifier(final String qual, final String name) {
-        // We know if the qalifier is null, then only the name is going
-        // to be quoted.
-        int size = name.length()
-            + ((qual == null)
-                ? SINGLE_QUOTE_SIZE
-                : (qual.length() + DOUBLE_QUOTE_SIZE));
-        StringBuilder buf = new StringBuilder(size);
-
-        quoteIdentifier(buf, qual, name);
-
-        return buf.toString();
+        return quoteIdentifierImpl(
+            getQuoteIdentifierString(),
+            needToQuoteFunction(this),
+            qual,
+            name);
     }
 
     public void quoteIdentifier(
-        final StringBuilder buf,
-        final String... names)
+        StringBuilder buf,
+        String... names)
     {
-        int nonNullNameCount = 0;
-        for (String name : names) {
-            if (name == null) {
-                continue;
-            }
-            if (nonNullNameCount > 0) {
-                buf.append('.');
-            }
-            assert name.length() > 0
-                : "name should probably be null, not empty";
-            quoteIdentifier(name, buf);
-            ++nonNullNameCount;
-        }
+        quoteIdentifierImpl(
+            getQuoteIdentifierString(), needToQuoteFunction(this), buf,
+            names);
     }
 
     public String getQuoteIdentifierString() {
@@ -374,50 +380,36 @@ public class JdbcDialectImpl implements Dialect {
 
     public void quoteStringLiteral(
         StringBuilder buf,
-        String s)
+        String value)
     {
-        Util.singleQuoteString(s, buf);
+        Util.singleQuoteString(value, buf);
     }
 
     public void quoteNumericLiteral(
         StringBuilder buf,
-        String value)
+        Number value)
     {
-        buf.append(value);
+        String valueString = value.toString();
+        if (needsExponent(value, valueString)) {
+            valueString += "E0";
+        }
+        buf.append(valueString);
     }
 
-    public void quoteBooleanLiteral(StringBuilder buf, String value) {
+    public void quoteBooleanLiteral(StringBuilder buf, boolean value) {
         // NOTE jvs 1-Jan-2007:  See quoteDateLiteral for explanation.
         // In addition, note that we leave out UNKNOWN (even though
         // it is a valid SQL:2003 literal) because it's really
         // NULL in disguise, and NULL is always treated specially.
-        if (!value.equalsIgnoreCase("TRUE")
-            && !(value.equalsIgnoreCase("FALSE")))
-        {
-            throw new NumberFormatException(
-                "Illegal BOOLEAN literal:  " + value);
-        }
         buf.append(value);
     }
 
-    public void quoteDateLiteral(StringBuilder buf, String value) {
-        // NOTE jvs 1-Jan-2007: Check that the supplied literal is in valid
-        // SQL:2003 date format.  A hack in
-        // RolapSchemaReader.lookupMemberChildByName looks for
-        // NumberFormatException to suppress it, so that is why
-        // we convert the exception here.
-        final Date date;
-        try {
-            date = Date.valueOf(value);
-        } catch (IllegalArgumentException ex) {
-            throw new NumberFormatException(
-                "Illegal DATE literal:  " + value);
-        }
-        quoteDateLiteral(buf, value, date);
+    public void quoteDateLiteral(StringBuilder buf, Date value) {
+        quoteDateLiteral(buf, value.toString(), value);
     }
 
     /**
-     * Helper method for {@link #quoteDateLiteral(StringBuilder, String)}.
+     * Helper method for {@link mondrian.spi.Dialect#quoteDateLiteral(StringBuilder, java.sql.Date)}.
      *
      * @param buf Buffer to append to
      * @param value Value as string
@@ -433,31 +425,17 @@ public class JdbcDialectImpl implements Dialect {
         Util.singleQuoteString(value, buf);
     }
 
-    public void quoteTimeLiteral(StringBuilder buf, String value) {
-        // NOTE jvs 1-Jan-2007:  See quoteDateLiteral for explanation.
-        try {
-            Time.valueOf(value);
-        } catch (IllegalArgumentException ex) {
-            throw new NumberFormatException(
-                "Illegal TIME literal:  " + value);
-        }
+    public void quoteTimeLiteral(StringBuilder buf, Time value) {
         buf.append("TIME ");
-        Util.singleQuoteString(value, buf);
+        Util.singleQuoteString(value.toString(), buf);
     }
 
     public void quoteTimestampLiteral(
         StringBuilder buf,
-        String value)
+        Timestamp value)
     {
-        // NOTE jvs 1-Jan-2007:  See quoteTimestampLiteral for explanation.
-        try {
-            Timestamp.valueOf(value);
-        } catch (IllegalArgumentException ex) {
-            throw new NumberFormatException(
-                "Illegal TIMESTAMP literal:  " + value);
-        }
         buf.append("TIMESTAMP ");
-        Util.singleQuoteString(value, buf);
+        Util.singleQuoteString(value.toString(), buf);
     }
 
     public boolean requiresAliasForFromQuery() {
@@ -543,6 +521,10 @@ public class JdbcDialectImpl implements Dialect {
             }
         }
 
+        if (valueList.isEmpty()) {
+            return generateInlineEmpty(
+                columnNames, columnTypes, fromClause, cast);
+        }
         for (int i = 0; i < valueList.size(); i++) {
             if (i > 0) {
                 buf.append(" union all ");
@@ -574,12 +556,38 @@ public class JdbcDialectImpl implements Dialect {
                 quoteIdentifier(columnName, buf);
             }
             if (fromClause != null) {
-                buf.append(fromClause);
+                buf.append(" ").append(fromClause);
             }
         }
         return buf.toString();
     }
 
+    private String falseLiteral() {
+        final StringBuilder buf = new StringBuilder();
+        quoteBooleanLiteral(buf, false);
+        return buf.toString();
+    }
+
+    private String generateInlineEmpty(
+        List<String> columnNames,
+        List<String> columnTypes,
+        String fromClause,
+        boolean cast)
+    {
+        if (fromClause == null) {
+            fromClause = "where " + falseLiteral();
+        } else if (fromClause.contains(" where ")) {
+            fromClause += " and " + falseLiteral();
+        } else {
+            fromClause += " where " + falseLiteral();
+        }
+        return generateInlineGeneric(
+            columnNames,
+            columnTypes,
+            Collections.singletonList(new String[columnTypes.size()]),
+            fromClause,
+            cast);
+    }
     /**
      * Generates inline values list using ANSI 'VALUES' syntax.
      * For example,
@@ -591,7 +599,7 @@ public class JdbcDialectImpl implements Dialect {
      * have the same type as other columns:
      *
      * <blockquote><code>SELECT * FROM
-     * (VALUES (1, 'a'), (2, CASE(NULL AS VARCHAR(1)))) AS t(x, y)
+     * (VALUES (1, 'a'), (2, CAST(NULL AS VARCHAR(1)))) AS t(x, y)
      * </code></blockquote>
      *
      * <p>This syntax is known to work on Derby, but not Oracle 10 or
@@ -611,6 +619,9 @@ public class JdbcDialectImpl implements Dialect {
         List<String[]> valueList,
         boolean cast)
     {
+        if (valueList.isEmpty()) {
+            return generateInlineEmpty(columnNames, columnTypes, null, cast);
+        }
         final StringBuilder buf = new StringBuilder();
         buf.append("SELECT * FROM (VALUES ");
         // Derby pads out strings to a common length, so we cast the
@@ -898,6 +909,83 @@ public class JdbcDialectImpl implements Dialect {
         return null;
     }
 
+<<<<<<< HEAD
+=======
+    public boolean alwaysQuoteIdentifiers() {
+        return true;
+    }
+
+    public boolean needToQuote(String identifier) {
+        return alwaysQuoteIdentifiers()
+            || !hasSpecialChars(identifier);
+    }
+
+    public Dialect withQuoting(boolean alwaysQuoteIdentifiers) {
+        return NonQuotingDialect.of(this, alwaysQuoteIdentifiers);
+    }
+
+    public boolean hasSpecialChars(String identifier) {
+        return unquotedIdentifierRegexp.matcher(identifier).matches();
+    }
+
+    public String rectifyCase(String identifier) {
+        return identifier;
+    }
+
+
+
+    public SqlStatement.Type getType(
+        ResultSetMetaData metaData, int columnIndex)
+        throws SQLException
+    {
+        final int columnType = metaData.getColumnType(columnIndex + 1);
+
+        SqlStatement.Type internalType = null;
+        if (columnType != Types.NUMERIC && columnType != Types.DECIMAL) {
+            internalType = DEFAULT_TYPE_MAP.get(columnType);
+        } else {
+            final int precision = metaData.getPrecision(columnIndex + 1);
+            final int scale = metaData.getScale(columnIndex + 1);
+            if (scale == 0 && precision <= 9) {
+                // An int (up to 2^31 = 2.1B) can hold any NUMBER(10, 0) value
+                // (up to 10^9 = 1B).
+                internalType = SqlStatement.Type.INT;
+            } else {
+                internalType = SqlStatement.Type.DOUBLE;
+            }
+        }
+        internalType =  internalType == null
+            ? SqlStatement.Type.OBJECT : internalType;
+        logTypeInfo(metaData, columnIndex, internalType);
+        return internalType;
+    }
+
+
+    void logTypeInfo(
+        ResultSetMetaData metaData, int columnIndex,
+        SqlStatement.Type internalType)
+    throws SQLException
+    {
+        if (LOGGER.isDebugEnabled()) {
+            final int columnType = metaData.getColumnType(columnIndex + 1);
+            final int precision = metaData.getPrecision(columnIndex + 1);
+            final int scale = metaData.getScale(columnIndex + 1);
+            final String columnName = metaData.getColumnName(columnIndex + 1);
+            LOGGER.debug(
+                "JdbcDialectImpl.getType "
+                + "Dialect- " + this.getDatabaseProduct()
+                + ", Column-"
+                + columnName
+                + " is of internal type "
+                + internalType
+                + ". JDBC type was "
+                + columnType
+                + ".  Column precision=" + precision
+                + ".  Column scale=" + scale);
+        }
+    }
+
+>>>>>>> upstream/4.0
     public List<StatisticsProvider> getStatisticsProviders() {
         return statisticsProviders;
     }
@@ -912,15 +1000,23 @@ public class JdbcDialectImpl implements Dialect {
             new ArrayList<StatisticsProvider>();
         for (String name : names) {
             try {
+<<<<<<< HEAD
                 final Class<?> clazz = Class.forName(name);
                 StatisticsProvider provider =
                     (StatisticsProvider) clazz.newInstance();
                 providerList.add(provider);
             } catch (ClassNotFoundException e) {
+=======
+                StatisticsProvider provider =
+                    ClassResolver.INSTANCE.instantiateSafe(name);
+                providerList.add(provider);
+            } catch (Exception e) {
+>>>>>>> upstream/4.0
                 LOGGER.info(
                     "Error instantiating statistics provider (class=" + name
                     + ")",
                     e);
+<<<<<<< HEAD
             } catch (InstantiationException e) {
                 LOGGER.info(
                     "Error instantiating statistics provider (class=" + name
@@ -936,6 +1032,8 @@ public class JdbcDialectImpl implements Dialect {
                     "Error instantiating statistics provider (class="
                     + name
                     + ")", e);
+=======
+>>>>>>> upstream/4.0
             }
         }
         return providerList;
@@ -985,14 +1083,14 @@ public class JdbcDialectImpl implements Dialect {
                 // this version cannot handle subqueries and is considered "old"
                 // DEUKA "05.01.0000 V5R1m0" is ok
                 String[] version_release = productVersion.split("\\.", 3);
-                /*
+/*
                 if (version_release.length > 2 &&
                     "04".compareTo(version_release[0]) > 0 ||
                     ("04".compareTo(version_release[0]) == 0
                     && "03".compareTo(version_release[1]) >= 0))
                     return true;
-                */
-                // assume, that version <= 04 is "old"
+*/
+                // assume that version <= 04 is "old"
                 if ("04".compareTo(version_release[0]) >= 0) {
                     return DatabaseProduct.DB2_OLD_AS400;
                 } else {
@@ -1004,7 +1102,13 @@ public class JdbcDialectImpl implements Dialect {
             }
         } else if (upperProductName.indexOf("FIREBIRD") >= 0) {
             return DatabaseProduct.FIREBIRD;
+<<<<<<< HEAD
         } else if (productName.equals("Hive")) {
+=======
+        } else if (upperProductName.equals("HIVE")
+            || upperProductName.equals("APACHE HIVE"))
+        {
+>>>>>>> upstream/4.0
             return DatabaseProduct.HIVE;
         } else if (productName.startsWith("Informix")) {
             return DatabaseProduct.INFORMIX;
@@ -1012,12 +1116,16 @@ public class JdbcDialectImpl implements Dialect {
             return DatabaseProduct.INGRES;
         } else if (productName.equals("Interbase")) {
             return DatabaseProduct.INTERBASE;
-        } else if (upperProductName.equals("LUCIDDB")) {
+        } else if (upperProductName.equals("LUCIDDB")
+            || upperProductName.equals("OPTIQ"))
+        {
             return DatabaseProduct.LUCIDDB;
         } else if (upperProductName.indexOf("SQL SERVER") >= 0) {
             return DatabaseProduct.MSSQL;
         } else if (productName.equals("Oracle")) {
             return DatabaseProduct.ORACLE;
+        } else if (upperProductName.indexOf("PHOENIX") >= 0) {
+            return DatabaseProduct.PHOENIX;
         } else if (upperProductName.indexOf("POSTGRE") >= 0) {
             return DatabaseProduct.POSTGRESQL;
         } else if (upperProductName.indexOf("NETEZZA") >= 0) {
@@ -1026,6 +1134,8 @@ public class JdbcDialectImpl implements Dialect {
             return DatabaseProduct.INFOBRIGHT;
         } else if (upperProductName.equals("MYSQL")) {
             return DatabaseProduct.MYSQL;
+        } else if (upperProductName.equals("MONETDB")) {
+            return DatabaseProduct.MONETDB;
         } else if (upperProductName.equals("VERTICA")
             || upperProductName.equals("VERTICA DATABASE"))
         {
@@ -1049,7 +1159,325 @@ public class JdbcDialectImpl implements Dialect {
         } else if (upperProductName.indexOf("VECTORWISE") >= 0) {
             return DatabaseProduct.VECTORWISE;
         } else {
-            return DatabaseProduct.UNKNOWN;
+            return DatabaseProduct.getDatabaseProduct(upperProductName);
+        }
+    }
+
+    public Datatype sqlTypeToDatatype(
+        String typeName,
+        int type)
+    {
+        Util.discard(typeName); // not used, but reserved for future use
+        switch (type) {
+        case Types.BINARY:
+            // REVIEW: Access returns BINARY when it encounters a NULL; we can
+            // treat that as any type, so we arbitrarily choose INTEGER.
+            return Datatype.Integer;
+        case Types.BIT:
+            return Datatype.Integer;
+        case Types.BOOLEAN:
+            return Datatype.Boolean;
+        case Types.DATE:
+            return Datatype.Date;
+        case Types.TINYINT:
+        case Types.SMALLINT:
+        case Types.INTEGER:
+        case Types.BIGINT:
+            return Datatype.Integer;
+        case Types.NUMERIC:
+        case Types.DECIMAL:
+        case Types.FLOAT:
+        case Types.DOUBLE:
+            return Datatype.Numeric;
+        case Types.CHAR:
+        case Types.VARCHAR:
+            return Datatype.String;
+        case Types.TIME:
+            return Datatype.Time;
+        case Types.TIMESTAMP:
+            return Datatype.Timestamp;
+        default:
+            return null;
+        }
+    }
+
+    public String datatypeToString(
+        Datatype datatype, int precision, int scale)
+    {
+        switch (datatype) {
+        case String:
+            return "VARCHAR(" + precision + ")";
+        default:
+            return datatype.name();
+        }
+    }
+
+    static Util.Predicate1<String> needToQuoteFunction(
+        final Dialect dialect)
+    {
+        return new Util.Predicate1<String>() {
+            public boolean test(String s) {
+                return dialect.needToQuote(s);
+            }
+        };
+    }
+
+    /** Implementation of {@link Dialect#quoteIdentifier(String)}. */
+    static String quoteIdentifierImpl(
+        String q,
+        Util.Predicate1<String> shouldQuote,
+        final String val)
+    {
+        return quoteIdentifierImpl(
+            q, shouldQuote, new StringBuilder(val.length() + SINGLE_QUOTE_SIZE),
+            val).toString();
+    }
+
+    /** Implementation of {@link Dialect#quoteIdentifier(String, String)}. */
+    static String quoteIdentifierImpl(
+        String q,
+        Util.Predicate1<String> shouldQuote,
+        String qual,
+        String name)
+    {
+        // We know if the qualifier is null, then only the name is going
+        // to be quoted.
+        int size = name.length()
+            + ((qual == null)
+            ? SINGLE_QUOTE_SIZE
+            : (qual.length() + DOUBLE_QUOTE_SIZE));
+        return quoteIdentifierImpl(
+            q, shouldQuote, new StringBuilder(size),
+            new String[]{qual, name})
+            .toString();
+    }
+
+    /** Implementation of {@link Dialect#quoteIdentifier(StringBuilder, String...)}. */
+    static StringBuilder quoteIdentifierImpl(
+        String q,
+        Util.Predicate1<String> shouldQuote,
+        StringBuilder buf,
+        String[] names)
+    {
+        int nonNullNameCount = 0;
+        for (String name : names) {
+            if (name == null) {
+                continue;
+            }
+            if (nonNullNameCount > 0) {
+                buf.append('.');
+            }
+            assert name.length() > 0
+                : "name should probably be null, not empty";
+            quoteIdentifierImpl(q, shouldQuote, buf, name);
+            ++nonNullNameCount;
+        }
+        return buf;
+    }
+
+    /** Implementation of {@link Dialect#quoteIdentifier(String, StringBuilder)}. */
+    static StringBuilder quoteIdentifierImpl(
+        String q,
+        Util.Predicate1<String> shouldQuote,
+        StringBuilder buf,
+        String val)
+    {
+        if (!shouldQuote.test(val)) {
+            // identifier is not one that needs to be quoted
+            return buf.append(val);
+        }
+        if (q == null) {
+            // quoting is not supported
+            return buf.append(val);
+        }
+        // if the value is already quoted, do nothing
+        //  if not, then check for a dot qualified expression
+        //  like "owner.table".
+        //  In that case, prefix the single parts separately.
+        if (val.startsWith(q) && val.endsWith(q)) {
+            // already quoted - nothing to do
+            return buf.append(val);
+        }
+
+        int k = val.indexOf('.');
+        if (k > 0) {
+            // qualified
+            String val1 = Util.replace(val.substring(0, k), q, q + q);
+            String val2 = Util.replace(val.substring(k + 1), q, q + q);
+            buf.append(q);
+            buf.append(val1);
+            buf.append(q);
+            buf.append(".");
+            buf.append(q);
+            buf.append(val2);
+            buf.append(q);
+
+        } else {
+            // not Qualified
+            String val2 = Util.replace(val, q, q + q);
+            buf.append(q);
+            buf.append(val2);
+            buf.append(q);
+        }
+        return buf;
+    }
+
+    /**
+     * Dialect that does not quote identifiers but otherwise behaves as its
+     * underlying dialect.
+     */
+    private static final class NonQuotingDialect extends DelegatingDialect {
+        private final boolean alwaysQuoteIdentifiers;
+
+        private NonQuotingDialect(
+            Dialect dialect,
+            boolean alwaysQuoteIdentifiers)
+        {
+            super(dialect);
+            this.alwaysQuoteIdentifiers = alwaysQuoteIdentifiers;
+        }
+
+        static Dialect of(Dialect dialect, boolean alwaysQuoteIdentifiers) {
+            if (dialect.alwaysQuoteIdentifiers() == alwaysQuoteIdentifiers) {
+                return dialect;
+            }
+            if (dialect instanceof NonQuotingDialect) {
+                return ((NonQuotingDialect) dialect).dialect;
+            }
+            return new NonQuotingDialect(dialect, alwaysQuoteIdentifiers);
+        }
+
+        @Override
+        public String toString() {
+            return dialect + "[quoting=false]";
+        }
+
+        @Override
+        public Dialect withQuoting(boolean alwaysQuoteIdentifiers) {
+            return of(this, alwaysQuoteIdentifiers);
+        }
+
+        @Override
+        public boolean alwaysQuoteIdentifiers() {
+            return alwaysQuoteIdentifiers;
+        }
+
+        @Override
+        public boolean needToQuote(String identifier) {
+            return alwaysQuoteIdentifiers()
+                || !hasSpecialChars(identifier);
+        }
+
+        @Override
+        public String rectifyCase(String identifier) {
+            if (alwaysQuoteIdentifiers()) {
+                return identifier;
+            } else if (identifier == null) {
+                return null;
+            } else if (needToQuote(identifier)) {
+                return identifier;
+            } else {
+                return identifier.toUpperCase();
+            }
+        }
+
+        @Override
+        public String quoteIdentifier(String val) {
+            return quoteIdentifierImpl(
+                getQuoteIdentifierString(),
+                needToQuoteFunction(this),
+                val);
+        }
+
+        @Override
+        public void quoteIdentifier(String val, StringBuilder buf) {
+            quoteIdentifierImpl(
+                getQuoteIdentifierString(),
+                needToQuoteFunction(this),
+                buf,
+                val);
+        }
+
+        @Override
+        public String quoteIdentifier(final String qual, final String name) {
+            return quoteIdentifierImpl(
+                getQuoteIdentifierString(),
+                needToQuoteFunction(this),
+                qual,
+                name);
+        }
+
+        @Override
+        public void quoteIdentifier(StringBuilder buf, String... names) {
+            quoteIdentifierImpl(
+                getQuoteIdentifierString(),
+                needToQuoteFunction(this),
+                buf,
+                names);
+        }
+    }
+
+    // for future use
+    private enum Case {
+        LOWER, MIXED, UNKNOWN, UPPER
+    }
+
+    /**
+     * Helper method to determine if a connection would work with
+     * a given database product. This can be used to differenciate
+     * between databases which use the same driver as others.
+     *
+     * <p>It will first try to use
+     * {@link DatabaseMetaData#getDatabaseProductName()} and match the
+     * name of {@link DatabaseProduct} passed as an argument.
+     *
+     * <p>If that fails, it will try to execute <code>select version();</code>
+     * and obtains some information directly from the server.
+     *
+     * @param databaseProduct Database product instance
+     * @param connection SQL connection
+     * @return true if a match was found. false otherwise.
+     */
+    protected static boolean isDatabase(
+        DatabaseProduct databaseProduct,
+        Connection connection)
+    {
+        Statement statement = null;
+        ResultSet resultSet = null;
+
+        String dbProduct = databaseProduct.name().toLowerCase();
+
+        try {
+            // Quick and dirty check first.
+            if (connection.getMetaData().getDatabaseProductName()
+                .toLowerCase().contains(dbProduct))
+            {
+                LOGGER.debug("Using " + databaseProduct.name() + " dialect");
+                return true;
+            }
+
+            // Let's try using version().
+            statement = connection.createStatement();
+            resultSet = statement.executeQuery("select version()");
+            if (resultSet.next()) {
+                String version = resultSet.getString(1);
+                LOGGER.debug("Version=" + version);
+                if (version != null) {
+                    if (version.toLowerCase().contains(dbProduct)) {
+                        LOGGER.info(
+                            "Using " + databaseProduct.name() + " dialect");
+                        return true;
+                    }
+                }
+            }
+            LOGGER.debug("NOT Using " + databaseProduct.name() + " dialect");
+            return false;
+        } catch (SQLException e) {
+            LOGGER.debug(
+                "NOT Using " + databaseProduct.name() + " dialect.", e);
+            return false;
+        } finally {
+            Util.close(resultSet, statement, null);
         }
     }
 

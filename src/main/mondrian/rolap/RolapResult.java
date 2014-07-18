@@ -50,15 +50,6 @@ public class RolapResult extends ResultBase {
     private final int maxEvalDepth =
             MondrianProperties.instance().MaxEvalDepth.get();
 
-    private final Map<Integer, Boolean> positionsHighCardinality =
-        new HashMap<Integer, Boolean>();
-    private final Map<Integer, TupleCursor> positionsIterators =
-        new HashMap<Integer, TupleCursor>();
-    private final Map<Integer, Integer> positionsIndexes =
-        new HashMap<Integer, Integer>();
-    private final Map<Integer, List<List<Member>>> positionsCurrent =
-        new HashMap<Integer, List<List<Member>>>();
-
     /**
      * Creates a RolapResult.
      *
@@ -109,7 +100,9 @@ public class RolapResult extends ResultBase {
             // effect if caching has been disabled, otherwise
             // nothing happens.
             // Clear the local cache before a query has run
-            cube.clearCachedAggregations();
+            for (RolapStar star : cube.getStars()) {
+                star.clearCachedAggregations(false);
+            }
 
             /////////////////////////////////////////////////////////////////
             //
@@ -373,17 +366,21 @@ public class RolapResult extends ResultBase {
                             new DummyExp(query.slicerCalc.getType()))
                         {
                             public Object evaluate(Evaluator evaluator) {
+                                TupleList list =
+                                    AbstractAggregateFunDef
+                                        .processUnrelatedDimensions(
+                                            tupleList1, evaluator);
                                 return AggregateFunDef.AggregateCalc.aggregate(
-                                    valueCalc, evaluator, tupleList1);
+                                    valueCalc, evaluator, list);
                             }
                         };
-                    final List<RolapHierarchy> hierarchyList =
-                        new AbstractList<RolapHierarchy>() {
-                            final List<Member> pos0 = tupleList1.get(0);
+                    final List<RolapCubeHierarchy> hierarchyList =
+                        new AbstractList<RolapCubeHierarchy>() {
+                            final List<RolapMember> pos0 =
+                                Util.cast(tupleList1.get(0));
 
-                            public RolapHierarchy get(int index) {
-                                return ((RolapMember) pos0.get(index))
-                                    .getHierarchy();
+                            public RolapCubeHierarchy get(int index) {
+                                return pos0.get(index).getHierarchy();
                             }
 
                             public int size() {
@@ -774,7 +771,8 @@ public class RolapResult extends ResultBase {
             }
             Hierarchy h = em.getHierarchy();
             Dimension d = h.getDimension();
-            if (d.getDimensionType() == DimensionType.TimeDimension) {
+            if (d.getDimensionType() == org.olap4j.metadata.Dimension.Type.TIME)
+            {
                 continue;
             }
             if (!em.isAll()) {
@@ -825,6 +823,7 @@ public class RolapResult extends ResultBase {
                 "coordinates should have dimension " + point.size());
         }
 
+<<<<<<< HEAD
         for (int i = 0; i < pos.length; i++) {
             if (positionsHighCardinality.get(i)) {
                 final Locus locus = new Locus(execution, null, "Loading cells");
@@ -838,6 +837,8 @@ public class RolapResult extends ResultBase {
             }
         }
 
+=======
+>>>>>>> upstream/4.0
         CellInfo ci = cellInfos.lookup(pos);
         if (ci.value == null) {
             for (int i = 0; i < pos.length; i++) {
@@ -973,11 +974,17 @@ public class RolapResult extends ResultBase {
 
                 evaluator.setCellReader(batchingReader);
                 Object preliminaryValue = calc.evaluate(evaluator);
+<<<<<<< HEAD
 
                 if (preliminaryValue instanceof TupleIterable) {
                     // During the preliminary phase, we have to materialize the
                     // tuple lists or the evaluation lower down won't take into
                     // account all the tuples.
+=======
+                if (preliminaryValue instanceof TupleIterable
+                    && !(preliminaryValue instanceof TupleList))
+                {
+>>>>>>> upstream/4.0
                     TupleIterable iterable = (TupleIterable) preliminaryValue;
                     final TupleCursor cursor = iterable.tupleCursor();
                     while (cursor.forward()) {
@@ -1062,11 +1069,7 @@ public class RolapResult extends ResultBase {
                     // then find or create a CellFormatterValueFormatter
                     // for it. If not, then find or create a Locale based
                     // FormatValueFormatter.
-                    final RolapCube cube = getCube();
-                    Hierarchy measuresHierarchy =
-                        cube.getMeasuresHierarchy();
-                    RolapMeasure m =
-                        (RolapMeasure) revaluator.getContext(measuresHierarchy);
+                    RolapMeasure m = (RolapMeasure) revaluator.getMembers()[0];
                     ValueFormatter valueFormatter = m.getFormatter();
                     if (valueFormatter == null) {
                         cachedFormatString = revaluator.getFormatString();
@@ -1090,14 +1093,11 @@ public class RolapResult extends ResultBase {
                 } catch (MondrianEvaluationException e) {
                     // ignore but warn
                     LOGGER.warn("Mondrian: exception in executeStripe.", e);
-                } catch (Error e) {
-                    // Errors indicate fatal JVM problems; do not discard
-                    throw e;
-                } catch (Throwable e) {
-                    LOGGER.warn("Mondrian: exception in executeStripe.", e);
-                    Util.discard(e);
                 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/4.0
                 if (o != RolapUtil.valueNotReadyException) {
                     ci.value = o;
                 }
@@ -1106,30 +1106,8 @@ public class RolapResult extends ResultBase {
             RolapAxis axis = (RolapAxis) axes[axisOrdinal];
             TupleList tupleList = axis.getTupleList();
             Util.discard(tupleList.size()); // force materialize
-            if (isAxisHighCardinality(axisOrdinal, tupleList)) {
-                final int limit =
-                    MondrianProperties.instance().HighCardChunkSize.get();
-                if (positionsIterators.get(axisOrdinal) == null) {
-                    final TupleCursor tupleCursor = tupleList.tupleCursor();
-                    positionsIterators.put(axisOrdinal, tupleCursor);
-                    positionsIndexes.put(axisOrdinal, 0);
-                    final List<List<Member>> subPositions =
-                        new ArrayList<List<Member>>();
-                    for (int i = 0; i < limit && tupleCursor.forward(); i++) {
-                        subPositions.add(tupleCursor.current());
-                    }
-                    positionsCurrent.put(axisOrdinal, subPositions);
-                }
-                final TupleCursor tupleCursor =
-                    positionsIterators.get(axisOrdinal);
-                final int positionIndex = positionsIndexes.get(axisOrdinal);
-                List<List<Member>> subTuples =
-                    positionsCurrent.get(axisOrdinal);
 
-                if (subTuples == null) {
-                    return;
-                }
-
+<<<<<<< HEAD
                 int pi;
                 if (pos[axisOrdinal] > positionIndex + subTuples.size() - 1
                         && subTuples.size() == limit)
@@ -1206,12 +1184,39 @@ public class RolapResult extends ResultBase {
                 if (!tuple.isEmpty()) {
                     highCardinality =
                         tuple.get(0).getDimension().isHighCardinality();
+=======
+            for (List<Member> tuple : tupleList) {
+                List<Member> measures =
+                    new ArrayList<Member>(
+                        statement.getQuery().getMeasuresMembers());
+                for (Member measure : measures) {
+                    if (measure instanceof RolapBaseCubeMeasure) {
+                        RolapBaseCubeMeasure baseCubeMeasure =
+                            (RolapBaseCubeMeasure) measure;
+                        if (baseCubeMeasure.getAggregator()
+                            == RolapAggregator.DistinctCount)
+                        {
+                            processDistinctMeasureExpr(
+                                tuple, baseCubeMeasure);
+                        }
+                    }
                 }
-                break;
             }
-            positionsHighCardinality.put(axisOrdinal, highCardinality);
+            int tupleIndex = 0;
+            for (final List<Member> tuple : tupleList) {
+                point.setAxis(axisOrdinal, tupleIndex);
+                final int savepoint = revaluator.savepoint();
+                try {
+                    revaluator.setContext(tuple);
+                    execution.checkCancelOrTimeout();
+                    executeStripe(axisOrdinal - 1, revaluator, pos);
+                } finally {
+                    revaluator.restore(savepoint);
+>>>>>>> upstream/4.0
+                }
+                tupleIndex++;
+            }
         }
-        return highCardinality;
     }
 
     /**
@@ -1281,12 +1286,12 @@ public class RolapResult extends ResultBase {
     }
 
     private static void processMemberExpr(Object o, List<Member> exprMembers) {
-        if (o instanceof Member && o instanceof RolapCubeMember) {
-            exprMembers.add((Member) o);
-        } else if (o instanceof VisualTotalMember) {
+        if (o instanceof VisualTotalMember) {
             VisualTotalMember member = (VisualTotalMember) o;
             Exp exp = member.getExpression();
             processMemberExpr(exp, exprMembers);
+        } else if (o instanceof RolapMember) {
+            exprMembers.add((Member) o);
         } else if (o instanceof Exp && !(o instanceof MemberExpr)) {
             Exp exp = (Exp)o;
             ResolvedFunCall funCall = (ResolvedFunCall)exp;
@@ -2009,11 +2014,6 @@ public class RolapResult extends ResultBase {
 
         CellInfoPool(int axisLength) {
             this.cellInfoPool = new ObjectPool<CellInfo>();
-            this.cellKeyMaker = createCellKeyMaker(axisLength);
-        }
-
-        CellInfoPool(int axisLength, int initialSize) {
-            this.cellInfoPool = new ObjectPool<CellInfo>(initialSize);
             this.cellKeyMaker = createCellKeyMaker(axisLength);
         }
 

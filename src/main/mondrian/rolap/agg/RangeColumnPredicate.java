@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2009 Pentaho
+// Copyright (C) 2006-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -38,7 +38,7 @@ public class RangeColumnPredicate extends AbstractColumnPredicate {
      * @param upperBound Upper bound, or null if not bounded above
      */
     public RangeColumnPredicate(
-        RolapStar.Column column,
+        PredicateColumn column,
         boolean lowerInclusive,
         ValueColumnPredicate lowerBound,
         boolean upperInclusive,
@@ -46,11 +46,12 @@ public class RangeColumnPredicate extends AbstractColumnPredicate {
     {
         super(column);
         assert lowerBound == null
-            || lowerBound.getConstrainedColumn() == column;
+            || lowerBound.getColumn() == column;
         assert !(lowerBound == null && lowerInclusive);
         assert upperBound == null
-            || upperBound.getConstrainedColumn() == column;
+            || upperBound.getColumn() == column;
         assert !(upperBound == null && upperInclusive);
+        assert lowerBound != null || upperBound != null;
         this.lowerInclusive = lowerInclusive;
         this.lowerBound = lowerBound;
         this.upperInclusive = upperInclusive;
@@ -144,11 +145,6 @@ public class RangeColumnPredicate extends AbstractColumnPredicate {
         // Range minus true/false
         return new MinusStarPredicate(
             this, (StarColumnPredicate) predicate);
-    }
-
-    public StarColumnPredicate cloneWithColumn(RolapStar.Column column) {
-        return new RangeColumnPredicate(
-            column, lowerInclusive, lowerBound, upperInclusive, upperBound);
     }
 
     public ValueColumnPredicate getLowerBound() {

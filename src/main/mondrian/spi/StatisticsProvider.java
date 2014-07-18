@@ -26,7 +26,10 @@ import javax.sql.DataSource;
  *
  * @see mondrian.spi.impl.JdbcStatisticsProvider
  * @see mondrian.spi.impl.SqlStatisticsProvider
+<<<<<<< HEAD
  *
+=======
+>>>>>>> upstream/4.0
  */
 public interface StatisticsProvider {
     /**

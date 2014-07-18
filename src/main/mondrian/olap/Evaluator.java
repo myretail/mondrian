@@ -5,13 +5,14 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
 
 import mondrian.calc.ParameterSlot;
 import mondrian.calc.TupleIterable;
+import mondrian.rolap.RolapMeasureGroup;
 
 import java.util.*;
 
@@ -283,13 +284,13 @@ public interface Evaluator {
     Locale getConnectionLocale();
 
     /**
-     * Retrieves the value of property <code>name</code>. If more than one
+     * Retrieves the value of a given property. If more than one
      * member in the current context defines that property, the one with the
      * highest solve order has precedence.
      *
      * <p>If the property is not defined, default value is returned.
      */
-    Object getProperty(String name, Object defaultValue);
+    Object getProperty(Property property, Object defaultValue);
 
     /**
      * Returns a {@link SchemaReader} appropriate for the current
@@ -410,7 +411,8 @@ public interface Evaluator {
 
     /**
      * Returns whether hierarchies unrelated to the measure in the current
-     * context should be ignored.
+     * context should be forced to their default member (usually, but not
+     * always, their 'all' member) during aggregation.
      *
      * @return whether hierarchies unrelated to the measure in the current
      *     context should be ignored
@@ -418,11 +420,12 @@ public interface Evaluator {
     boolean shouldIgnoreUnrelatedDimensions();
 
     /**
-     * Returns the base (non-virtual) cube that the current measure in the
+     * Returns the measure group that the current measure in the
      * context belongs to.
-     * @return Cube
+     *
+     * @return Measure group
      */
-    Cube getMeasureCube();
+    RolapMeasureGroup getMeasureGroup();
 
     /**
      * Returns whether it is necessary to check whether to return null for

@@ -9,14 +9,25 @@
 */
 package mondrian.rolap;
 
+<<<<<<< HEAD
 import mondrian.olap.*;
 import mondrian.olap.Util.Functor1;
+=======
+import mondrian.olap.MondrianProperties;
+import mondrian.olap.Util;
+>>>>>>> upstream/4.0
 import mondrian.server.Execution;
 import mondrian.server.Locus;
 import mondrian.server.monitor.*;
 import mondrian.server.monitor.SqlStatementEvent.Purpose;
+<<<<<<< HEAD
 import mondrian.spi.Dialect;
 import mondrian.util.*;
+=======
+import mondrian.util.*;
+
+import org.apache.log4j.Logger;
+>>>>>>> upstream/4.0
 
 import org.apache.log4j.Logger;
 
@@ -27,6 +38,10 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+<<<<<<< HEAD
+=======
+import java.util.*;
+>>>>>>> upstream/4.0
 import java.util.concurrent.atomic.AtomicLong;
 import javax.sql.DataSource;
 
@@ -59,7 +74,11 @@ import javax.sql.DataSource;
  * @author jhyde
  * @since 2.3
  */
+<<<<<<< HEAD
 public class SqlStatement {
+=======
+public class SqlStatement implements DBStatement {
+>>>>>>> upstream/4.0
     private static final Logger LOG = Logger.getLogger(SqlStatement.class);
     private static final String TIMING_NAME = "SqlStatement-";
 
@@ -83,10 +102,15 @@ public class SqlStatement {
     public int rowCount;
     private long startTimeNanos;
     private long startTimeMillis;
-    private final List<Accessor> accessors = new ArrayList<Accessor>();
+    private final Map<Object, Accessor> accessors =
+        new HashMap<Object, Accessor>();
     private State state = State.FRESH;
     private final long id;
+<<<<<<< HEAD
     private Functor1<Void, Statement> callback;
+=======
+    private Util.Function1<Statement, Void> callback;
+>>>>>>> upstream/4.0
 
     /**
      * Creates a SqlStatement.
@@ -111,7 +135,11 @@ public class SqlStatement {
         Locus locus,
         int resultSetType,
         int resultSetConcurrency,
+<<<<<<< HEAD
         Util.Functor1<Void, Statement> callback)
+=======
+        Util.Function1<Statement, Void> callback)
+>>>>>>> upstream/4.0
     {
         this.callback = callback;
         this.id = ID_GENERATOR.getAndIncrement();
@@ -242,8 +270,15 @@ public class SqlStatement {
             // return something daft like a BigDecimal (does, on the Oracle JDBC
             // driver).
             accessors.clear();
+            Integer index = 0;
             for (Type type : guessTypes()) {
-                accessors.add(createAccessor(accessors.size(), type));
+                // REVIEW: Is caching always needed? Some drivers don't need it;
+                //   some columns are only used once.
+                final boolean caching = true;
+                accessors.put(
+                    index,
+                    createAccessor(accessors.size(), type, caching));
+                index++;
             }
         } catch (Throwable e) {
             status = ", failed (" + e + ")";
@@ -363,6 +398,7 @@ public class SqlStatement {
         return runtimeException;
     }
 
+<<<<<<< HEAD
     private static Type getDecimalType(
         int precision,
         int scale,
@@ -399,19 +435,22 @@ public class SqlStatement {
         }
     }
 
+=======
+>>>>>>> upstream/4.0
     /**
-     * Chooses the most appropriate type for accessing the values of a
-     * column in a result set.
+     * Creates an accessor that returns the value of a given column, converting
+     * to the required type.
      *
-     * <p>NOTE: It is possible that this method is driver-dependent. If this is
-     * the case, move it to {@link mondrian.spi.Dialect}.
+     * <p>Caching is necessary on JDBC drivers (e.g. sun's JDBC-ODBC bridge)
+     * that only allow you to get the value of a column once per row.
      *
-     * @param suggestedType Type suggested by Level.internalType attribute
-     * @param metaData Result set metadata
-     * @param i Column ordinal (0-based)
-     * @return Best client type
-     * @throws SQLException on error
+     * @param column Column ordinal (0-based)
+     * @param type Desired type
+     * @param caching Whether accessor should cache value for if the same
+     *     column's value is accessed more than once on the same row
+     * @return Value
      */
+<<<<<<< HEAD
     public static Type guessType(
         Type suggestedType,
         ResultSetMetaData metaData,
@@ -541,27 +580,41 @@ public class SqlStatement {
                     + columnType);
             }
             return Type.OBJECT;
-        }
-    }
+=======
+    private Accessor createAccessor(int column, Type type, boolean caching) {
+        if (caching) {
+            final Accessor accessor = createAccessor(column, type, false);
+            return new Accessor() {
+                int lastRowCount = -1;
+                Comparable lastValue;
 
-    private Accessor createAccessor(int column, Type type) {
+                public Comparable get() throws SQLException {
+                    if (SqlStatement.this.rowCount > lastRowCount) {
+                        lastValue = accessor.get();
+                        lastRowCount = SqlStatement.this.rowCount;
+                    }
+                    return lastValue;
+                }
+            };
+>>>>>>> upstream/4.0
+        }
         final int columnPlusOne = column + 1;
         switch (type) {
         case OBJECT:
             return new Accessor() {
-                public Object get() throws SQLException {
-                    return resultSet.getObject(columnPlusOne);
+                public Comparable get() throws SQLException {
+                    return (Comparable) resultSet.getObject(columnPlusOne);
                 }
             };
         case STRING:
             return new Accessor() {
-                public Object get() throws SQLException {
+                public Comparable get() throws SQLException {
                     return resultSet.getString(columnPlusOne);
                 }
             };
         case INT:
             return new Accessor() {
-                public Object get() throws SQLException {
+                public Comparable get() throws SQLException {
                     final int val = resultSet.getInt(columnPlusOne);
                     if (val == 0 && resultSet.wasNull()) {
                         return null;
@@ -571,7 +624,7 @@ public class SqlStatement {
             };
         case LONG:
             return new Accessor() {
-                public Object get() throws SQLException {
+                public Comparable get() throws SQLException {
                     final long val = resultSet.getLong(columnPlusOne);
                     if (val == 0 && resultSet.wasNull()) {
                         return null;
@@ -581,7 +634,7 @@ public class SqlStatement {
             };
         case DOUBLE:
             return new Accessor() {
-                public Object get() throws SQLException {
+                public Comparable get() throws SQLException {
                     final double val = resultSet.getDouble(columnPlusOne);
                     if (val == 0 && resultSet.wasNull()) {
                         return null;
@@ -597,7 +650,8 @@ public class SqlStatement {
     public List<Type> guessTypes() throws SQLException {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         final int columnCount = metaData.getColumnCount();
-        assert this.types == null || this.types.size() == columnCount;
+        assert this.types == null || this.types.size() == columnCount
+            : "types " + types + " cardinality != column count " + columnCount;
         List<Type> types = new ArrayList<Type>();
         for (int i = 0; i < columnCount; i++) {
             final Type suggestedType =
@@ -607,15 +661,26 @@ public class SqlStatement {
             RolapSchema schema = locus.execution.getMondrianStatement()
                 .getMondrianConnection()
                 .getSchema();
+<<<<<<< HEAD
             types.add(
                 guessType(
                     suggestedType, metaData, i,
                     schema != null ? schema.getDialect() : null));
+=======
+
+            if (suggestedType != null) {
+                types.add(suggestedType);
+            } else if (schema != null && schema.getDialect() != null) {
+                types.add(schema.getDialect().getType(metaData, i));
+            } else {
+                types.add(Type.OBJECT);
+            }
+>>>>>>> upstream/4.0
         }
         return types;
     }
 
-    public List<Accessor> getAccessors() throws SQLException {
+    public Map<Object, Accessor> getAccessors() throws SQLException {
         return accessors;
     }
 
@@ -686,7 +751,7 @@ public class SqlStatement {
     }
 
     public interface Accessor {
-        Object get() throws SQLException;
+        Comparable get() throws SQLException;
     }
 
     /**

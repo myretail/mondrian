@@ -5,7 +5,7 @@
 # http://www.eclipse.org/legal/epl-v10.html.
 # You must accept the terms of that agreement to use this software.
 #
-# Copyright (C) 2006-2011 Pentaho
+# Copyright (C) 2006-2013 Pentaho
 # All Rights Reserved.
 #
 # Script to run the Mondrian test suite under various JDKs, with parameter
@@ -47,41 +47,21 @@ mackerel) if [ ! "$cygwin" ]; then hostname=mackerel-linux; fi ;;
 esac
 
 case ${hostname} in
-branston)
+(branston)
   databaseList="access derby hsqldb mysql oracle"
   jdkList="jdk1.5 jdk1.6"
   ;;
-mackerel)
-  databaseList="access derby hsqldb"
-  jdkList="jdk1.4 jdk1.5 jdk1.6"
-  ;;
-mackerel-linux)
-  databaseList="derby hsqldb"
-  jdkList="jdk1.4 jdk1.5 jdk1.6"
-  ;;
-mackerel-winxp)
-  databaseList="access derby hsqldb teradata"
-  jdkList="jdk1.4 jdk1.5 jdk1.6"
-  ;;
-marmalade)
+(marmalade)
   databaseList="derby hsqldb mysql oracle luciddb postgresql"
   jdkList="jdk1.4 jdk1.5 jdk1.6 openjdk1.6"
   ;;
-marmite)
+(marmite)
+  databaseList="derby hsqldb monetdb mysql oracle"
+  jdkList="jdk1.4 jdk1.5 jdk1.6 jdk1.7 jdk1.8 openjdk1.6 openjdk1.7 ibmjdk1.6"
+  ;;
+(*)
   databaseList="derby hsqldb mysql oracle"
-  jdkList="jdk1.4 jdk1.5 jdk1.6 jdk1.7 openjdk1.6 openjdk1.7 ibmjdk1.6"
-  ;;
-ATRHisv1)
-  databaseList="hsqldb neoview"
-  jdkList="jdk1.6"
-  ;;
-plank)
-  databaseList="derby mysql hsqldb"
-  jdkList="jdk1.4 jdk1.5 jdk1.6 openjdk1.6"
-  ;;
-*)
-  databaseList="derby hsqldb mysql oracle"
-  jdkList="jdk1.4 jdk1.5 jdk1.6"
+  jdkList="jdk1.4 jdk1.5 jdk1.6 jdk1.7"
   ;;
 esac
 
@@ -213,6 +193,16 @@ doTest2() {
       echo "mondrian.test.connectString=Provider=mondrian;Jdbc='${jdbcURL}';JdbcUser=foodmart;JdbcPassword=foodmart;Catalog=${MONDRIAN_DIR}/demo/FoodMart.xml;JdbcDrivers=${jdbcDrivers};RoleXX='California manager';"
     ) >> megatest.properties
     ;;
+  monetdb)
+    (
+      jdbcURL="jdbc:monetdb://localhost/FOODMART"
+      jdbcDrivers=nl.cwi.monetdb.jdbc.MonetDriver
+      echo driver.classpath=lib/monetdb-jdbc.jar
+      echo mondrian.foodmart.jdbcURL=${jdbcURL}
+      echo mondrian.jdbcDrivers=${jdbcDrivers}
+      echo "mondrian.test.connectString=Provider=mondrian;Jdbc='${jdbcURL}';JdbcUser=monetdb;JdbcPassword=monetdb;Catalog=${MONDRIAN_DIR}/demo/FoodMart.xml;JdbcDrivers=${jdbcDrivers};RoleXX='California manager';"
+    ) >> megatest.properties
+    ;;
   neoview)
     (
       jdbcURL='jdbc:hpt4jdbc://${NEOVIEW_HOST_PORT}/:schema=PENTAHO;serverDataSource=PENTAHO_DataSource'
@@ -321,41 +311,24 @@ doTest2() {
   echo "Running test with JDK=$jdk retroweave=$retroweave database=$database props={$props}"
   if [ "$build" ]; then
     echo build=${build}
-    if [ "$retroweave" ]; then
-      case $jdk in
-      jdk1.4)
-        # Cannot build or retroweave under 1.4, so switch JDK briefly
-        (
-          export JAVA_HOME=$(chooseJavaHome jdk1.5)
-          export PATH="$JAVA_HOME/bin:$PATH"
-          export ANT_HOME=$(chooseAntHome jdk1.5)
-          $ANT_HOME/bin/ant $ANT_FLAGS ${CLEAN} all retroweave
-        )
-        export JAVA_HOME=$(chooseJavaHome jdk1.4)
-        export PATH=$JAVA_HOME/bin:$PATH
-        ;;
-      *)
+    # Switch to JDK 1.7 to build
+    (
+      export JAVA_HOME=$(chooseJavaHome jdk1.7)
+      export PATH="$JAVA_HOME/bin:$PATH"
+      export ANT_HOME=$(chooseAntHome jdk1.7)
+      if [ "$retroweave" ]; then
         $ANT_HOME/bin/ant $ANT_FLAGS ${CLEAN} all retroweave
-        ;;
-      esac
-      if [ "$mondrian" ]; then
-        $ANT_HOME/bin/ant $ANT_FLAGS -Dmondrian.retroweave=true test-nobuild
-      fi
-    else
-      export ANT_HOME=$(chooseAntHome $jdk)
-      if [ "$mondrian" ]; then
-        TEST_TARGET=test-nobuild
       else
-        TEST_TARGET=
+        $ANT_HOME/bin/ant $ANT_FLAGS ${CLEAN} compile compile.tests
       fi
-      case $database in
-      (derby|access)
-        $ANT_HOME/bin/ant $ANT_FLAGS ${CLEAN} compile compile.tests unzip-databases ${TEST_TARGET}
-        ;;
-      (*)
-        $ANT_HOME/bin/ant $ANT_FLAGS ${CLEAN} compile compile.tests ${TEST_TARGET}
-        ;;
-      esac
+    )
+    if [ "$mondrian" ]; then
+      (
+        export JAVA_HOME=$(chooseJavaHome $jdk)
+        export PATH="$JAVA_HOME/bin:$PATH"
+        export ANT_HOME=$(chooseAntHome $jdk)
+        $ANT_HOME/bin/ant $ANT_FLAGS test-nobuild
+      )
     fi
   fi
 
@@ -367,28 +340,24 @@ doTest2() {
   fi
 }
 
+myReadlink() {
+  case $(uname) in
+  (Darwin) readlink "$@";;
+  (*) readlink -f "$@";;
+  esac
+}
+
 # Echoes a value for ANT_HOME consistent with the JDK.
 # JDK 1.4 can't run modern versions of ant (because junit requires annotations)
 # but retroweaver cannot run on old versions of ant.
 chooseAntHome() {
   jdk=$1
   case $jdk in
-  jdk1.4)
-    case $(uname -o) in
-    Cygwin)
-      echo $(cd ${OPEN_DIR}/thirdparty/ant; pwd)
-      ;;
-    *)
-      echo $(cd /usr/local/apache-ant-1.6.0; pwd)
-    esac
+  (jdk1.4)
+    myReadlink /usr/local/apache-ant-1.6.0
     ;;
-  jdk1.5|jdk1.6|jdk1.7|openjdk1.6|openjdk1.7|ibmjdk1.6)
-    case $(uname -n) in
-    (plank.disruptivetech.com)
-      echo /home/jhyde/open/thirdparty/ant;;
-    *)
-      echo $(cd ${OPEN_DIR}/thirdparty/ant; pwd);;
-    esac
+  (*)
+    dirname $(dirname $(myReadlink $(which ant)))
     ;;
   esac
 }
@@ -511,10 +480,11 @@ olap4j() {
     ;;
   esac
 
-  # Javadoc only runs clean under jdk16 or jdk17, because it depends
+  # Javadoc only runs clean under jdk16 or later, because it depends
   # on JDBC 4.0 or later.
   case "$jdk" in
-  (jdk1.6|openjdk1.6|jdk1.7|openjdk1.7|ibmjdk1.6) ant javadoc ;;
+  (jdk1.4|jdk1.5) ;;
+  (*) ant javadoc ;;
   esac
 }
 
@@ -573,8 +543,6 @@ doExoticTests() {
   # Test case-insensitive
   doTest jdk1.6 oracle mondrian.olap.case.sensitive=false
 
-  # Test with cache of RolapCubeMembers disabled.
-  doTest jdk1.6 oracle mondrian.rolap.EnableRolapCubeMemberCache=false
 
   # Retroweave against jdk1.5 and jdk1.6
   doTest --retroweave jdk1.5 oracle
@@ -732,11 +700,6 @@ doRandom() {
     args="$args mondrian.rolap.star.disableCaching=true"
   fi
 
-  # Test with RolapCubeMember cache disabled
-  if [ "$(maybe 0.3)" ]; then
-    args="$args mondrian.rolap.EnableRolapCubeMemberCache=false"
-  fi
-
   if [ $(maybe 0.5) ]; then
     # Test with pushdown of NON-EMPTY to SQL disabled
     if [ "$(maybe 0.7)" ]; then
@@ -812,7 +775,6 @@ doWorking() {
   doTest jdk1.6 oracle ${ENABLE_NATIVE} ${ENABLE_AGGS}  ${ENABLE_SSAS}
   doTest jdk1.6 mysql  ${ENABLE_NATIVE} ${ENABLE_AGGS}  ${DISABLE_SSAS}
   doTest jdk1.6 mysql  ${ENABLE_NATIVE} ${DISABLE_AGGS} ${DISABLE_SSAS}
-  doTest jdk1.6 mysql  ${ENABLE_NATIVE} ${DISABLE_AGGS} ${DISABLE_SSAS} ${ENABLE_CMCACHE}
   doTest jdk1.6 mysql  ${ENABLE_NATIVE} ${DISABLE_AGGS} ${ENABLE_SSAS}
   doTest jdk1.6 derby  ${ENABLE_NATIVE} ${ENABLE_AGGS}  ${DISABLE_SSAS}
   doTest jdk1.6 derby  ${ENABLE_NATIVE} ${DISABLE_AGGS} ${DISABLE_SSAS}
@@ -890,8 +852,8 @@ doTests() {
 }
 
 checkJavadoc() {
-  export JAVA_HOME=$(chooseJavaHome jdk1.6)
-  export ANT_HOME=$(chooseAntHome jdk1.6)
+  export JAVA_HOME=$(chooseJavaHome jdk1.7)
+  export ANT_HOME=$(chooseAntHome jdk1.7)
 
   $ANT_HOME/bin/ant -emacs javadoc-strict 2>&1 > ant-javadoc.log
   cat ant-javadoc.log |

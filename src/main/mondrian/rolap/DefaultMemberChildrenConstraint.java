@@ -5,14 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2010 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
-import mondrian.rolap.aggmatcher.AggStar;
-import mondrian.rolap.sql.MemberChildrenConstraint;
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.rolap.sql.*;
 
 import java.util.List;
 
@@ -30,32 +28,33 @@ public class DefaultMemberChildrenConstraint
     protected DefaultMemberChildrenConstraint() {
     }
 
-    public void addMemberConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar,
-        RolapMember parent)
-    {
-        SqlConstraintUtils.addMemberConstraint(
-            sqlQuery, baseCube, aggStar, parent, true);
+    public RolapStarSet createStarSet(RolapMeasureGroup aggMeasureGroup) {
+        return new RolapStarSet(null, null, aggMeasureGroup);
     }
 
     public void addMemberConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar,
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet,
+        RolapMember parent)
+    {
+        SqlConstraintUtils.addMemberConstraint(
+            queryBuilder, starSet, parent, true);
+    }
+
+    public void addMemberConstraint(
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet,
         List<RolapMember> parents)
     {
         boolean exclude = false;
         SqlConstraintUtils.addMemberConstraint(
-            sqlQuery, baseCube, aggStar, parents, true, false, exclude);
+            queryBuilder, starSet, parents, true, false, exclude);
     }
 
     public void addLevelConstraint(
         SqlQuery query,
-        RolapCube baseCube,
-        AggStar aggStar,
-        RolapLevel level)
+        RolapStarSet starSet,
+        RolapCubeLevel level)
     {
     }
 

@@ -195,7 +195,7 @@ public class DynamicDatasourceXmlaServletTest extends TestCase {
                 .append("//marmalade.hydromatic.net:1521/XE;")
                 .append("JdbcUser=foodmart;JdbcPassword=foodmart;")
                 .append("JdbcDrivers=oracle.jdbc.OracleDriver;")
-                .append("Catalog=/WEB-INF/queries/FoodMart.xml")
+                .append("Catalog=/WEB-INF/queries/FoodMart.mondrian.xml")
                 .append("</DataSourceInfo>");
             ds.append("       <ProviderName>Mondrian</ProviderName>");
             ds.append("       <ProviderType>MDP</ProviderType>");
@@ -295,9 +295,13 @@ public class DynamicDatasourceXmlaServletTest extends TestCase {
         // Wait for it to auto-reload.
         final Pair<Long, TimeUnit> interval =
             Util.parseInterval(
+<<<<<<< HEAD
                 String.valueOf(
                     MondrianProperties.instance()
                         .XmlaSchemaRefreshInterval.get()),
+=======
+                MondrianProperties.instance().XmlaSchemaRefreshInterval.get(),
+>>>>>>> upstream/4.0
                 TimeUnit.MILLISECONDS);
         Thread.sleep(
             interval.right.toMillis(interval.left)

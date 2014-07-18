@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -42,12 +42,12 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "from [HR]\n"
             + "where [Pay Type].[Hourly]",
             "Axis #0:\n"
-            + "{[Pay Type].[Hourly]}\n"
+            + "{[Employee].[Pay Type].[Hourly]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Avg Salary]}\n"
             + "{[Measures].[Org Salary]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997], [Store].[All Stores], [Employees].[All Employees]}\n"
+            + "{[Time].[Time].[1997], [Store].[Stores].[All Stores], [Employee].[Employees].[All Employees]}\n"
             + "Row #0: $40.31\n"
             + "Row #0: $11,406.75\n");
     }
@@ -165,20 +165,15 @@ public class TestCalculatedMembers extends BatchTestCase {
                 + "</CalculatedMember>");
             throw new AssertionFailedError("expected error, got none");
         } catch (RuntimeException e) {
-            final String msg = e.getMessage();
-            if (!msg.equals(
-                    "Mondrian Error:Named set in cube 'Sales' has bad formula"))
-            {
-                throw e;
-            }
+            TestContext.checkThrowable(
+                e,
+                "Mondrian Error:Calculated member or named set in cube 'Sales' has bad formula");
         }
 
         // should succeed if we switch the property to ignore invalid
         // members; the create will succeed and in the select, it will
         // return null for the member and therefore a 0 in the calculation
-        propSaver.set(
-            MondrianProperties.instance().IgnoreInvalidMembers,
-            true);
+        propSaver.set(propSaver.props.IgnoreInvalidMembers, true);
         salesCube.createCalculatedMember(
             "<CalculatedMember name='Profit4'"
             + "  dimension='Measures'"
@@ -216,9 +211,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Profit]}\n"
             + "{[Measures].[Profit Change]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q2].[4]}\n"
-            + "{[Time].[1997].[Q2].[5]}\n"
-            + "{[Time].[1997].[Q2].[6]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
+            + "{[Time].[Time].[1997].[Q2].[5]}\n"
+            + "{[Time].[Time].[1997].[Q2].[6]}\n"
             + "Row #0: $25,766.55\n"
             + "Row #0: -$4,289.24\n"
             + "Row #1: $26,673.73\n"
@@ -242,7 +237,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Profit]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Row #0: 79,702\n");
 
         // Note that the Profit measure defined against the cube has
@@ -256,15 +251,11 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Profit]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Row #0: $79,702.05\n");
     }
 
     public void testQueryCalcMemberOverridesShallowerStoredMember() {
-        if (!MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            // functionality requires new name resolver
-            return;
-        }
         // Does "[Time].[Time2].[1998]" resolve to
         // the stored member "[Time].[Time2].[1998]"
         // or the calculated member "[Time].[Time2].[1997].[1998]"?
@@ -296,10 +287,6 @@ public class TestCalculatedMembers extends BatchTestCase {
      * chosen, even if it is not the best match.
      */
     public void testEarlierCalcMember() {
-        if (!MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            // functionality requires new name resolver
-            return;
-        }
         // SSAS returns 2
         assertQueryReturns(
             "with\n"
@@ -312,15 +299,12 @@ public class TestCalculatedMembers extends BatchTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997].[Q1].[1998]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1998]}\n"
             + "Row #0: 2\n");
     }
 
     public void _testWhole() {
-        /*
-         * "allmembers" tests compatibility with MSAS
-         */
-
+        // "allmembers" tests compatibility with MSAS
         executeQuery(
             "with\n"
             + "member [Measures].[Total Store Sales by Product Name] as\n"
@@ -369,7 +353,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + ", format_string='Percent'\n"
             + "\n"
             + "member [Measures].[Store Sales as % of all Store] as\n"
-            + "  'iif(([Measures].[Store Sales], [Store].Members.Item(0)) = 0, 1, [Measures].[Store Sales] / ([Measures].[Store Sales], [Store].Members.Item(0)))'\n"
+            + "  'iif(([Measures].[Store Sales], [Store].[Stores].Members.Item(0)) = 0, 1, [Measures].[Store Sales] / ([Measures].[Store Sales], [Store].Members.Item(0)))'\n"
             + ", format_string='Percent'\n"
             + "\n"
             + "member [Measures].[Total Store Sales, period to date] as\n"
@@ -459,24 +443,18 @@ public class TestCalculatedMembers extends BatchTestCase {
         // Level cannot be converted.
         assertExprThrows(
             "[Customers].[Country]",
-            "Member expression '[Customers].[Country]' must not be a set");
+            "Member expression '[Customer].[Customers].[Country]' must not be a set");
 
         // Hierarchy can be converted.
-        assertExprReturns("[Customers].[Customers]", "266,773");
+        assertExprReturns("[Customer].[Customers]", "266,773");
 
         // Dimension can be converted, if unambiguous.
         assertExprReturns("[Customers]", "266,773");
 
-        if (MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            // SSAS 2005 does not have default hierarchies.
-            assertExprThrows(
-                "[Time]",
-                "The 'Time' dimension contains more than one hierarchy, "
-                + "therefore the hierarchy must be explicitly specified.");
-        } else {
-            // Default to first hierarchy.
-            assertExprReturns("[Time]", "266,773");
-        }
+        assertExprThrows(
+            "[Time]",
+            "The 'Time' dimension contains more than one hierarchy, "
+            + "therefore the hierarchy must be explicitly specified.");
 
         // Explicit hierarchy OK.
         assertExprReturns("[Time].[Time]", "266,773");
@@ -492,16 +470,16 @@ public class TestCalculatedMembers extends BatchTestCase {
         // Set of tuples cannot be converted.
         assertExprThrows(
             "{([Customers].[USA], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer])}",
-            "Member expression '{([Customers].[USA], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer])}' must not be a set");
+            "Member expression '{([Customer].[Customers].[USA], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer])}' must not be a set");
         assertExprThrows(
             "{([Customers].[USA], [Product].[Food]),"
             + "([Customers].[USA], [Product].[Drink])}",
-            "{([Customers].[USA], [Product].[Food]), ([Customers].[USA], [Product].[Drink])}' must not be a set");
+            "{([Customer].[Customers].[USA], [Product].[Products].[Food]), ([Customer].[Customers].[USA], [Product].[Products].[Drink])}' must not be a set");
 
         // Sets cannot be converted.
         assertExprThrows(
-            "{[Product].[Food]}",
-            "Member expression '{[Product].[Food]}' must not be a set");
+            "{[Product].[Products].[Food]}",
+            "Member expression '{[Product].[Products].[Food]}' must not be a set");
     }
 
     /**
@@ -535,15 +513,15 @@ public class TestCalculatedMembers extends BatchTestCase {
             + " [Product].[All Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth].[Portsmouth Imported Beer],\n"
             + " [Measures].[Foo])",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q4].[12], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth].[Portsmouth Imported Beer], [Measures].[Foo]}\n"
+            + "{[Time].[Time].[1997].[Q4].[12], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth].[Portsmouth Imported Beer], [Measures].[Foo]}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA].[WA].[Bellingham]}\n"
-            + "{[Store].[USA].[WA].[Bremerton]}\n"
-            + "{[Store].[USA].[WA].[Seattle]}\n"
-            + "{[Store].[USA].[WA].[Spokane]}\n"
-            + "{[Store].[USA].[WA].[Tacoma]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla]}\n"
-            + "{[Store].[USA].[WA].[Yakima]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima]}\n"
             + "Row #0: Infinity\n"
             + "Row #0: Infinity\n"
             + "Row #0: 0.5\n"
@@ -555,7 +533,11 @@ public class TestCalculatedMembers extends BatchTestCase {
 
     /**
      * Tests that calculated members defined in the schema can have brackets in
-     * their names. (Bug 1251683.)
+     * their names.
+     *
+     * <p>Test case for
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-106">MONDRIAN-106,
+     * "Problem with square bracket in member name"</a>.</p>
      */
     public void testBracketInCubeCalcMemberName() {
         final String cubeName = "Sales_BracketInCubeCalcMemberName";
@@ -572,14 +554,14 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "      formatString=\"Standard\" visible=\"false\"/>\n"
             + "  <CalculatedMember\n"
             + "      name=\"With a [bracket] inside it\"\n"
-            + "      dimension=\"Measures\"\n"
+            + "      hierarchy=\"[Measures].[Measures]\"\n"
             + "      visible=\"false\"\n"
             + "      formula=\"[Measures].[Unit Sales] * 10\">\n"
             + "    <CalculatedMemberProperty name=\"FORMAT_STRING\" value=\"$#,##0.00\"/>\n"
             + "  </CalculatedMember>\n"
             + "</Cube>";
 
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = TestContext.instance().legacy().create(
             null, s, null, null, null, null);
         testContext.assertQueryThrows(
             "select {[Measures].[With a [bracket] inside it]} on columns,\n"
@@ -596,8 +578,8 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[With a [bracket]] inside it]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Gender].[Gender].[F]}\n"
+            + "{[Gender].[Gender].[M]}\n"
             + "Row #0: $1,315,580.00\n"
             + "Row #1: $1,352,150.00\n");
     }
@@ -724,9 +706,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Colored Profit]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: |$29,358.98|style=green\n"
             + "Row #1: |$245,764.87|style=green\n"
             + "Row #2: |$64,487.05|style=green\n");
@@ -743,9 +725,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Colored Profit]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: |$29,358.98|style=green\n"
             + "Row #1: |$245,764.87|style=green\n"
             + "Row #2: |$64,487.05|style=green\n");
@@ -800,7 +782,7 @@ public class TestCalculatedMembers extends BatchTestCase {
                 + "  </CalculatedMember>\n"
                 + "</Cube>";
 
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = TestContext.instance().legacy().create(
             null, s, null, null, null, null);
         testContext.assertQueryReturns(
             "select {[Measures].[Apos in dq], [Measures].[Dq in dq], [Measures].[Apos in apos], [Measures].[Dq in apos], [Measures].[Colored Profit]} on columns,\n"
@@ -815,8 +797,8 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Dq in apos]}\n"
             + "{[Measures].[Colored Profit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Gender].[Gender].[F]}\n"
+            + "{[Gender].[Gender].[M]}\n"
             + "Row #0: an 'apos' in dq\n"
             + "Row #0: a \"dq\" in dq\n"
             + "Row #0: an 'apos' in apos\n"
@@ -839,9 +821,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #1:\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n");
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n");
     }
 
     public void testNonCharacterMembers() {
@@ -856,7 +838,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Store Sqft]}\n"
             + "Axis #2:\n"
-            + "{[Has coffee bar].[Maybe]}\n"
+            + "{[Has coffee bar].[Has coffee bar].[Maybe]}\n"
             + "Row #0: 1,143,192\n");
      }
 
@@ -887,11 +869,11 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Store Sales]}\n"
             + "{[Measures].[Profit]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[CA]}\n"
-            + "{[Customers].[USA].[OR]}\n"
-            + "{[Customers].[USA].[WA]}\n"
-            + "{[Customers].[Highly Profitable States]}\n"
-            + "{[Customers].[Plain States]}\n"
+            + "{[Customer].[Customers].[USA].[CA]}\n"
+            + "{[Customer].[Customers].[USA].[OR]}\n"
+            + "{[Customer].[Customers].[USA].[WA]}\n"
+            + "{[Customer].[Customers].[Highly Profitable States]}\n"
+            + "{[Customer].[Customers].[Plain States]}\n"
             + "Row #0: 159,167.84\n"
             + "Row #0: $95,637.41\n"
             + "Row #1: 142,277.07\n"
@@ -935,10 +917,10 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Foo], [Gender].[M]}\n"
-            + "{[Product].[Foo], [Gender].[Bar]}\n"
-            + "{[Product].[Drink], [Gender].[M]}\n"
-            + "{[Product].[Drink], [Gender].[Bar]}\n"
+            + "{[Product].[Products].[Foo], [Customer].[Gender].[M]}\n"
+            + "{[Product].[Products].[Foo], [Customer].[Gender].[Bar]}\n"
+            + "{[Product].[Products].[Drink], [Customer].[Gender].[M]}\n"
+            + "{[Product].[Products].[Drink], [Customer].[Gender].[Bar]}\n"
             + "Row #0: 1\n"
             + "Row #1: 2\n"
             + "Row #2: 12,395\n"
@@ -953,7 +935,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + mondrian.test.UdfTest.FooBarCellFormatter.class.getName()
             + "' \n"
             + "select {[Measures].[Unit Sales], [Measures].[Foo]} on 0,\n"
-            + " {[Store].Children} on rows\n"
+            + " {[Store].[Stores].Children} on rows\n"
             + "from [Sales]",
             "Axis #0:\n"
             + "{}\n"
@@ -961,9 +943,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Foo]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Canada]}\n"
-            + "{[Store].[Mexico]}\n"
-            + "{[Store].[USA]}\n"
+            + "{[Store].[Stores].[Canada]}\n"
+            + "{[Store].[Stores].[Mexico]}\n"
+            + "{[Store].[Stores].[USA]}\n"
             + "Row #0: \n"
             + "Row #0: foo1.2345E-8bar\n"
             + "Row #1: \n"
@@ -977,7 +959,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             "with member [Measures].[Foo] as ' [Measures].[Unit Sales] * 2 ',\n"
             + " CELL_FORMATTER='mondrian.test.NonExistentCellFormatter' \n"
             + "select {[Measures].[Unit Sales], [Measures].[Foo]} on 0,\n"
-            + " {[Store].Children} on rows\n"
+            + " {[Store].[Stores].Children} on rows\n"
             + "from [Sales]",
             "Failed to load formatter class 'mondrian.test.NonExistentCellFormatter' for member '[Measures].[Foo]'.");
     }
@@ -987,7 +969,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             "with member [Measures].[Foo] as ' [Measures].[Unit Sales] * 2 ',\n"
             + " CELL_FORMATTER='java.lang.String' \n"
             + "select {[Measures].[Unit Sales], [Measures].[Foo]} on 0,\n"
-            + " {[Store].Children} on rows\n"
+            + " {[Store].[Stores].Children} on rows\n"
             + "from [Sales]";
         assertQueryThrows(
             query,
@@ -1007,15 +989,15 @@ public class TestCalculatedMembers extends BatchTestCase {
         // highest solve order. Need to check whether this is consistent with
         // the MDX spec. -- jhyde, 2007/9/5.
         assertQueryReturns(
-            "with member [Store].[CA or OR] as ' Aggregate({[Store].[USA].[CA], [Store].[USA].[OR]}) ',\n"
+            "with member [Store].[Stores].[CA or OR] as ' Aggregate({[Store].[USA].[CA], [Store].[USA].[OR]}) ',\n"
             + " CELL_FORMATTER='mondrian.test.UdfTest.FooBarCellFormatter'\n"
             + "select {[Store].[USA], [Store].[CA or OR]} on columns\n"
             + "from [Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA]}\n"
-            + "{[Store].[CA or OR]}\n"
+            + "{[Store].[Stores].[USA]}\n"
+            + "{[Store].[Stores].[CA or OR]}\n"
             + "Row #0: 266,773\n"
             + "Row #0: 142,407\n");
     }
@@ -1038,7 +1020,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "</CalculatedMember>\n");
         testContext.assertQueryReturns(
             "select {[Measures].[Unit Sales], [Measures].[Profit Formatted]} on 0,\n"
-            + " {[Store].Children} on rows\n"
+            + " {[Store].[Stores].Children} on rows\n"
             + "from [Sales]",
             "Axis #0:\n"
             + "{}\n"
@@ -1046,9 +1028,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Profit Formatted]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Canada]}\n"
-            + "{[Store].[Mexico]}\n"
-            + "{[Store].[USA]}\n"
+            + "{[Store].[Stores].[Canada]}\n"
+            + "{[Store].[Stores].[Mexico]}\n"
+            + "{[Store].[Stores].[USA]}\n"
             + "Row #0: \n"
             + "Row #0: foo1.2345E-8bar\n"
             + "Row #1: \n"
@@ -1074,7 +1056,7 @@ public class TestCalculatedMembers extends BatchTestCase {
                 + "</CalculatedMember>\n");
         testContext.assertQueryThrows(
             "select {[Measures].[Unit Sales], [Measures].[Profit Formatted]} on 0,\n"
-            + " {[Store].Children} on rows\n"
+            + " {[Store].[Stores].Children} on rows\n"
             + "from [Sales]",
             "Failed to load formatter class 'mondrian.test.NonExistentCellFormatter' for member '[Measures].[Profit Formatted]'.");
     }
@@ -1149,12 +1131,12 @@ public class TestCalculatedMembers extends BatchTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Top Product Total]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Top Product Total]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 191,940\n"
             + "Row #0: 266,773\n"
             + "Row #1: 94,814\n"
@@ -1195,10 +1177,10 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[*FORMATTED_MEASURE_0]}\n"
             + "Axis #2:\n"
-            + "{[Education Level].[*CTX_MEMBER_SEL~SUM], [Product].[*CTX_MEMBER_SEL~SUM]}\n"
-            + "{[Education Level].[Bachelors Degree], [Product].[Food]}\n"
-            + "{[Education Level].[Bachelors Degree], [Product].[Non-Consumable]}\n"
-            + "{[Education Level].[Graduate Degree], [Product].[Food]}\n"
+            + "{[Customer].[Education Level].[*CTX_MEMBER_SEL~SUM], [Product].[Products].[*CTX_MEMBER_SEL~SUM]}\n"
+            + "{[Customer].[Education Level].[Bachelors Degree], [Product].[Products].[Food]}\n"
+            + "{[Customer].[Education Level].[Bachelors Degree], [Product].[Products].[Non-Consumable]}\n"
+            + "{[Customer].[Education Level].[Graduate Degree], [Product].[Products].[Food]}\n"
             + "Row #0: 73,671\n"
             + "Row #1: 49,365\n"
             + "Row #2: 13,051\n"
@@ -1236,10 +1218,10 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[*FORMATTED_MEASURE_0]}\n"
             + "Axis #2:\n"
-            + "{[Education Level].[*CTX_MEMBER_SEL~SUM], [Product].[*CTX_MEMBER_SEL~SUM]}\n"
-            + "{[Education Level].[Bachelors Degree], [Product].[Food]}\n"
-            + "{[Education Level].[Bachelors Degree], [Product].[Non-Consumable]}\n"
-            + "{[Education Level].[Graduate Degree], [Product].[Food]}\n"
+            + "{[Customer].[Education Level].[*CTX_MEMBER_SEL~SUM], [Product].[Products].[*CTX_MEMBER_SEL~SUM]}\n"
+            + "{[Customer].[Education Level].[Bachelors Degree], [Product].[Products].[Food]}\n"
+            + "{[Customer].[Education Level].[Bachelors Degree], [Product].[Products].[Non-Consumable]}\n"
+            + "{[Customer].[Education Level].[Graduate Degree], [Product].[Products].[Food]}\n"
             + "Row #0: 76,661\n"
             + "Row #1: 49,365\n"
             + "Row #2: 13,051\n"
@@ -1249,8 +1231,8 @@ public class TestCalculatedMembers extends BatchTestCase {
 
     /**
      * Test case for
-     * <a href="http://jira.pentaho.com/browse/MONDRIAN-335">MONDRIAN-335</a>,
-     * "Issues with calculated members".
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-335">MONDRIAN-335,
+     * "Issues with calculated members"</a>.
      * Verify that the calculated member [Product].[Food].[Test]
      * definition does not throw errors and returns expected
      * results.
@@ -1266,7 +1248,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Test]}\n"
+            + "{[Product].[Products].[Test]}\n"
             + "Row #0: 191,940\n");
 
         assertQueryReturns(
@@ -1279,7 +1261,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Test]}\n"
+            + "{[Product].[Products].[Food].[Test]}\n"
             + "Row #0: 191,940\n");
     }
 
@@ -1293,9 +1275,9 @@ public class TestCalculatedMembers extends BatchTestCase {
      */
     public void testCalculatedMemberChildren() {
         assertQueryReturns(
-            "with member [Product].[Test] as '[Product].[Food]' "
+            "with member [Product].[Products].[Test] as '[Product].[Food]' "
             + "select {[Measures].[Unit Sales]} on columns, "
-            + "[Product].[Test].children on rows "
+            + "[Product].[Products].[Test].children on rows "
             + "from Sales",
             "Axis #0:\n"
             + "{}\n"
@@ -1303,9 +1285,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n");
         assertQueryReturns(
-            "with member [Product].[Food].[Test] as '[Product].[Food]' "
+            "with member [Product].[Products].[Food].[Test] as '[Product].[Food]' "
             + "select {[Measures].[Unit Sales]} on columns, "
-            + "[Product].[Food].[Test].children on rows "
+            + "[Product].[Products].[Food].[Test].children on rows "
             + "from Sales",
             "Axis #0:\n"
             + "{}\n"
@@ -1315,7 +1297,7 @@ public class TestCalculatedMembers extends BatchTestCase {
     }
 
     public void testCalculatedMemberMSASCompatibility() {
-        propSaver.set(MondrianProperties.instance().CaseSensitive, false);
+        propSaver.set(propSaver.props.CaseSensitive, false);
         assertQueryReturns(
             "with "
             + "member gender.calculated as 'gender.m' "
@@ -1378,15 +1360,15 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "from [Sales]\n"
             + "where ([Product].[Top], [Time].[1997].[Q3])",
             "Axis #0:\n"
-            + "{[Product].[Top], [Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Top], [Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Price per Unit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F], [Marital Status].[M]}\n"
-            + "{[Gender].[F], [Marital Status].[S]}\n"
-            + "{[Gender].[M], [Marital Status].[M]}\n"
-            + "{[Gender].[M], [Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[S]}\n"
             + "Row #0: 779\n"
             + "Row #0: 2.40\n"
             + "Row #1: 811\n"
@@ -1413,17 +1395,17 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "from [Sales]\n"
             + "where [Top Products] * [Time].[1997].[Q3]",
             "Axis #0:\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Hermanos], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Tell Tale], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Ebony], [Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Hermanos], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Tell Tale], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Ebony], [Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Price per Unit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F], [Marital Status].[M]}\n"
-            + "{[Gender].[F], [Marital Status].[S]}\n"
-            + "{[Gender].[M], [Marital Status].[M]}\n"
-            + "{[Gender].[M], [Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[S]}\n"
             + "Row #0: 779\n"
             + "Row #0: 2.40\n"
             + "Row #1: 811\n"
@@ -1445,20 +1427,20 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "from [Sales]\n"
             + "where [Time].[1997].[Q3]",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q3]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Burnaby]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Cliffside]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Haney]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Ladner]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Langford]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Langley]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Metchosin]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[N. Vancouver]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Newton]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Oak Bay]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Burnaby]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Cliffside]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Haney]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Ladner]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Langford]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Langley]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Metchosin]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[N. Vancouver]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Newton]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Oak Bay]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n"
@@ -1490,17 +1472,17 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "from [Sales]\n"
             + "where [Top Product Cities] * [Time].[1997].[Q3]",
             "Axis #0:\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods], [Customers].[USA].[WA].[Spokane], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables], [Customers].[USA].[WA].[Spokane], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods], [Customers].[USA].[WA].[Puyallup], [Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods], [Customer].[Customers].[USA].[WA].[Spokane], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables], [Customer].[Customers].[USA].[WA].[Spokane], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods], [Customer].[Customers].[USA].[WA].[Puyallup], [Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Price per Unit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F], [Marital Status].[M]}\n"
-            + "{[Gender].[F], [Marital Status].[S]}\n"
-            + "{[Gender].[M], [Marital Status].[M]}\n"
-            + "{[Gender].[M], [Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[S]}\n"
             + "Row #0: 483\n"
             + "Row #0: 2.21\n"
             + "Row #1: 419\n"
@@ -1563,9 +1545,9 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[M0]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food], [Store].[USA].[CA]}\n"
-            + "{[Product].[Food], [Store].[USA].[OR]}\n"
-            + "{[Product].[Food], [Store].[USA].[WA]}\n"
+            + "{[Product].[Products].[Food], [Store].[Stores].[USA].[CA]}\n"
+            + "{[Product].[Products].[Food], [Store].[Stores].[USA].[OR]}\n"
+            + "{[Product].[Products].[Food], [Store].[Stores].[USA].[WA]}\n"
             + "Row #0: 217,506\n"
             + "Row #1: 193,104\n"
             + "Row #2: 359,162\n");
@@ -1592,11 +1574,7 @@ public class TestCalculatedMembers extends BatchTestCase {
      * look like two evaluation contexts were expanding the same member.
      */
     public void testCycleFalsePositive() {
-        if (MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            // This test uses old-style [dimension.hierarchy] names.
-            return;
-        }
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = TestContext.instance().legacy().create(
             null,
             "<Cube name=\"Store5\"> \n"
             + "  <Table name=\"store\"/> \n"
@@ -1609,7 +1587,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "  </Dimension> \n"
             + "\n"
             + "  <Dimension name=\"Country\">\n"
-            + "    <Hierarchy hasAll=\"true\" primaryKey=\"customer_id\">\n"
+            + "    <Hierarchy hasAll=\"true\">\n"
             + "      <Level name=\"Country\" column=\"store_country\" uniqueMembers=\"true\"/>\n"
             + "    </Hierarchy>\n"
             + "  </Dimension>\n"
@@ -1638,15 +1616,15 @@ public class TestCalculatedMembers extends BatchTestCase {
         testContext.assertQueryReturns(
             "With \n"
             + "Set [*NATIVE_CJ_SET] as 'NonEmptyCrossJoin([*BASE_MEMBERS_Country],[*BASE_MEMBERS_Store Type.Store Types Hierarchy])' \n"
-            + "Set [*SORTED_ROW_AXIS] as 'Order([*CJ_ROW_AXIS],[Country].CurrentMember.OrderKey,BASC,[Store Type.Store Types Hierarchy].CurrentMember.OrderKey,BASC)' \n"
-            + "Set [*BASE_MEMBERS_Country] as '[Country].[Country].Members' \n"
+            + "Set [*SORTED_ROW_AXIS] as 'Order([*CJ_ROW_AXIS],[Country].CurrentMember.OrderKey,BASC,[Store Type].[Store Types Hierarchy].CurrentMember.OrderKey,BASC)' \n"
+            + "Set [*BASE_MEMBERS_Country] as '[Country].[Country].[Country].Members' \n"
             + "Set [*NATIVE_MEMBERS_Country] as 'Generate([*NATIVE_CJ_SET], {[Country].CurrentMember})' \n"
             + "Set [*BASE_MEMBERS_Measures] as '{[Measures].[*FORMATTED_MEASURE_0]}' \n"
-            + "Set [*CJ_ROW_AXIS] as 'Generate([*NATIVE_CJ_SET], {([Country].currentMember,[Store Type.Store Types Hierarchy].currentMember)})' \n"
-            + "Set [*BASE_MEMBERS_Store Type.Store Types Hierarchy] as '[Store Type.Store Types Hierarchy].[Store Type].Members' \n"
-            + "Set [*NATIVE_MEMBERS_Store Type.Store Types Hierarchy] as 'Generate([*NATIVE_CJ_SET], {[Store Type.Store Types Hierarchy].CurrentMember})' \n"
+            + "Set [*CJ_ROW_AXIS] as 'Generate([*NATIVE_CJ_SET], {([Country].currentMember,[Store Type].[Store Types Hierarchy].currentMember)})' \n"
+            + "Set [*BASE_MEMBERS_Store Type.Store Types Hierarchy] as '[Store Type].[Store Types Hierarchy].[Store Type].Members' \n"
+            + "Set [*NATIVE_MEMBERS_Store Type.Store Types Hierarchy] as 'Generate([*NATIVE_CJ_SET], {[Store Type].[Store Types Hierarchy].CurrentMember})' \n"
             + "Set [*CJ_COL_AXIS] as '[*NATIVE_CJ_SET]' \n"
-            + "Member [Store Type.Store Types Hierarchy].[*TOTAL_MEMBER_SEL~SUM] as 'Sum({[Store Type.Store Types Hierarchy].[All Store Types Member Name]})', SOLVE_ORDER=-101 \n"
+            + "Member [Store Type.Store Types Hierarchy].[*TOTAL_MEMBER_SEL~SUM] as 'Sum({[Store Type].[Store Types Hierarchy].[All Store Types Member Name]})', SOLVE_ORDER=-101 \n"
             + "Member [Country].[*TOTAL_MEMBER_SEL~SUM] as 'Sum({[Country].[All Countrys]})', SOLVE_ORDER=-100 \n"
             + "Member [Measures].[*FORMATTED_MEASURE_0] as '[Measures].[Store Sqft]', FORMAT_STRING = '#,###', SOLVE_ORDER=400 \n"
             + "Select \n"
@@ -1658,18 +1636,18 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[*FORMATTED_MEASURE_0]}\n"
             + "Axis #2:\n"
-            + "{[Country].[*TOTAL_MEMBER_SEL~SUM], [Store Type.Store Types Hierarchy].[*TOTAL_MEMBER_SEL~SUM]}\n"
-            + "{[Country].[Canada], [Store Type.Store Types Hierarchy].[Deluxe Supermarket]}\n"
-            + "{[Country].[Canada], [Store Type.Store Types Hierarchy].[Mid-Size Grocery]}\n"
-            + "{[Country].[Mexico], [Store Type.Store Types Hierarchy].[Deluxe Supermarket]}\n"
-            + "{[Country].[Mexico], [Store Type.Store Types Hierarchy].[Gourmet Supermarket]}\n"
-            + "{[Country].[Mexico], [Store Type.Store Types Hierarchy].[Mid-Size Grocery]}\n"
-            + "{[Country].[Mexico], [Store Type.Store Types Hierarchy].[Small Grocery]}\n"
-            + "{[Country].[Mexico], [Store Type.Store Types Hierarchy].[Supermarket]}\n"
-            + "{[Country].[USA], [Store Type.Store Types Hierarchy].[Deluxe Supermarket]}\n"
-            + "{[Country].[USA], [Store Type.Store Types Hierarchy].[Gourmet Supermarket]}\n"
-            + "{[Country].[USA], [Store Type.Store Types Hierarchy].[Small Grocery]}\n"
-            + "{[Country].[USA], [Store Type.Store Types Hierarchy].[Supermarket]}\n"
+            + "{[Country].[Country].[*TOTAL_MEMBER_SEL~SUM], [Store Type].[Store Types Hierarchy].[*TOTAL_MEMBER_SEL~SUM]}\n"
+            + "{[Country].[Country].[Canada], [Store Type].[Store Types Hierarchy].[Deluxe Supermarket]}\n"
+            + "{[Country].[Country].[Canada], [Store Type].[Store Types Hierarchy].[Mid-Size Grocery]}\n"
+            + "{[Country].[Country].[Mexico], [Store Type].[Store Types Hierarchy].[Deluxe Supermarket]}\n"
+            + "{[Country].[Country].[Mexico], [Store Type].[Store Types Hierarchy].[Gourmet Supermarket]}\n"
+            + "{[Country].[Country].[Mexico], [Store Type].[Store Types Hierarchy].[Mid-Size Grocery]}\n"
+            + "{[Country].[Country].[Mexico], [Store Type].[Store Types Hierarchy].[Small Grocery]}\n"
+            + "{[Country].[Country].[Mexico], [Store Type].[Store Types Hierarchy].[Supermarket]}\n"
+            + "{[Country].[Country].[USA], [Store Type].[Store Types Hierarchy].[Deluxe Supermarket]}\n"
+            + "{[Country].[Country].[USA], [Store Type].[Store Types Hierarchy].[Gourmet Supermarket]}\n"
+            + "{[Country].[Country].[USA], [Store Type].[Store Types Hierarchy].[Small Grocery]}\n"
+            + "{[Country].[Country].[USA], [Store Type].[Store Types Hierarchy].[Supermarket]}\n"
             + "Row #0: 571,596\n"
             + "Row #1: 23,112\n"
             + "Row #2: 34,452\n"
@@ -1712,6 +1690,15 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "{[Measures].[Foo]}\n"
             + "Row #0: #ERR: mondrian.olap.fun.MondrianEvaluationException: Expected value of type NUMERIC; got value '123' (STRING)\n");
 
+        // unrelated to Mondrian852 we were occasionally seeing differences
+        // in number of digits of the casted value based on whether the
+        // data was rolled up from segment cache, due to FP math.
+        // Added query below to force the cache to have a rollable segment
+        // as a way to make the test consistently fail w/o formatting,
+        // and added a Format() inside the cache to assure fixed # of digits.
+        executeQuery(
+            "select {[Time].[1997].[Q1].[1] : [Time].[1997].[Q2].[4]} * "
+            + "Customer.Gender.Gender.members * { measures.[store sales] } on 0 from sales ");
         // Tom's original query should generate a cast error (not a
         // ClassCastException) because solve orders are wrong.
         assertQueryReturns(
@@ -1723,7 +1710,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "  member [Time].[Time].[Past 4 months] as\n"
             + "     Generate(\n"
             + "         [spark1],\n"
-            + "         CAST(([Measures].CurrentMember + 0.0) AS String),\n"
+            + "           CAST(Format(([Measures].CurrentMember + 0.0), '###.0#') as String),\n"
             + "         \", \")\n"
             + "select {[Time].[Past 4 months]} ON COLUMNS,\n"
             + "  {[Measures].[Unit Sales], [Measures].[Tom1]} ON ROWS\n"
@@ -1731,7 +1718,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[Past 4 months]}\n"
+            + "{[Time].[Time].[Past 4 months]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Tom1]}\n"
@@ -1749,7 +1736,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + "  member [Time].[Time].[Past 4 months] as\n"
             + "     Generate(\n"
             + "         [spark1],\n"
-            + "         CAST(([Measures].CurrentMember + 0.0) AS String),\n"
+            + "         CAST(Format(([Measures].CurrentMember + 0.0), '###.0#') AS String),\n"
             + "         \", \"),"
             + "     solve_order = 2\n"
             + "select {[Time].[Past 4 months]} ON COLUMNS,\n"
@@ -1758,13 +1745,13 @@ public class TestCalculatedMembers extends BatchTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[Past 4 months]}\n"
+            + "{[Time].[Time].[Past 4 months]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Tom1]}\n"
             + "Row #0: 21628.0, 20957.0, 23706.0, 20179.0\n"
-            + "Row #1: 2.10558951359349, 2.1023424154220547, 2.1104306926516494, 2.124894692502106\n");
-    }
+            + "Row #1: 2.11, 2.1, 2.11, 2.12\n");
+     }
 
     /**
      * Tests referring to a calc member by a name other than its canonical
@@ -1776,10 +1763,10 @@ public class TestCalculatedMembers extends BatchTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA].[Foo]}\n"
+            + "{[Store].[Stores].[USA].[Foo]}\n"
             + "Row #0: 266,773\n";
         assertQueryReturns(
-            "with member [Store].[USA].[Foo] as\n"
+            "with member [Store].[Stores].[USA].[Foo] as\n"
             + " [Store].[USA] + [Store].[Canada].[BC]\n"
             + "select [Store].[All Stores].[USA].[Foo] on 0\n"
             + "from [Sales]",
@@ -1787,9 +1774,25 @@ public class TestCalculatedMembers extends BatchTestCase {
 
         // and vice versa: define without 'all', refer with 'all'
         assertQueryReturns(
-            "with member [Store].[All Stores].[USA].[Foo] as\n"
+            "with member [Store].[Stores].[All Stores].[USA].[Foo] as\n"
             + " [Store].[USA] + [Store].[Canada].[BC]\n"
             + "select [Store].[USA].[Foo] on 0\n"
+            + "from [Sales]",
+            expected);
+
+        // without hierarchy name 'Stores'
+        assertQueryReturns(
+            "with member [Store].[USA].[Foo] as\n"
+            + " [Store].[USA] + [Store].[Canada].[BC]\n"
+            + "select [Store].[Stores].[All Stores].[USA].[Foo] on 0\n"
+            + "from [Sales]",
+            expected);
+
+        // without hierarchy name, and without 'all'
+        assertQueryReturns(
+            "with member [Store].[All Stores].[USA].[Foo] as\n"
+            + " [Store].[USA] + [Store].[Canada].[BC]\n"
+            + "select [Store].[Stores].[USA].[Foo] on 0\n"
             + "from [Sales]",
             expected);
     }
@@ -1802,21 +1805,21 @@ public class TestCalculatedMembers extends BatchTestCase {
             + " member [Gender].[X].[Y] as 5\n"
             + " select [Gender].[X].[Y] on 0\n"
             + " from [Sales]",
-            "The '[Gender].[X]' calculated member cannot be used as a parent "
-            + "of another calculated member.");
+            "The '[Customer].[Gender].[X]' calculated member cannot be used as "
+            + "a parent of another calculated member.");
     }
 
     public void testCalcMemberSameNameDifferentHierarchies() {
         assertQueryReturns(
             "with member [Gender].[X] as 4\n"
             + " member [Marital Status].[X] as 5\n"
-            + " member [Promotion Media].[X] as 6\n"
+            + " member [Promotion].[Media Type].[X] as 6\n"
             + " select [Marital Status].[X] on 0\n"
             + " from [Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Marital Status].[X]}\n"
+            + "{[Customer].[Marital Status].[X]}\n"
             + "Row #0: 5\n");
     }
 
@@ -1828,7 +1831,7 @@ public class TestCalculatedMembers extends BatchTestCase {
             + " select [Gender].[M].[X] on 0\n"
             + " from [Sales]",
             "The '[X]' calculated member cannot be created because its parent is "
-            + "at the lowest level in the [Gender] hierarchy.");
+            + "at the lowest level in the [Customer].[Gender] hierarchy.");
     }
 }
 

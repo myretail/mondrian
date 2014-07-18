@@ -43,6 +43,10 @@ public class UtilCompatibleJdk16 extends UtilCompatibleJdk15 {
     {
         ScriptEngineManager factory = new ScriptEngineManager();
         ScriptEngine engine = factory.getEngineByName(engineName);
+        if (engine == null) {
+            throw Util.newError(
+                "Scripting engine '" + engineName + "' not available");
+        }
         try {
             engine.eval(script);
             Invocable inv = (Invocable) engine;

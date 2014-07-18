@@ -88,8 +88,8 @@ class MondrianOlap4jCube
         final MondrianOlap4jConnection olap4jConnection =
             olap4jSchema.olap4jCatalog.olap4jDatabaseMetaData.olap4jConnection;
         final mondrian.olap.SchemaReader schemaReader =
-            olap4jConnection.getMondrianConnection2().getSchemaReader()
-            .withLocus();
+            cube.getSchemaReader(
+                olap4jConnection.getMondrianConnection2().getRole());
         for (mondrian.olap.Dimension dimension
             : schemaReader.getCubeDimensions(cube))
         {
@@ -111,6 +111,7 @@ class MondrianOlap4jCube
         }
         final MondrianOlap4jConnection olap4jConnection =
             olap4jSchema.olap4jCatalog.olap4jDatabaseMetaData.olap4jConnection;
+<<<<<<< HEAD
         try {
             final mondrian.olap.SchemaReader schemaReader =
                 olap4jConnection.getMondrianConnection().getSchemaReader()
@@ -143,7 +144,26 @@ class MondrianOlap4jCube
             // OlapException not possible, since measures are stored in memory.
             // Demote from checked to unchecked exception.
             throw new RuntimeException(e);
+=======
+        final mondrian.olap.SchemaReader schemaReader =
+            cube.getSchemaReader(
+                olap4jConnection.getMondrianConnection2().getRole());
+        final MondrianOlap4jLevel measuresLevel =
+            (MondrianOlap4jLevel)
+                dimension.getDefaultHierarchy()
+                    .getLevels().get(0);
+        final List<Measure> measures =
+            new ArrayList<Measure>();
+        List<mondrian.olap.Member> levelMembers =
+            schemaReader.getLevelMembers(
+                measuresLevel.level,
+                true);
+        for (mondrian.olap.Member member : levelMembers) {
+            measures.add(
+                (Measure) olap4jConnection.toOlap4j(member));
+>>>>>>> upstream/4.0
         }
+        return measures;
     }
 
     public NamedList<NamedSet> getSets() {
@@ -171,12 +191,12 @@ class MondrianOlap4jCube
 
     public String getCaption() {
         return cube.getLocalized(
-            OlapElement.LocalizedProperty.CAPTION, olap4jSchema.getLocale());
+            LocalizedProperty.CAPTION, olap4jSchema.getLocale());
     }
 
     public String getDescription() {
         return cube.getLocalized(
-            OlapElement.LocalizedProperty.DESCRIPTION,
+            LocalizedProperty.DESCRIPTION,
             olap4jSchema.getLocale());
     }
 

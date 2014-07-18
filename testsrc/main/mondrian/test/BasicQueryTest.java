@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2003-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho
+// Copyright (C) 2005-2014 Pentaho
 // All Rights Reserved.
 //
 // jhyde, Feb 14, 2003
@@ -17,7 +17,7 @@ import mondrian.olap.Axis;
 import mondrian.olap.Cell;
 import mondrian.olap.Connection;
 import mondrian.olap.*;
-import mondrian.olap.Position;
+import mondrian.olap.fun.FunctionTest;
 import mondrian.olap.type.NumericType;
 import mondrian.olap.type.Type;
 import mondrian.rolap.RolapSchema;
@@ -32,6 +32,7 @@ import junit.framework.Assert;
 import org.eigenbase.util.property.StringProperty;
 
 import org.olap4j.*;
+import org.olap4j.impl.ArrayMap;
 import org.olap4j.layout.RectangularCellSetFormatter;
 
 import java.io.PrintWriter;
@@ -60,8 +61,6 @@ public class BasicQueryTest extends FoodMartTestCase {
     private static final String timeWeekly =
         TestContext.hierarchyName("Time", "Weekly");
 
-    private MondrianProperties props = MondrianProperties.instance();
-
     public BasicQueryTest() {
         super();
     }
@@ -70,6 +69,7 @@ public class BasicQueryTest extends FoodMartTestCase {
         super(name);
     }
 
+<<<<<<< HEAD
     public void testMondrian1432()
     {
         TestContext testContext = getTestContext().createSubstitutingCube(
@@ -152,38 +152,44 @@ public class BasicQueryTest extends FoodMartTestCase {
         // 0
         new QueryAndResult(
             "select {[Measures].[Unit Sales]} on columns\n" + " from Sales",
+=======
+    private static final String query0 =
+        "select {[Measures].[Unit Sales]} on columns\n"
+        + " from Sales";
+>>>>>>> upstream/4.0
 
+    private static final String result0 =
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
-            + "Row #0: 266,773\n"),
+            + "Row #0: 266,773\n";
 
-        // 1
-        new QueryAndResult(
+    private static final String query1 =
             "select\n"
             + "    {[Measures].[Unit Sales]} on columns,\n"
-            + "    order(except([Promotion Media].[Media Type].members,{[Promotion Media].[Media Type].[No Media]}),[Measures].[Unit Sales],DESC) on rows\n"
-            + "from Sales ",
+            + "    order(except([Promotion].[Media Type].[Media Type].members,{[Promotion].[Media Type].[No Media]}),[Measures].[Unit Sales],DESC) on rows\n"
+            + "from Sales ";
 
+    private static final String result1 =
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Promotion Media].[Daily Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[Daily Paper]}\n"
-            + "{[Promotion Media].[Product Attachment]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio]}\n"
-            + "{[Promotion Media].[Cash Register Handout]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio]}\n"
-            + "{[Promotion Media].[Street Handout]}\n"
-            + "{[Promotion Media].[Sunday Paper]}\n"
-            + "{[Promotion Media].[Bulk Mail]}\n"
-            + "{[Promotion Media].[In-Store Coupon]}\n"
-            + "{[Promotion Media].[TV]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[Radio]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper]}\n"
+            + "{[Promotion].[Media Type].[Product Attachment]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[Cash Register Handout]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[Street Handout]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper]}\n"
+            + "{[Promotion].[Media Type].[Bulk Mail]}\n"
+            + "{[Promotion].[Media Type].[In-Store Coupon]}\n"
+            + "{[Promotion].[Media Type].[TV]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[Radio]}\n"
             + "Row #0: 9,513\n"
             + "Row #1: 7,738\n"
             + "Row #2: 7,544\n"
@@ -196,34 +202,34 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Row #9: 3,798\n"
             + "Row #10: 3,607\n"
             + "Row #11: 2,726\n"
-            + "Row #12: 2,454\n"),
+            + "Row #12: 2,454\n";
 
-        // 2
-        new QueryAndResult(
+    private static final String query2 =
             "select\n"
             + "    { [Measures].[Units Shipped], [Measures].[Units Ordered] } on columns,\n"
             + "    NON EMPTY [Store].[Store Name].members on rows\n"
-            + "from Warehouse",
+            + "from Warehouse";
 
+    private static final String result2 =
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Units Shipped]}\n"
             + "{[Measures].[Units Ordered]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Beverly Hills].[Store 6]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles].[Store 7]}\n"
-            + "{[Store].[USA].[CA].[San Diego].[Store 24]}\n"
-            + "{[Store].[USA].[CA].[San Francisco].[Store 14]}\n"
-            + "{[Store].[USA].[OR].[Portland].[Store 11]}\n"
-            + "{[Store].[USA].[OR].[Salem].[Store 13]}\n"
-            + "{[Store].[USA].[WA].[Bellingham].[Store 2]}\n"
-            + "{[Store].[USA].[WA].[Bremerton].[Store 3]}\n"
-            + "{[Store].[USA].[WA].[Seattle].[Store 15]}\n"
-            + "{[Store].[USA].[WA].[Spokane].[Store 16]}\n"
-            + "{[Store].[USA].[WA].[Tacoma].[Store 17]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla].[Store 22]}\n"
-            + "{[Store].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills].[Store 6]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles].[Store 7]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego].[Store 24]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco].[Store 14]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland].[Store 11]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham].[Store 2]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton].[Store 3]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle].[Store 15]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane].[Store 16]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma].[Store 17]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla].[Store 22]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
             + "Row #0: 10759.0\n"
             + "Row #0: 11699.0\n"
             + "Row #1: 24587.0\n"
@@ -249,10 +255,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Row #11: 1860.0\n"
             + "Row #11: 2074.0\n"
             + "Row #12: 10589.0\n"
-            + "Row #12: 11426.0\n"),
+            + "Row #12: 11426.0\n";
 
-        // 3
-        new QueryAndResult(
+    private static final String query3 =
             "with member [Measures].[Store Sales Last Period] as "
             + "    '([Measures].[Store Sales], Time.[Time].PrevMember)',\n"
             + "    format='#,###.00'\n"
@@ -260,196 +265,209 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "    {[Measures].[Store Sales Last Period]} on columns,\n"
             + "    {TopCount([Product].[Product Department].members,5, [Measures].[Store Sales Last Period])} on rows\n"
             + "from Sales\n"
-            + "where ([Time].[1998])",
+            + "where ([Time].[1998])";
 
-            "Axis #0:\n"
-            + "{[Time].[1998]}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Store Sales Last Period]}\n"
-            + "Axis #2:\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
-            + "{[Product].[Non-Consumable].[Household]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
-            + "{[Product].[Food].[Canned Foods]}\n"
-            + "Row #0: 82,248.42\n"
-            + "Row #1: 67,609.82\n"
-            + "Row #2: 60,469.89\n"
-            + "Row #3: 55,207.50\n"
-            + "Row #4: 39,774.34\n"),
+    private static final String result3 =
+        "Axis #0:\n"
+        + "{[Time].[Time].[1998]}\n"
+        + "Axis #1:\n"
+        + "{[Measures].[Store Sales Last Period]}\n"
+        + "Axis #2:\n"
+        + "{[Product].[Products].[Food].[Produce]}\n"
+        + "{[Product].[Products].[Food].[Snack Foods]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Household]}\n"
+        + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+        + "{[Product].[Products].[Food].[Canned Foods]}\n"
+        + "Row #0: 82,248.42\n"
+        + "Row #1: 67,609.82\n"
+        + "Row #2: 60,469.89\n"
+        + "Row #3: 55,207.50\n"
+        + "Row #4: 39,774.34\n";
 
-        // 4
-        new QueryAndResult(
+    private static final String query4 =
             "with member [Measures].[Total Store Sales] as 'Sum(YTD(),[Measures].[Store Sales])', format_string='#.00'\n"
             + "select\n"
             + "    {[Measures].[Total Store Sales]} on columns,\n"
             + "    {TopCount([Product].[Product Department].members,5, [Measures].[Total Store Sales])} on rows\n"
             + "from Sales\n"
-            + "where ([Time].[1997].[Q2].[4])",
+            + "where ([Time].[1997].[Q2].[4])";
 
-            "Axis #0:\n"
-            + "{[Time].[1997].[Q2].[4]}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Total Store Sales]}\n"
-            + "Axis #2:\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
-            + "{[Product].[Non-Consumable].[Household]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
-            + "{[Product].[Food].[Canned Foods]}\n"
-            + "Row #0: 26526.67\n"
-            + "Row #1: 21897.10\n"
-            + "Row #2: 19980.90\n"
-            + "Row #3: 17882.63\n"
-            + "Row #4: 12963.23\n"),
+    private static final String result4 =
+        "Axis #0:\n"
+        + "{[Time].[Time].[1997].[Q2].[4]}\n"
+        + "Axis #1:\n"
+        + "{[Measures].[Total Store Sales]}\n"
+        + "Axis #2:\n"
+        + "{[Product].[Products].[Food].[Produce]}\n"
+        + "{[Product].[Products].[Food].[Snack Foods]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Household]}\n"
+        + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+        + "{[Product].[Products].[Food].[Canned Foods]}\n"
+        + "Row #0: 26526.67\n"
+        + "Row #1: 21897.10\n"
+        + "Row #2: 19980.90\n"
+        + "Row #3: 17882.63\n"
+        + "Row #4: 12963.23\n";
 
-        // 5
-        new QueryAndResult(
+    private static final String query5 =
             "with member [Measures].[Store Profit Rate] as '([Measures].[Store Sales]-[Measures].[Store Cost])/[Measures].[Store Cost]', format = '#.00%'\n"
             + "select\n"
             + "    {[Measures].[Store Cost],[Measures].[Store Sales],[Measures].[Store Profit Rate]} on columns,\n"
             + "    Order([Product].[Product Department].members, [Measures].[Store Profit Rate], BDESC) on rows\n"
             + "from Sales\n"
-            + "where ([Time].[1997])",
+            + "where ([Time].[1997])";
 
-            "Axis #0:\n"
-            + "{[Time].[1997]}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Store Cost]}\n"
-            + "{[Measures].[Store Sales]}\n"
-            + "{[Measures].[Store Profit Rate]}\n"
-            + "Axis #2:\n"
-            + "{[Product].[Food].[Breakfast Foods]}\n"
-            + "{[Product].[Non-Consumable].[Carousel]}\n"
-            + "{[Product].[Food].[Canned Products]}\n"
-            + "{[Product].[Food].[Baking Goods]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Product].[Non-Consumable].[Health and Hygiene]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
-            + "{[Product].[Food].[Baked Goods]}\n"
-            + "{[Product].[Drink].[Beverages]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
-            + "{[Product].[Non-Consumable].[Periodicals]}\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Seafood]}\n"
-            + "{[Product].[Food].[Deli]}\n"
-            + "{[Product].[Food].[Meat]}\n"
-            + "{[Product].[Food].[Canned Foods]}\n"
-            + "{[Product].[Non-Consumable].[Household]}\n"
-            + "{[Product].[Food].[Starchy Foods]}\n"
-            + "{[Product].[Food].[Eggs]}\n"
-            + "{[Product].[Food].[Snacks]}\n"
-            + "{[Product].[Food].[Dairy]}\n"
-            + "{[Product].[Drink].[Dairy]}\n"
-            + "{[Product].[Non-Consumable].[Checkout]}\n"
-            + "Row #0: 2,756.80\n"
-            + "Row #0: 6,941.46\n"
-            + "Row #0: 151.79%\n"
-            + "Row #1: 595.97\n"
-            + "Row #1: 1,500.11\n"
-            + "Row #1: 151.71%\n"
-            + "Row #2: 1,317.13\n"
-            + "Row #2: 3,314.52\n"
-            + "Row #2: 151.65%\n"
-            + "Row #3: 15,370.61\n"
-            + "Row #3: 38,670.41\n"
-            + "Row #3: 151.59%\n"
-            + "Row #4: 5,576.79\n"
-            + "Row #4: 14,029.08\n"
-            + "Row #4: 151.56%\n"
-            + "Row #5: 12,972.99\n"
-            + "Row #5: 32,571.86\n"
-            + "Row #5: 151.07%\n"
-            + "Row #6: 26,963.34\n"
-            + "Row #6: 67,609.82\n"
-            + "Row #6: 150.75%\n"
-            + "Row #7: 6,564.09\n"
-            + "Row #7: 16,455.43\n"
-            + "Row #7: 150.69%\n"
-            + "Row #8: 11,069.53\n"
-            + "Row #8: 27,748.53\n"
-            + "Row #8: 150.67%\n"
-            + "Row #9: 22,030.66\n"
-            + "Row #9: 55,207.50\n"
-            + "Row #9: 150.59%\n"
-            + "Row #10: 3,614.55\n"
-            + "Row #10: 9,056.76\n"
-            + "Row #10: 150.56%\n"
-            + "Row #11: 32,831.33\n"
-            + "Row #11: 82,248.42\n"
-            + "Row #11: 150.52%\n"
-            + "Row #12: 1,520.70\n"
-            + "Row #12: 3,809.14\n"
-            + "Row #12: 150.49%\n"
-            + "Row #13: 10,108.87\n"
-            + "Row #13: 25,318.93\n"
-            + "Row #13: 150.46%\n"
-            + "Row #14: 1,465.42\n"
-            + "Row #14: 3,669.89\n"
-            + "Row #14: 150.43%\n"
-            + "Row #15: 15,894.53\n"
-            + "Row #15: 39,774.34\n"
-            + "Row #15: 150.24%\n"
-            + "Row #16: 24,170.73\n"
-            + "Row #16: 60,469.89\n"
-            + "Row #16: 150.18%\n"
-            + "Row #17: 4,705.91\n"
-            + "Row #17: 11,756.07\n"
-            + "Row #17: 149.82%\n"
-            + "Row #18: 3,684.90\n"
-            + "Row #18: 9,200.76\n"
-            + "Row #18: 149.69%\n"
-            + "Row #19: 5,827.58\n"
-            + "Row #19: 14,550.05\n"
-            + "Row #19: 149.68%\n"
-            + "Row #20: 12,228.85\n"
-            + "Row #20: 30,508.85\n"
-            + "Row #20: 149.48%\n"
-            + "Row #21: 2,830.92\n"
-            + "Row #21: 7,058.60\n"
-            + "Row #21: 149.34%\n"
-            + "Row #22: 1,525.04\n"
-            + "Row #22: 3,767.71\n"
-            + "Row #22: 147.06%\n"),
+    private static final String result5 =
+        "Axis #0:\n"
+        + "{[Time].[Time].[1997]}\n"
+        + "Axis #1:\n"
+        + "{[Measures].[Store Cost]}\n"
+        + "{[Measures].[Store Sales]}\n"
+        + "{[Measures].[Store Profit Rate]}\n"
+        + "Axis #2:\n"
+        + "{[Product].[Products].[Food].[Breakfast Foods]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Carousel]}\n"
+        + "{[Product].[Products].[Food].[Canned Products]}\n"
+        + "{[Product].[Products].[Food].[Baking Goods]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Health and Hygiene]}\n"
+        + "{[Product].[Products].[Food].[Snack Foods]}\n"
+        + "{[Product].[Products].[Food].[Baked Goods]}\n"
+        + "{[Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Periodicals]}\n"
+        + "{[Product].[Products].[Food].[Produce]}\n"
+        + "{[Product].[Products].[Food].[Seafood]}\n"
+        + "{[Product].[Products].[Food].[Deli]}\n"
+        + "{[Product].[Products].[Food].[Meat]}\n"
+        + "{[Product].[Products].[Food].[Canned Foods]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Household]}\n"
+        + "{[Product].[Products].[Food].[Starchy Foods]}\n"
+        + "{[Product].[Products].[Food].[Eggs]}\n"
+        + "{[Product].[Products].[Food].[Snacks]}\n"
+        + "{[Product].[Products].[Food].[Dairy]}\n"
+        + "{[Product].[Products].[Drink].[Dairy]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Checkout]}\n"
+        +  (FunctionTest.FILTER_SNOWFLAKE
+            ? ""
+            : "{[Product].[Products].[Drink].[Baking Goods]}\n"
+              + "{[Product].[Products].[Food].[Packaged Foods]}\n")
+        + "Row #0: 2,756.80\n"
+        + "Row #0: 6,941.46\n"
+        + "Row #0: 151.79%\n"
+        + "Row #1: 595.97\n"
+        + "Row #1: 1,500.11\n"
+        + "Row #1: 151.71%\n"
+        + "Row #2: 1,317.13\n"
+        + "Row #2: 3,314.52\n"
+        + "Row #2: 151.65%\n"
+        + "Row #3: 15,370.61\n"
+        + "Row #3: 38,670.41\n"
+        + "Row #3: 151.59%\n"
+        + "Row #4: 5,576.79\n"
+        + "Row #4: 14,029.08\n"
+        + "Row #4: 151.56%\n"
+        + "Row #5: 12,972.99\n"
+        + "Row #5: 32,571.86\n"
+        + "Row #5: 151.07%\n"
+        + "Row #6: 26,963.34\n"
+        + "Row #6: 67,609.82\n"
+        + "Row #6: 150.75%\n"
+        + "Row #7: 6,564.09\n"
+        + "Row #7: 16,455.43\n"
+        + "Row #7: 150.69%\n"
+        + "Row #8: 11,069.53\n"
+        + "Row #8: 27,748.53\n"
+        + "Row #8: 150.67%\n"
+        + "Row #9: 22,030.66\n"
+        + "Row #9: 55,207.50\n"
+        + "Row #9: 150.59%\n"
+        + "Row #10: 3,614.55\n"
+        + "Row #10: 9,056.76\n"
+        + "Row #10: 150.56%\n"
+        + "Row #11: 32,831.33\n"
+        + "Row #11: 82,248.42\n"
+        + "Row #11: 150.52%\n"
+        + "Row #12: 1,520.70\n"
+        + "Row #12: 3,809.14\n"
+        + "Row #12: 150.49%\n"
+        + "Row #13: 10,108.87\n"
+        + "Row #13: 25,318.93\n"
+        + "Row #13: 150.46%\n"
+        + "Row #14: 1,465.42\n"
+        + "Row #14: 3,669.89\n"
+        + "Row #14: 150.43%\n"
+        + "Row #15: 15,894.53\n"
+        + "Row #15: 39,774.34\n"
+        + "Row #15: 150.24%\n"
+        + "Row #16: 24,170.73\n"
+        + "Row #16: 60,469.89\n"
+        + "Row #16: 150.18%\n"
+        + "Row #17: 4,705.91\n"
+        + "Row #17: 11,756.07\n"
+        + "Row #17: 149.82%\n"
+        + "Row #18: 3,684.90\n"
+        + "Row #18: 9,200.76\n"
+        + "Row #18: 149.69%\n"
+        + "Row #19: 5,827.58\n"
+        + "Row #19: 14,550.05\n"
+        + "Row #19: 149.68%\n"
+        + "Row #20: 12,228.85\n"
+        + "Row #20: 30,508.85\n"
+        + "Row #20: 149.48%\n"
+        + "Row #21: 2,830.92\n"
+        + "Row #21: 7,058.60\n"
+        + "Row #21: 149.34%\n"
+        + "Row #22: 1,525.04\n"
+        + "Row #22: 3,767.71\n"
+        + "Row #22: 147.06%\n"
+        + (FunctionTest.FILTER_SNOWFLAKE
+            ? ""
+            : "Row #23: \n"
+              + "Row #23: \n"
+              + "Row #23: \n"
+              + "Row #24: \n"
+              + "Row #24: \n"
+              + "Row #24: \n");
 
-        // 6
-        new QueryAndResult(
+    private static final String query6 =
             "with\n"
-            + "   member [Product].[All Products].[Drink].[Percent of Alcoholic Drinks] as '[Product].[All Products].[Drink].[Alcoholic Beverages]/[Product].[All Products].[Drink]',\n"
+            + "   member [Product].[Products].[Drink].[Percent of Alcoholic Drinks] as '[Product].[Products].[Drink].[Alcoholic Beverages]/[Product].[Products].[Drink]',\n"
             + "       format_string = '#.00%'\n"
             + "select\n"
-            + "   { [Product].[All Products].[Drink].[Percent of Alcoholic Drinks] } on columns,\n"
-            + "   order([Customers].[All Customers].[USA].[WA].Children, [Product].[All Products].[Drink].[Percent of Alcoholic Drinks],BDESC) on rows\n"
+            + "   { [Product].[Products].[Drink].[Percent of Alcoholic Drinks] } on columns,\n"
+            + "   order([Customer].[Customers].[USA].[WA].Children, [Product].[Products].[Drink].[Percent of Alcoholic Drinks],BDESC) on rows\n"
             + "from Sales\n"
-            + "where ([Measures].[Unit Sales])",
+            + "where ([Measures].[Unit Sales])";
 
+    private static final String result6 =
             "Axis #0:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #1:\n"
-            + "{[Product].[Drink].[Percent of Alcoholic Drinks]}\n"
+            + "{[Product].[Products].[Drink].[Percent of Alcoholic Drinks]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[WA].[Seattle]}\n"
-            + "{[Customers].[USA].[WA].[Kirkland]}\n"
-            + "{[Customers].[USA].[WA].[Marysville]}\n"
-            + "{[Customers].[USA].[WA].[Anacortes]}\n"
-            + "{[Customers].[USA].[WA].[Olympia]}\n"
-            + "{[Customers].[USA].[WA].[Ballard]}\n"
-            + "{[Customers].[USA].[WA].[Bremerton]}\n"
-            + "{[Customers].[USA].[WA].[Puyallup]}\n"
-            + "{[Customers].[USA].[WA].[Yakima]}\n"
-            + "{[Customers].[USA].[WA].[Tacoma]}\n"
-            + "{[Customers].[USA].[WA].[Everett]}\n"
-            + "{[Customers].[USA].[WA].[Renton]}\n"
-            + "{[Customers].[USA].[WA].[Issaquah]}\n"
-            + "{[Customers].[USA].[WA].[Bellingham]}\n"
-            + "{[Customers].[USA].[WA].[Port Orchard]}\n"
-            + "{[Customers].[USA].[WA].[Redmond]}\n"
-            + "{[Customers].[USA].[WA].[Spokane]}\n"
-            + "{[Customers].[USA].[WA].[Burien]}\n"
-            + "{[Customers].[USA].[WA].[Lynnwood]}\n"
-            + "{[Customers].[USA].[WA].[Walla Walla]}\n"
-            + "{[Customers].[USA].[WA].[Edmonds]}\n"
-            + "{[Customers].[USA].[WA].[Sedro Woolley]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Seattle]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Kirkland]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Marysville]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Anacortes]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Olympia]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Ballard]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Bremerton]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Puyallup]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Tacoma]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Everett]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Renton]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Issaquah]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Bellingham]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Port Orchard]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Redmond]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Burien]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Lynnwood]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Walla Walla]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Edmonds]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Sedro Woolley]}\n"
             + "Row #0: 44.05%\n"
             + "Row #1: 34.41%\n"
             + "Row #2: 34.20%\n"
@@ -471,34 +489,34 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Row #18: 21.89%\n"
             + "Row #19: 21.47%\n"
             + "Row #20: 17.47%\n"
-            + "Row #21: 13.79%\n"),
+            + "Row #21: 13.79%\n";
 
-        // 7
-        new QueryAndResult(
+    private static final String query7 =
             "with member [Measures].[Accumulated Sales] as 'Sum(YTD(),[Measures].[Store Sales])'\n"
             + "select\n"
             + "    {[Measures].[Store Sales],[Measures].[Accumulated Sales]} on columns,\n"
             + "    {Descendants([Time].[1997],[Time].[Month])} on rows\n"
-            + "from Sales",
+            + "from Sales";
 
+    private static final String result7 =
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Store Sales]}\n"
             + "{[Measures].[Accumulated Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1].[1]}\n"
-            + "{[Time].[1997].[Q1].[2]}\n"
-            + "{[Time].[1997].[Q1].[3]}\n"
-            + "{[Time].[1997].[Q2].[4]}\n"
-            + "{[Time].[1997].[Q2].[5]}\n"
-            + "{[Time].[1997].[Q2].[6]}\n"
-            + "{[Time].[1997].[Q3].[7]}\n"
-            + "{[Time].[1997].[Q3].[8]}\n"
-            + "{[Time].[1997].[Q3].[9]}\n"
-            + "{[Time].[1997].[Q4].[10]}\n"
-            + "{[Time].[1997].[Q4].[11]}\n"
-            + "{[Time].[1997].[Q4].[12]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
+            + "{[Time].[Time].[1997].[Q2].[5]}\n"
+            + "{[Time].[Time].[1997].[Q2].[6]}\n"
+            + "{[Time].[Time].[1997].[Q3].[7]}\n"
+            + "{[Time].[Time].[1997].[Q3].[8]}\n"
+            + "{[Time].[Time].[1997].[Q3].[9]}\n"
+            + "{[Time].[Time].[1997].[Q4].[10]}\n"
+            + "{[Time].[Time].[1997].[Q4].[11]}\n"
+            + "{[Time].[Time].[1997].[Q4].[12]}\n"
             + "Row #0: 45,539.69\n"
             + "Row #0: 45,539.69\n"
             + "Row #1: 44,058.79\n"
@@ -522,84 +540,91 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Row #10: 53,363.71\n"
             + "Row #10: 508,272.49\n"
             + "Row #11: 56,965.64\n"
-            + "Row #11: 565,238.13\n"),
+            + "Row #11: 565,238.13\n";
 
-        // 8
-        new QueryAndResult(
+    private static final String query8 =
             "select {[Measures].[Promotion Sales]} on columns\n"
-            + " from Sales",
+            + " from Sales";
 
+    private static final String result8 =
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Promotion Sales]}\n"
-            + "Row #0: 151,211.21\n"),
+            + "Row #0: 151,211.21\n";
+
+    private static final QueryAndResult[] sampleQueries = {
+        new QueryAndResult(query0, result0),
+        new QueryAndResult(query1, result1),
+        new QueryAndResult(query2, result2),
+        new QueryAndResult(query3, result3),
+        new QueryAndResult(query4, result4),
+        new QueryAndResult(query5, result5),
+        new QueryAndResult(query6, result6),
+        new QueryAndResult(query7, result7),
+        new QueryAndResult(query8, result8),
     };
 
     public void testSample0() {
-        assertQueryReturns(sampleQueries[0].query, sampleQueries[0].result);
+        assertQueryReturns(query0, result0);
     }
 
     public void testSample1() {
-        assertQueryReturns(sampleQueries[1].query, sampleQueries[1].result);
+        assertQueryReturns(query1, result1);
     }
 
     public void testSample2() {
-        assertQueryReturns(sampleQueries[2].query, sampleQueries[2].result);
+        assertQueryReturns(query2, result2);
     }
 
     public void testSample3() {
-        assertQueryReturns(sampleQueries[3].query, sampleQueries[3].result);
+        assertQueryReturns(query3, result3);
     }
 
     public void testSample4() {
-        assertQueryReturns(sampleQueries[4].query, sampleQueries[4].result);
+        assertQueryReturns(query4, result4);
     }
 
     public void testSample5() {
-        assertQueryReturns(sampleQueries[5].query, sampleQueries[5].result);
+        assertQueryReturns(query5, result5);
     }
 
     public void testSample5Snowflake() {
-        propSaver.set(
-            MondrianProperties.instance().FilterChildlessSnowflakeMembers,
-            false);
+        propSaver.set(propSaver.props.FilterChildlessSnowflakeMembers, false);
         final TestContext context = getTestContext().withFreshConnection();
         try {
             context.assertQueryReturns(
                 sampleQueries[5].query,
                 "Axis #0:\n"
-                + "{[Time].[1997]}\n"
+                + "{[Time].[Time].[1997]}\n"
                 + "Axis #1:\n"
                 + "{[Measures].[Store Cost]}\n"
                 + "{[Measures].[Store Sales]}\n"
                 + "{[Measures].[Store Profit Rate]}\n"
                 + "Axis #2:\n"
-                + "{[Product].[Food].[Breakfast Foods]}\n"
-                + "{[Product].[Non-Consumable].[Carousel]}\n"
-                + "{[Product].[Food].[Canned Products]}\n"
-                + "{[Product].[Food].[Baking Goods]}\n"
-                + "{[Product].[Drink].[Alcoholic Beverages]}\n"
-                + "{[Product].[Non-Consumable].[Health and Hygiene]}\n"
-                + "{[Product].[Food].[Snack Foods]}\n"
-                + "{[Product].[Food].[Baked Goods]}\n"
-                + "{[Product].[Drink].[Beverages]}\n"
-                + "{[Product].[Food].[Frozen Foods]}\n"
-                + "{[Product].[Non-Consumable].[Periodicals]}\n"
-                + "{[Product].[Food].[Produce]}\n"
-                + "{[Product].[Food].[Seafood]}\n"
-                + "{[Product].[Food].[Deli]}\n"
-                + "{[Product].[Food].[Meat]}\n"
-                + "{[Product].[Food].[Canned Foods]}\n"
-                + "{[Product].[Non-Consumable].[Household]}\n"
-                + "{[Product].[Food].[Starchy Foods]}\n"
-                + "{[Product].[Food].[Eggs]}\n"
-                + "{[Product].[Food].[Snacks]}\n"
-                + "{[Product].[Food].[Dairy]}\n"
-                + "{[Product].[Drink].[Dairy]}\n"
-                + "{[Product].[Non-Consumable].[Checkout]}\n"
-                + "{[Product].[Drink].[Baking Goods]}\n"
-                + "{[Product].[Food].[Packaged Foods]}\n"
+                + "{[Product].[Products].[Food].[Breakfast Foods]}\n"
+                + "{[Product].[Products].[Non-Consumable].[Carousel]}\n"
+                + "{[Product].[Products].[Food].[Canned Products]}\n"
+                + "{[Product].[Products].[Food].[Baking Goods]}\n"
+                + "{[Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+                + "{[Product].[Products].[Non-Consumable].[Health and Hygiene]}\n"
+                + "{[Product].[Products].[Food].[Snack Foods]}\n"
+                + "{[Product].[Products].[Food].[Baked Goods]}\n"
+                + "{[Product].[Products].[Drink].[Beverages]}\n"
+                + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+                + "{[Product].[Products].[Non-Consumable].[Periodicals]}\n"
+                + "{[Product].[Products].[Food].[Produce]}\n"
+                + "{[Product].[Products].[Food].[Seafood]}\n"
+                + "{[Product].[Products].[Food].[Deli]}\n"
+                + "{[Product].[Products].[Food].[Meat]}\n"
+                + "{[Product].[Products].[Food].[Canned Foods]}\n"
+                + "{[Product].[Products].[Non-Consumable].[Household]}\n"
+                + "{[Product].[Products].[Food].[Starchy Foods]}\n"
+                + "{[Product].[Products].[Food].[Eggs]}\n"
+                + "{[Product].[Products].[Food].[Snacks]}\n"
+                + "{[Product].[Products].[Food].[Dairy]}\n"
+                + "{[Product].[Products].[Drink].[Dairy]}\n"
+                + "{[Product].[Products].[Non-Consumable].[Checkout]}\n"
                 + "Row #0: 2,756.80\n"
                 + "Row #0: 6,941.46\n"
                 + "Row #0: 151.79%\n"
@@ -668,24 +693,18 @@ public class BasicQueryTest extends FoodMartTestCase {
                 + "Row #21: 149.34%\n"
                 + "Row #22: 1,525.04\n"
                 + "Row #22: 3,767.71\n"
-                + "Row #22: 147.06%\n"
-                + "Row #23: \n"
-                + "Row #23: \n"
-                + "Row #23: \n"
-                + "Row #24: \n"
-                + "Row #24: \n"
-                + "Row #24: \n");
+                + "Row #22: 147.06%\n");
         } finally {
             context.close();
         }
     }
 
     public void testSample6() {
-        assertQueryReturns(sampleQueries[6].query, sampleQueries[6].result);
+        assertQueryReturns(query6, result6);
     }
 
     public void testSample7() {
-        assertQueryReturns(sampleQueries[7].query, sampleQueries[7].result);
+        assertQueryReturns(query7, result7);
     }
 
     public void testSample8() {
@@ -696,7 +715,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             // defined wrong.
             return;
         }
-        assertQueryReturns(sampleQueries[8].query, sampleQueries[8].result);
+        assertQueryReturns(query8, result8);
     }
 
     public void testGoodComments() {
@@ -732,7 +751,9 @@ public class BasicQueryTest extends FoodMartTestCase {
 
             "/* a simple /* nested comment, only needs to be closed once */",
 
-            "/*\n" + " * a multiline /* nested comment\n" + "*/",
+            "/*\n"
+            + " * a multiline /* nested comment\n"
+            + "*/",
 
             "/**\n"
             + " * a multiline\n"
@@ -802,7 +823,7 @@ public class BasicQueryTest extends FoodMartTestCase {
                 + comment
                 + "([Gender].[F])",
                 "Axis #0:\n"
-                + "{[Gender].[F]}\n"
+                + "{[Customer].[Gender].[F]}\n"
                 + "Axis #1:\n"
                 + "Axis #2:\n");
         }
@@ -843,43 +864,43 @@ public class BasicQueryTest extends FoodMartTestCase {
 
         assertQueryReturns(
             "// now for some comments in a larger command\n"
-            + "with // create calculate measure [Product].[All Products].[Drink].[Percent of Alcoholic Drinks]\n"
-            + "   member [Product].[All Products].[Drink].[Percent of Alcoholic Drinks]/*the measure name*/as '                        // begin the definition of the measure next\n"
-            + "       [Product]./****this is crazy****/[All Products].[Drink].[Alcoholic Beverages]/[Product].[All Products].[Drink]',  // divide number of alcoholic drinks by total # of drinks\n"
+            + "with // create calculate measure [Product].[Products].[Drink].[Percent of Alcoholic Drinks]\n"
+            + "   member [Product].[Products].[Drink].[Percent of Alcoholic Drinks]/*the measure name*/as '                        // begin the definition of the measure next\n"
+            + "       [Product].[Products]./****this is crazy****/[All Products].[Drink].[Alcoholic Beverages]/[Product].[Drink]',  // divide number of alcoholic drinks by total # of drinks\n"
             + "       format_string = '#.00%'  // a custom format for our measure\n"
             + "select\n"
-            + "   { [Product]/**** still crazy ****/.[All Products].[Drink].[Percent of Alcoholic Drinks] } on columns,\n"
-            + "   order(/****do not put a comment inside square brackets****/[Customers].[All Customers].[USA].[WA].Children, [Product].[All Products].[Drink].[Percent of Alcoholic Drinks],BDESC) on rows\n"
+            + "   { [Product].[Products]/**** still crazy ****/.[Drink].[Percent of Alcoholic Drinks] } on columns,\n"
+            + "   order(/****do not put a comment inside square brackets****/[Customer].[Customers].[USA].[WA].Children, [Product].[Products].[Drink].[Percent of Alcoholic Drinks],BDESC) on rows\n"
             + "from Sales\n"
             + "where ([Measures].[Unit Sales] /****,[Time].[1997]****/) -- a comment at the end of the command",
 
             "Axis #0:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #1:\n"
-            + "{[Product].[Drink].[Percent of Alcoholic Drinks]}\n"
+            + "{[Product].[Products].[Drink].[Percent of Alcoholic Drinks]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[WA].[Seattle]}\n"
-            + "{[Customers].[USA].[WA].[Kirkland]}\n"
-            + "{[Customers].[USA].[WA].[Marysville]}\n"
-            + "{[Customers].[USA].[WA].[Anacortes]}\n"
-            + "{[Customers].[USA].[WA].[Olympia]}\n"
-            + "{[Customers].[USA].[WA].[Ballard]}\n"
-            + "{[Customers].[USA].[WA].[Bremerton]}\n"
-            + "{[Customers].[USA].[WA].[Puyallup]}\n"
-            + "{[Customers].[USA].[WA].[Yakima]}\n"
-            + "{[Customers].[USA].[WA].[Tacoma]}\n"
-            + "{[Customers].[USA].[WA].[Everett]}\n"
-            + "{[Customers].[USA].[WA].[Renton]}\n"
-            + "{[Customers].[USA].[WA].[Issaquah]}\n"
-            + "{[Customers].[USA].[WA].[Bellingham]}\n"
-            + "{[Customers].[USA].[WA].[Port Orchard]}\n"
-            + "{[Customers].[USA].[WA].[Redmond]}\n"
-            + "{[Customers].[USA].[WA].[Spokane]}\n"
-            + "{[Customers].[USA].[WA].[Burien]}\n"
-            + "{[Customers].[USA].[WA].[Lynnwood]}\n"
-            + "{[Customers].[USA].[WA].[Walla Walla]}\n"
-            + "{[Customers].[USA].[WA].[Edmonds]}\n"
-            + "{[Customers].[USA].[WA].[Sedro Woolley]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Seattle]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Kirkland]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Marysville]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Anacortes]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Olympia]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Ballard]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Bremerton]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Puyallup]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Tacoma]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Everett]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Renton]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Issaquah]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Bellingham]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Port Orchard]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Redmond]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Burien]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Lynnwood]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Walla Walla]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Edmonds]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Sedro Woolley]}\n"
             + "Row #0: 44.05%\n"
             + "Row #1: 34.41%\n"
             + "Row #2: 34.20%\n"
@@ -946,7 +967,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             "SELECT {} ON ROWS, {} ON COLUMNS \n"
             + "FROM [Sales] WHERE ([Gender].[F])",
             "Axis #0:\n"
-            + "{[Gender].[F]}\n"
+            + "{[Customer].[Gender].[F]}\n"
             + "Axis #1:\n"
             + "Axis #2:\n");
     }
@@ -965,14 +986,14 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "WHERE {([Marital Status].[S]),\n"
             + "       ([Marital Status].[M])}",
             "Axis #0:\n"
-            + "{[Marital Status].[S]}\n"
-            + "{[Marital Status].[M]}\n"
+            + "{[Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Marital Status].[M]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 266,773\n"
             + "Row #1: 131,558\n"
             + "Row #2: 135,215\n");
@@ -998,9 +1019,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n");
@@ -1012,13 +1033,13 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "FROM [Sales]\n"
             + "WHERE ({Filter({[Marital Status].MEMBERS}, [Measures].[Unit Sales] = 266773)}.Item(0))",
             "Axis #0:\n"
-            + "{[Marital Status].[All Marital Status]}\n"
+            + "{[Customer].[Marital Status].[All Marital Status]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 266,773\n"
             + "Row #1: 131,558\n"
             + "Row #2: 135,215\n");
@@ -1035,9 +1056,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n");
@@ -1049,13 +1070,13 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "FROM [Sales]\n"
             + "WHERE Filter({[Marital Status].MEMBERS}, [Measures].[Unit Sales] = 266773)",
             "Axis #0:\n"
-            + "{[Marital Status].[All Marital Status]}\n"
+            + "{[Customer].[Marital Status].[All Marital Status]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 266,773\n"
             + "Row #1: 131,558\n"
             + "Row #2: 135,215\n");
@@ -1072,15 +1093,15 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "FROM [Sales]\n"
             + "WHERE Filter({[Marital Status].MEMBERS}, [Measures].[Unit Sales] <= 266773)",
             "Axis #0:\n"
-            + "{[Marital Status].[All Marital Status]}\n"
-            + "{[Marital Status].[M]}\n"
-            + "{[Marital Status].[S]}\n"
+            + "{[Customer].[Marital Status].[All Marital Status]}\n"
+            + "{[Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Marital Status].[S]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 266,773\n"
             + "Row #1: 131,558\n"
             + "Row #2: 135,215\n");
@@ -1101,7 +1122,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "  {[Gender].[M]}) ON COLUMNS,\n"
             + " {[Gender].MEMBERS} ON ROWS\n"
             + "FROM [Sales]",
-            "Hierarchy '[Gender]' appears in more than one independent axis.");
+            "Hierarchy '[Customer].[Gender]' appears in more than one independent axis.");
 
         // two members of same dimension in rows and filter
         assertQueryThrows(
@@ -1109,24 +1130,26 @@ public class BasicQueryTest extends FoodMartTestCase {
             + " {[Gender].MEMBERS} ON ROWS\n"
             + "FROM [Sales]"
             + "WHERE ([Marital Status].[S], [Gender].[F])",
-            "Hierarchy '[Gender]' appears in more than one independent axis.");
+            "Hierarchy '[Customer].[Gender]' appears in more than one independent axis.");
 
         // members of different hierarchies of the same dimension in rows and
         // filter
         assertQueryReturns(
             "SELECT {[Measures].[Unit Sales]} ON COLUMNS,\n"
-            + " {[Time].[1997].Children} ON ROWS\n"
+            + " {[Time].[Time].[1997].Children} ON ROWS\n"
             + "FROM [Sales]"
-            + "WHERE ([Marital Status].[S], " + timeWeekly + ".[1997].[20])",
+            + "WHERE ([Customer].[Marital Status].[S], "
+            + timeWeekly
+            + ".[1997].[20])",
             "Axis #0:\n"
-            + "{[Marital Status].[S], [Time].[Weekly].[1997].[20]}\n"
+            + "{[Customer].[Marital Status].[S], [Time].[Weekly].[1997].[20]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
-            + "{[Time].[1997].[Q3]}\n"
-            + "{[Time].[1997].[Q4]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
+            + "{[Time].[Time].[1997].[Q4]}\n"
             + "Row #0: \n"
             + "Row #1: 3,523\n"
             + "Row #2: \n"
@@ -1138,7 +1161,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + " {[Gender].MEMBERS} ON ROWS\n"
             + "FROM [Sales]"
             + "WHERE ([Marital Status].[S], [Marital Status].[M])",
-            "Tuple contains more than one member of hierarchy '[Marital Status]'.");
+            "Tuple contains more than one member of hierarchy '[Customer].[Marital Status]'.");
 
         // two members of different hierarchies of the same dimension in the
         // slicer tuple
@@ -1148,13 +1171,13 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "FROM [Sales]"
             + "WHERE ([Time].[1997].[Q1], " + timeWeekly + ".[1997].[4])",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q1], [Time].[Weekly].[1997].[4]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Time].[Weekly].[1997].[4]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 4,908\n"
             + "Row #1: 2,354\n"
             + "Row #2: 2,554\n");
@@ -1164,10 +1187,10 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryThrows(
             "select\n"
             + "{[Measures].[Unit Sales]} on columns,\n"
-            + "{([Product].[All Products], [Time].[1997])} ON rows\n"
+            + "{([Products].[All Products], [Time].[1997])} ON rows\n"
             + "from Sales\n"
             + "where ([Time].[1997])",
-            "Hierarchy '[Time]' appears in more than one independent axis.");
+            "Hierarchy '[Time].[Time]' appears in more than one independent axis.");
 
         // different hierarchies of same dimension on slicer and other axis
         assertQueryReturns(
@@ -1178,11 +1201,11 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "from Sales\n"
             + "where ([Time].[1997])",
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[All Products], [Time].[Weekly].[1997]}\n"
+            + "{[Product].[Products].[All Products], [Time].[Weekly].[1997]}\n"
             + "Row #0: 266,773\n");
     }
 
@@ -1226,7 +1249,7 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testEmptyTupleSlicerFails() {
         assertQueryThrows(
             "select [Measures].[Unit Sales] on 0,\n"
-            + "[Product].Children on 1\n"
+            + "[Product].[Products].Children on 1\n"
             + "from [Warehouse and Sales]\n"
             + "where ()",
             "Syntax error at line 4, column 8, token ')'");
@@ -1234,7 +1257,7 @@ public class BasicQueryTest extends FoodMartTestCase {
 
     /**
      * Requires the use of a sparse segment, because the product dimension
-     * has 6 atttributes, the product of whose cardinalities is ~8M. If we
+     * has 6 attributes, the product of whose cardinalities is ~8M. If we
      * use a dense segment, we run out of memory trying to allocate a huge
      * array.
      */
@@ -1245,7 +1268,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "from Sales");
         final int rowCount = result.getAxes()[1].getPositions().size();
         assertEquals(
-            MondrianProperties.instance().FilterChildlessSnowflakeMembers.get()
+            propSaver.props.FilterChildlessSnowflakeMembers.get()
                 ? 2256
                 : 2266,
             rowCount);
@@ -1262,9 +1285,6 @@ public class BasicQueryTest extends FoodMartTestCase {
      * method.
      */
     public void testGetContext() {
-        if (!MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            return;
-        }
         Result result =
             getTestContext().executeQuery(
                 "select [Gender].Members on 0,\n"
@@ -1274,9 +1294,9 @@ public class BasicQueryTest extends FoodMartTestCase {
         final Cell cell = result.getCell(new int[]{0, 0});
         final Map<String, Hierarchy> hierarchyMap =
             new HashMap<String, Hierarchy>();
-        for (Dimension dimension : result.getQuery().getCube().getDimensions())
-        {
-            for (Hierarchy hierarchy : dimension.getHierarchies()) {
+        final Cube cube = result.getQuery().getCube();
+        for (Dimension dimension : cube.getDimensionList()) {
+            for (Hierarchy hierarchy : dimension.getHierarchyList()) {
                 hierarchyMap.put(hierarchy.getUniqueName(), hierarchy);
             }
         }
@@ -1285,34 +1305,35 @@ public class BasicQueryTest extends FoodMartTestCase {
             cell.getContextMember(hierarchyMap.get("[Measures]"))
                 .getUniqueName());
         assertEquals(
-            "[Time].[1997]",
-            cell.getContextMember(hierarchyMap.get("[Time]"))
+            "[Time].[Time].[1997]",
+            cell.getContextMember(hierarchyMap.get("[Time].[Time]"))
                 .getUniqueName());
         assertEquals(
-            "[Time].[Weekly].[1997].[6].[1]",
+            "[Time].[Weekly].[1997].[6].[26]",
             cell.getContextMember(hierarchyMap.get("[Time].[Weekly]"))
                 .getUniqueName());
         assertEquals(
-            "[Gender].[All Gender]",
-            cell.getContextMember(hierarchyMap.get("[Gender]"))
+            "[Customer].[Gender].[All Gender]",
+            cell.getContextMember(hierarchyMap.get("[Customer].[Gender]"))
                 .getUniqueName());
         assertEquals(
-            "[Marital Status].[S]",
-            cell.getContextMember(hierarchyMap.get("[Marital Status]"))
+            "[Customer].[Marital Status].[S]",
+            cell.getContextMember(
+                hierarchyMap.get("[Customer].[Marital Status]"))
                 .getUniqueName());
     }
 
     public void testNonEmpty1() {
         assertSize(
             "select\n"
-            + "  NON EMPTY CrossJoin({[Product].[All Products].[Drink].Children},\n"
-            + "    {[Customers].[All Customers].[USA].[WA].[Bellingham]}) on rows,\n"
+            + "  NON EMPTY CrossJoin({[Product].[Drink].Children},\n"
+            + "    {[Customers].[USA].[WA].[Bellingham]}) on rows,\n"
             + "  CrossJoin(\n"
             + "    {[Measures].[Unit Sales], [Measures].[Store Sales]},\n"
-            + "    { [Promotion Media].[All Media].[Radio],\n"
-            + "      [Promotion Media].[All Media].[TV],\n"
-            + "      [Promotion Media].[All Media].[Sunday Paper],\n"
-            + "      [Promotion Media].[All Media].[Street Handout] }\n"
+            + "    { [Promotion].[Media Type].[Radio],\n"
+            + "      [Promotion].[Media Type].[TV],\n"
+            + "      [Promotion].[Media Type].[Sunday Paper],\n"
+            + "      [Promotion].[Media Type].[Street Handout] }\n"
             + "   ) on columns\n"
             + "from Sales\n"
             + "where ([Time].[1997])",
@@ -1323,13 +1344,13 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertSize(
             "select\n"
             + "  NON EMPTY CrossJoin(\n"
-            + "    {[Product].[All Products].Children},\n"
-            + "    {[Customers].[All Customers].[USA].[WA].[Bellingham]}) on rows,\n"
+            + "    {[Product].Children},\n"
+            + "    {[Customers].[USA].[WA].[Bellingham]}) on rows,\n"
             + "  NON EMPTY CrossJoin(\n"
             + "    {[Measures].[Unit Sales]},\n"
-            + "    { [Promotion Media].[All Media].[Cash Register Handout],\n"
-            + "      [Promotion Media].[All Media].[Sunday Paper],\n"
-            + "      [Promotion Media].[All Media].[Street Handout] }\n"
+            + "    { [Promotion].[Media Type].[Cash Register Handout],\n"
+            + "      [Promotion].[Media Type].[Sunday Paper],\n"
+            + "      [Promotion].[Media Type].[Street Handout] }\n"
             + "   ) on columns\n"
             + "from Sales\n"
             + "where ([Time].[1997])",
@@ -1339,9 +1360,9 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testOneDimensionalQueryWithTupleAsSlicer() {
         Result result = executeQuery(
             "select\n"
-            + "  [Product].[All Products].[Drink].children on columns\n"
+            + "  [Product].[Drink].children on columns\n"
             + "from Sales\n"
-            + "where ([Measures].[Unit Sales], [Promotion Media].[All Media].[Street Handout], [Time].[1997])");
+            + "where ([Measures].[Unit Sales], [Promotion].[Media Type].[Street Handout], [Time].[1997])");
         assertTrue(result.getAxes().length == 1);
         assertTrue(result.getAxes()[0].getPositions().size() == 3);
         assertTrue(result.getSlicerAxis().getPositions().size() == 1);
@@ -1393,10 +1414,10 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "WITH\n"
             + "   MEMBER [Measures].[StoreType] AS \n"
-            + "   '[Store].CurrentMember.Properties(\"Store Type\")',\n"
+            + "   [Stores].CurrentMember.Properties('Store Type'),\n"
             + "   SOLVE_ORDER = 2\n"
             + "   MEMBER [Measures].[ProfitPct] AS \n"
-            + "   '(Measures.[Store Sales] - Measures.[Store Cost]) / Measures.[Store Sales]',\n"
+            + "   (Measures.[Store Sales] - Measures.[Store Cost]) / Measures.[Store Sales],\n"
             + "   SOLVE_ORDER = 1, FORMAT_STRING = '##.00%'\n"
             + "SELECT\n"
             + "   { Descendants([Store].[USA], [Store].[Store Name])} ON COLUMNS,\n"
@@ -1407,20 +1428,20 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA].[CA].[Alameda].[HQ]}\n"
-            + "{[Store].[USA].[CA].[Beverly Hills].[Store 6]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles].[Store 7]}\n"
-            + "{[Store].[USA].[CA].[San Diego].[Store 24]}\n"
-            + "{[Store].[USA].[CA].[San Francisco].[Store 14]}\n"
-            + "{[Store].[USA].[OR].[Portland].[Store 11]}\n"
-            + "{[Store].[USA].[OR].[Salem].[Store 13]}\n"
-            + "{[Store].[USA].[WA].[Bellingham].[Store 2]}\n"
-            + "{[Store].[USA].[WA].[Bremerton].[Store 3]}\n"
-            + "{[Store].[USA].[WA].[Seattle].[Store 15]}\n"
-            + "{[Store].[USA].[WA].[Spokane].[Store 16]}\n"
-            + "{[Store].[USA].[WA].[Tacoma].[Store 17]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla].[Store 22]}\n"
-            + "{[Store].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Alameda].[HQ]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills].[Store 6]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles].[Store 7]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego].[Store 24]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco].[Store 14]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland].[Store 11]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham].[Store 2]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton].[Store 3]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle].[Store 15]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane].[Store 16]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma].[Store 17]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla].[Store 22]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Store Sales]}\n"
             + "{[Measures].[Store Cost]}\n"
@@ -1499,16 +1520,16 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[ProdCalc]}\n"
+            + "{[Product].[Products].[ProdCalc]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[TimeCalc], [Measures].[MeasuresCalc]}\n"
+            + "{[Time].[Time].[1997].[TimeCalc], [Measures].[MeasuresCalc]}\n"
             + "Row #0: 3\n");
     }
 
     public void testSolveOrderNonMeasure2() {
         assertQueryReturns(
             "WITH\n"
-            + "   MEMBER [Store].[StoreCalc] as '0', SOLVE_ORDER=0\n"
+            + "   MEMBER [Store].[Stores].[StoreCalc] as '0', SOLVE_ORDER=0\n"
             + "   MEMBER [Product].[ProdCalc] as '1', SOLVE_ORDER=1\n"
             + "SELECT\n"
             + "   { [Product].[ProdCalc] } ON columns,\n"
@@ -1518,9 +1539,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[ProdCalc]}\n"
+            + "{[Product].[Products].[ProdCalc]}\n"
             + "Axis #2:\n"
-            + "{[Store].[StoreCalc]}\n"
+            + "{[Store].[Stores].[StoreCalc]}\n"
             + "Row #0: 1\n");
     }
 
@@ -1531,7 +1552,7 @@ public class BasicQueryTest extends FoodMartTestCase {
      * when defining the cube wins.
      *
      * <p>In the first test, the answer should be 1 because Promotions
-     * comes before Customers in the FoodMart.xml schema.
+     * comes before Customers in the FoodMart.mondrian.xml schema.
      */
     public void testSolveOrderAmbiguous1() {
         assertQueryReturns(
@@ -1546,15 +1567,15 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Promotions].[Calc]}\n"
+            + "{[Promotion].[Promotions].[Calc]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[Calc]}\n"
+            + "{[Customer].[Customers].[Calc]}\n"
             + "Row #0: 1\n");
     }
 
     /**
      * In the second test, the answer should be 2 because Product comes before
-     * Promotions in the FoodMart.xml schema.
+     * Promotions in the FoodMart.mondrian.xml schema.
      */
     public void testSolveOrderAmbiguous2() {
         assertQueryReturns(
@@ -1569,9 +1590,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Promotions].[Calc]}\n"
+            + "{[Promotion].[Promotions].[Calc]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Calc]}\n"
+            + "{[Product].[Products].[Calc]}\n"
             + "Row #0: 2\n");
     }
 
@@ -1585,16 +1606,16 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[BigSeller]}\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[BigSeller]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Alameda]}\n"
-            + "{[Store].[USA].[CA].[Beverly Hills]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles]}\n"
-            + "{[Store].[USA].[CA].[San Diego]}\n"
-            + "{[Store].[USA].[CA].[San Francisco]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Alameda]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco]}\n"
             + "Row #0: No\n"
             + "Row #0: \n"
             + "Row #0: \n"
@@ -1620,14 +1641,14 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testMultipleCalculatedMembersWhichAreNotMeasures() {
         assertQueryReturns(
             "WITH\n"
-            + "  MEMBER [Store].[x] AS '1'\n"
-            + "  MEMBER [Product].[x] AS '1'\n"
+            + "  MEMBER [Store].[Stores].[x] AS '1'\n"
+            + "  MEMBER [Product].[Products].[x] AS '1'\n"
             + "SELECT {[Store].[x]} ON COLUMNS\n"
             + "FROM Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[x]}\n"
+            + "{[Store].[Stores].[x]}\n"
             + "Row #0: 1\n");
     }
 
@@ -1643,38 +1664,40 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testMultipleCalculatedMembersWhichAreNotMeasures2() {
         assertQueryReturns(
             "WITH\n"
-            + "  MEMBER [Product].[x] AS '1'\n"
-            + "  MEMBER [Store].[x] AS '1'\n"
+            + "  MEMBER [Product].[Products].[x] AS '1'\n"
+            + "  MEMBER [Store].[Stores].[x] AS '1'\n"
             + "SELECT {[Store].[x]} ON COLUMNS\n"
             + "FROM Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[x]}\n"
+            + "{[Store].[Stores].[x]}\n"
             + "Row #0: 1\n");
     }
 
     /**
      * This one had the same problem. It wouldn't find the
      * [Store].[x] member because it has the same leaf
-     * name as [Product].[x]. (See MONDRIAN-77.)
+     * name as [Product].[Products].[x]. (See MONDRIAN-77.)
      */
     public void testMultipleCalculatedMembersWhichAreNotMeasures3() {
         assertQueryReturns(
             "WITH\n"
-            + "  MEMBER [Product].[x] AS '1'\n"
-            + "  MEMBER [Store].[x] AS '1'\n"
+            + "  MEMBER [Product].[Products].[x] AS '1'\n"
+            + "  MEMBER [Store].[Stores].[x] AS '1'\n"
             + "SELECT {[Store].[x]} ON COLUMNS\n"
             + "FROM Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[x]}\n"
+            + "{[Store].[Stores].[x]}\n"
             + "Row #0: 1\n");
     }
 
     public void testConstantString() {
         String s = executeExpr(" \"a string\" ");
+        assertEquals("a string", s);
+        s = executeExpr(" 'a string' ");
         assertEquals("a string", s);
     }
 
@@ -1687,8 +1710,8 @@ public class BasicQueryTest extends FoodMartTestCase {
         Util.discard(
             executeQuery(
                 "WITH\n"
-                + "   MEMBER [Product].[X] AS '[Product].[Y]'\n"
-                + "   MEMBER [Product].[Y] AS '[Product].[X]'\n"
+                + "   MEMBER [Product].[Products].[X] AS '[Product].[Y]'\n"
+                + "   MEMBER [Product].[Products].[Y] AS '[Product].[X]'\n"
                 + "SELECT\n"
                 + "   {[Product].[X]} ON COLUMNS,\n"
                 + "   {Store.[Store Name].Members} ON ROWS\n"
@@ -1742,44 +1765,34 @@ public class BasicQueryTest extends FoodMartTestCase {
                 + " WHERE (MEASURES.ProfitPercent)"));
     }
 
-    public void testAsSample7ButUsingVirtualCube() {
-        Util.discard(
-            executeQuery(
-                "with member [Measures].[Accumulated Sales] as 'Sum(YTD(),[Measures].[Store Sales])'\n"
-                + "select\n"
-                + "    {[Measures].[Store Sales],[Measures].[Accumulated Sales]} on columns,\n"
-                + "    {Descendants([Time].[1997],[Time].[Month])} on rows\n"
-                + "from [Warehouse and Sales]"));
-    }
-
     public void testVirtualCube() {
         assertQueryReturns(
             // Note that Unit Sales is independent of Warehouse.
             "select CrossJoin(\n"
-            + "  {[Warehouse].DefaultMember, [Warehouse].[USA].children},\n"
+            + "  {[Warehouse].[Warehouses].DefaultMember, [Warehouse].[Warehouses].[USA].children},\n"
             + "  {[Measures].[Unit Sales], [Measures].[Store Sales], [Measures].[Units Shipped]}) on columns,\n"
             + " [Time].[Time].children on rows\n"
             + "from [Warehouse and Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Warehouse].[All Warehouses], [Measures].[Unit Sales]}\n"
-            + "{[Warehouse].[All Warehouses], [Measures].[Store Sales]}\n"
-            + "{[Warehouse].[All Warehouses], [Measures].[Units Shipped]}\n"
-            + "{[Warehouse].[USA].[CA], [Measures].[Unit Sales]}\n"
-            + "{[Warehouse].[USA].[CA], [Measures].[Store Sales]}\n"
-            + "{[Warehouse].[USA].[CA], [Measures].[Units Shipped]}\n"
-            + "{[Warehouse].[USA].[OR], [Measures].[Unit Sales]}\n"
-            + "{[Warehouse].[USA].[OR], [Measures].[Store Sales]}\n"
-            + "{[Warehouse].[USA].[OR], [Measures].[Units Shipped]}\n"
-            + "{[Warehouse].[USA].[WA], [Measures].[Unit Sales]}\n"
-            + "{[Warehouse].[USA].[WA], [Measures].[Store Sales]}\n"
-            + "{[Warehouse].[USA].[WA], [Measures].[Units Shipped]}\n"
+            + "{[Warehouse].[Warehouses].[All Warehouses], [Measures].[Unit Sales]}\n"
+            + "{[Warehouse].[Warehouses].[All Warehouses], [Measures].[Store Sales]}\n"
+            + "{[Warehouse].[Warehouses].[All Warehouses], [Measures].[Units Shipped]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA], [Measures].[Unit Sales]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA], [Measures].[Store Sales]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA], [Measures].[Units Shipped]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[OR], [Measures].[Unit Sales]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[OR], [Measures].[Store Sales]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[OR], [Measures].[Units Shipped]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA], [Measures].[Unit Sales]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA], [Measures].[Store Sales]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA], [Measures].[Units Shipped]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
-            + "{[Time].[1997].[Q3]}\n"
-            + "{[Time].[1997].[Q4]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
+            + "{[Time].[Time].[1997].[Q4]}\n"
             + "Row #0: 66,291\n"
             + "Row #0: 139,628.35\n"
             + "Row #0: 50951.0\n"
@@ -1830,11 +1843,11 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Row #3: 17342.0\n");
     }
 
-    public void testUseDimensionAsShorthandForMember() {
+    public void testUseHierarchyAsShorthandForMember() {
         Util.discard(
             executeQuery(
                 "select {[Measures].[Unit Sales]} on columns,\n"
-                + " {[Store], [Store].children} on rows\n"
+                + " {[Stores], [Stores].children} on rows\n"
                 + "from [Sales]"));
     }
 
@@ -1851,807 +1864,817 @@ public class BasicQueryTest extends FoodMartTestCase {
         System.out.println(TestContext.toString(axis.getPositions()));
     }
 
-    private static final List<QueryAndResult> taglibQueries = Arrays.asList(
-        // 0
-        new QueryAndResult(
-            "select\n"
-            + "  {[Measures].[Unit Sales], [Measures].[Store Cost], [Measures].[Store Sales]} on columns,\n"
-            + "  CrossJoin(\n"
-            + "    { [Promotion Media].[All Media].[Radio],\n"
-            + "      [Promotion Media].[All Media].[TV],\n"
-            + "      [Promotion Media].[All Media].[Sunday Paper],\n"
-            + "      [Promotion Media].[All Media].[Street Handout] },\n"
-            + "    [Product].[All Products].[Drink].children) on rows\n"
-            + "from Sales\n"
-            + "where ([Time].[1997])",
+    private static final String queryT0 =
+        "select\n"
+        + "  {[Measures].[Unit Sales], [Measures].[Store Cost], [Measures].[Store Sales]} on columns,\n"
+        + "  CrossJoin(\n"
+        + "    { [Promotion].[Media Type].[Radio],\n"
+        + "      [Promotion].[Media Type].[TV],\n"
+        + "      [Promotion].[Media Type].[Sunday Paper],\n"
+        + "      [Promotion].[Media Type].[Street Handout] },\n"
+        + "    [Product].[Products].[Drink].children) on rows\n"
+        + "from Sales\n"
+        + "where ([Time].[1997])";
 
-            "Axis #0:\n"
-            + "{[Time].[1997]}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Unit Sales]}\n"
-            + "{[Measures].[Store Cost]}\n"
-            + "{[Measures].[Store Sales]}\n"
-            + "Axis #2:\n"
-            + "{[Promotion Media].[Radio], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[Radio], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[Radio], [Product].[Drink].[Dairy]}\n"
-            + "{[Promotion Media].[TV], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[TV], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[TV], [Product].[Drink].[Dairy]}\n"
-            + "{[Promotion Media].[Sunday Paper], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[Sunday Paper], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[Sunday Paper], [Product].[Drink].[Dairy]}\n"
-            + "{[Promotion Media].[Street Handout], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[Street Handout], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[Street Handout], [Product].[Drink].[Dairy]}\n"
-            + "Row #0: 75\n"
-            + "Row #0: 70.40\n"
-            + "Row #0: 168.62\n"
-            + "Row #1: 97\n"
-            + "Row #1: 75.70\n"
-            + "Row #1: 186.03\n"
-            + "Row #2: 54\n"
-            + "Row #2: 36.75\n"
-            + "Row #2: 89.03\n"
-            + "Row #3: 76\n"
-            + "Row #3: 70.99\n"
-            + "Row #3: 182.38\n"
-            + "Row #4: 188\n"
-            + "Row #4: 167.00\n"
-            + "Row #4: 419.14\n"
-            + "Row #5: 68\n"
-            + "Row #5: 45.19\n"
-            + "Row #5: 119.55\n"
-            + "Row #6: 148\n"
-            + "Row #6: 128.97\n"
-            + "Row #6: 316.88\n"
-            + "Row #7: 197\n"
-            + "Row #7: 161.81\n"
-            + "Row #7: 399.58\n"
-            + "Row #8: 85\n"
-            + "Row #8: 54.75\n"
-            + "Row #8: 140.27\n"
-            + "Row #9: 158\n"
-            + "Row #9: 121.14\n"
-            + "Row #9: 294.55\n"
-            + "Row #10: 270\n"
-            + "Row #10: 201.28\n"
-            + "Row #10: 520.55\n"
-            + "Row #11: 84\n"
-            + "Row #11: 50.26\n"
-            + "Row #11: 128.32\n"),
+    private static final String resultT0 =
+        "Axis #0:\n"
+        + "{[Time].[Time].[1997]}\n"
+        + "Axis #1:\n"
+        + "{[Measures].[Unit Sales]}\n"
+        + "{[Measures].[Store Cost]}\n"
+        + "{[Measures].[Store Sales]}\n"
+        + "Axis #2:\n"
+        + "{[Promotion].[Media Type].[Radio], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Promotion].[Media Type].[Radio], [Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Promotion].[Media Type].[Radio], [Product].[Products].[Drink].[Dairy]}\n"
+        + "{[Promotion].[Media Type].[TV], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Promotion].[Media Type].[TV], [Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Promotion].[Media Type].[TV], [Product].[Products].[Drink].[Dairy]}\n"
+        + "{[Promotion].[Media Type].[Sunday Paper], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Promotion].[Media Type].[Sunday Paper], [Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Promotion].[Media Type].[Sunday Paper], [Product].[Products].[Drink].[Dairy]}\n"
+        + "{[Promotion].[Media Type].[Street Handout], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Promotion].[Media Type].[Street Handout], [Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Promotion].[Media Type].[Street Handout], [Product].[Products].[Drink].[Dairy]}\n"
+        + "Row #0: 75\n"
+        + "Row #0: 70.40\n"
+        + "Row #0: 168.62\n"
+        + "Row #1: 97\n"
+        + "Row #1: 75.70\n"
+        + "Row #1: 186.03\n"
+        + "Row #2: 54\n"
+        + "Row #2: 36.75\n"
+        + "Row #2: 89.03\n"
+        + "Row #3: 76\n"
+        + "Row #3: 70.99\n"
+        + "Row #3: 182.38\n"
+        + "Row #4: 188\n"
+        + "Row #4: 167.00\n"
+        + "Row #4: 419.14\n"
+        + "Row #5: 68\n"
+        + "Row #5: 45.19\n"
+        + "Row #5: 119.55\n"
+        + "Row #6: 148\n"
+        + "Row #6: 128.97\n"
+        + "Row #6: 316.88\n"
+        + "Row #7: 197\n"
+        + "Row #7: 161.81\n"
+        + "Row #7: 399.58\n"
+        + "Row #8: 85\n"
+        + "Row #8: 54.75\n"
+        + "Row #8: 140.27\n"
+        + "Row #9: 158\n"
+        + "Row #9: 121.14\n"
+        + "Row #9: 294.55\n"
+        + "Row #10: 270\n"
+        + "Row #10: 201.28\n"
+        + "Row #10: 520.55\n"
+        + "Row #11: 84\n"
+        + "Row #11: 50.26\n"
+        + "Row #11: 128.32\n";
 
-        // 1
-        new QueryAndResult(
-            "select\n"
-            + "  [Product].[All Products].[Drink].children on rows,\n"
-            + "  CrossJoin(\n"
-            + "    {[Measures].[Unit Sales], [Measures].[Store Sales]},\n"
-            + "    { [Promotion Media].[All Media].[Radio],\n"
-            + "      [Promotion Media].[All Media].[TV],\n"
-            + "      [Promotion Media].[All Media].[Sunday Paper],\n"
-            + "      [Promotion Media].[All Media].[Street Handout] }\n"
-            + "   ) on columns\n"
-            + "from Sales\n"
-            + "where ([Time].[1997])",
+    private static final String queryT1 =
+        "select\n"
+        + "  [Product].[Drink].children on rows,\n"
+        + "  CrossJoin(\n"
+        + "    {[Measures].[Unit Sales], [Measures].[Store Sales]},\n"
+        + "    { [Promotion].[Media Type].[Radio],\n"
+        + "      [Promotion].[Media Type].[TV],\n"
+        + "      [Promotion].[Media Type].[Sunday Paper],\n"
+        + "      [Promotion].[Media Type].[Street Handout] }\n"
+        + "   ) on columns\n"
+        + "from Sales\n"
+        + "where ([Time].[1997])";
 
-            "Axis #0:\n"
-            + "{[Time].[1997]}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Radio]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[TV]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Sunday Paper]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Street Handout]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[Radio]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[TV]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[Sunday Paper]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[Street Handout]}\n"
-            + "Axis #2:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Product].[Drink].[Beverages]}\n"
-            + "{[Product].[Drink].[Dairy]}\n"
-            + "Row #0: 75\n"
-            + "Row #0: 76\n"
-            + "Row #0: 148\n"
-            + "Row #0: 158\n"
-            + "Row #0: 168.62\n"
-            + "Row #0: 182.38\n"
-            + "Row #0: 316.88\n"
-            + "Row #0: 294.55\n"
-            + "Row #1: 97\n"
-            + "Row #1: 188\n"
-            + "Row #1: 197\n"
-            + "Row #1: 270\n"
-            + "Row #1: 186.03\n"
-            + "Row #1: 419.14\n"
-            + "Row #1: 399.58\n"
-            + "Row #1: 520.55\n"
-            + "Row #2: 54\n"
-            + "Row #2: 68\n"
-            + "Row #2: 85\n"
-            + "Row #2: 84\n"
-            + "Row #2: 89.03\n"
-            + "Row #2: 119.55\n"
-            + "Row #2: 140.27\n"
-            + "Row #2: 128.32\n"),
+    private static final String resultT1 =
+        "Axis #0:\n"
+        + "{[Time].[Time].[1997]}\n"
+        + "Axis #1:\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Radio]}\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[TV]}\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Sunday Paper]}\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Street Handout]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[Radio]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[TV]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[Sunday Paper]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[Street Handout]}\n"
+        + "Axis #2:\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Product].[Products].[Drink].[Dairy]}\n"
+        + "Row #0: 75\n"
+        + "Row #0: 76\n"
+        + "Row #0: 148\n"
+        + "Row #0: 158\n"
+        + "Row #0: 168.62\n"
+        + "Row #0: 182.38\n"
+        + "Row #0: 316.88\n"
+        + "Row #0: 294.55\n"
+        + "Row #1: 97\n"
+        + "Row #1: 188\n"
+        + "Row #1: 197\n"
+        + "Row #1: 270\n"
+        + "Row #1: 186.03\n"
+        + "Row #1: 419.14\n"
+        + "Row #1: 399.58\n"
+        + "Row #1: 520.55\n"
+        + "Row #2: 54\n"
+        + "Row #2: 68\n"
+        + "Row #2: 85\n"
+        + "Row #2: 84\n"
+        + "Row #2: 89.03\n"
+        + "Row #2: 119.55\n"
+        + "Row #2: 140.27\n"
+        + "Row #2: 128.32\n";
 
-        // 2
-        new QueryAndResult(
+    private static final String queryT2 =
             "select\n"
             + "  {[Measures].[Unit Sales], [Measures].[Store Sales]} on columns,\n"
             + "  Order([Product].[Product Department].members, [Measures].[Store Sales], DESC) on rows\n"
-            + "from Sales",
+            + "from Sales";
 
-            "Axis #0:\n"
-            + "{}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Unit Sales]}\n"
-            + "{[Measures].[Store Sales]}\n"
-            + "Axis #2:\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
-            + "{[Product].[Food].[Canned Foods]}\n"
-            + "{[Product].[Food].[Baking Goods]}\n"
-            + "{[Product].[Food].[Dairy]}\n"
-            + "{[Product].[Food].[Deli]}\n"
-            + "{[Product].[Food].[Baked Goods]}\n"
-            + "{[Product].[Food].[Snacks]}\n"
-            + "{[Product].[Food].[Starchy Foods]}\n"
-            + "{[Product].[Food].[Eggs]}\n"
-            + "{[Product].[Food].[Breakfast Foods]}\n"
-            + "{[Product].[Food].[Seafood]}\n"
-            + "{[Product].[Food].[Meat]}\n"
-            + "{[Product].[Food].[Canned Products]}\n"
-            + "{[Product].[Non-Consumable].[Household]}\n"
-            + "{[Product].[Non-Consumable].[Health and Hygiene]}\n"
-            + "{[Product].[Non-Consumable].[Periodicals]}\n"
-            + "{[Product].[Non-Consumable].[Checkout]}\n"
-            + "{[Product].[Non-Consumable].[Carousel]}\n"
-            + "{[Product].[Drink].[Beverages]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Product].[Drink].[Dairy]}\n"
-            + "Row #0: 37,792\n"
-            + "Row #0: 82,248.42\n"
-            + "Row #1: 30,545\n"
-            + "Row #1: 67,609.82\n"
-            + "Row #2: 26,655\n"
-            + "Row #2: 55,207.50\n"
-            + "Row #3: 19,026\n"
-            + "Row #3: 39,774.34\n"
-            + "Row #4: 20,245\n"
-            + "Row #4: 38,670.41\n"
-            + "Row #5: 12,885\n"
-            + "Row #5: 30,508.85\n"
-            + "Row #6: 12,037\n"
-            + "Row #6: 25,318.93\n"
-            + "Row #7: 7,870\n"
-            + "Row #7: 16,455.43\n"
-            + "Row #8: 6,884\n"
-            + "Row #8: 14,550.05\n"
-            + "Row #9: 5,262\n"
-            + "Row #9: 11,756.07\n"
-            + "Row #10: 4,132\n"
-            + "Row #10: 9,200.76\n"
-            + "Row #11: 3,317\n"
-            + "Row #11: 6,941.46\n"
-            + "Row #12: 1,764\n"
-            + "Row #12: 3,809.14\n"
-            + "Row #13: 1,714\n"
-            + "Row #13: 3,669.89\n"
-            + "Row #14: 1,812\n"
-            + "Row #14: 3,314.52\n"
-            + "Row #15: 27,038\n"
-            + "Row #15: 60,469.89\n"
-            + "Row #16: 16,284\n"
-            + "Row #16: 32,571.86\n"
-            + "Row #17: 4,294\n"
-            + "Row #17: 9,056.76\n"
-            + "Row #18: 1,779\n"
-            + "Row #18: 3,767.71\n"
-            + "Row #19: 841\n"
-            + "Row #19: 1,500.11\n"
-            + "Row #20: 13,573\n"
-            + "Row #20: 27,748.53\n"
-            + "Row #21: 6,838\n"
-            + "Row #21: 14,029.08\n"
-            + "Row #22: 4,186\n"
-            + "Row #22: 7,058.60\n"),
+    private static final String resultT2 =
+        "Axis #0:\n"
+        + "{}\n"
+        + "Axis #1:\n"
+        + "{[Measures].[Unit Sales]}\n"
+        + "{[Measures].[Store Sales]}\n"
+        + "Axis #2:\n"
+        + "{[Product].[Products].[Food].[Produce]}\n"
+        + "{[Product].[Products].[Food].[Snack Foods]}\n"
+        + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+        + "{[Product].[Products].[Food].[Canned Foods]}\n"
+        + "{[Product].[Products].[Food].[Baking Goods]}\n"
+        + "{[Product].[Products].[Food].[Dairy]}\n"
+        + "{[Product].[Products].[Food].[Deli]}\n"
+        + "{[Product].[Products].[Food].[Baked Goods]}\n"
+        + "{[Product].[Products].[Food].[Snacks]}\n"
+        + "{[Product].[Products].[Food].[Starchy Foods]}\n"
+        + "{[Product].[Products].[Food].[Eggs]}\n"
+        + "{[Product].[Products].[Food].[Breakfast Foods]}\n"
+        + "{[Product].[Products].[Food].[Seafood]}\n"
+        + "{[Product].[Products].[Food].[Meat]}\n"
+        + "{[Product].[Products].[Food].[Canned Products]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Household]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Health and Hygiene]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Periodicals]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Checkout]}\n"
+        + "{[Product].[Products].[Non-Consumable].[Carousel]}\n"
+        + "{[Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Product].[Products].[Drink].[Dairy]}\n"
+        + "Row #0: 37,792\n"
+        + "Row #0: 82,248.42\n"
+        + "Row #1: 30,545\n"
+        + "Row #1: 67,609.82\n"
+        + "Row #2: 26,655\n"
+        + "Row #2: 55,207.50\n"
+        + "Row #3: 19,026\n"
+        + "Row #3: 39,774.34\n"
+        + "Row #4: 20,245\n"
+        + "Row #4: 38,670.41\n"
+        + "Row #5: 12,885\n"
+        + "Row #5: 30,508.85\n"
+        + "Row #6: 12,037\n"
+        + "Row #6: 25,318.93\n"
+        + "Row #7: 7,870\n"
+        + "Row #7: 16,455.43\n"
+        + "Row #8: 6,884\n"
+        + "Row #8: 14,550.05\n"
+        + "Row #9: 5,262\n"
+        + "Row #9: 11,756.07\n"
+        + "Row #10: 4,132\n"
+        + "Row #10: 9,200.76\n"
+        + "Row #11: 3,317\n"
+        + "Row #11: 6,941.46\n"
+        + "Row #12: 1,764\n"
+        + "Row #12: 3,809.14\n"
+        + "Row #13: 1,714\n"
+        + "Row #13: 3,669.89\n"
+        + "Row #14: 1,812\n"
+        + "Row #14: 3,314.52\n"
+        + "Row #15: 27,038\n"
+        + "Row #15: 60,469.89\n"
+        + "Row #16: 16,284\n"
+        + "Row #16: 32,571.86\n"
+        + "Row #17: 4,294\n"
+        + "Row #17: 9,056.76\n"
+        + "Row #18: 1,779\n"
+        + "Row #18: 3,767.71\n"
+        + "Row #19: 841\n"
+        + "Row #19: 1,500.11\n"
+        + "Row #20: 13,573\n"
+        + "Row #20: 27,748.53\n"
+        + "Row #21: 6,838\n"
+        + "Row #21: 14,029.08\n"
+        + "Row #22: 4,186\n"
+        + "Row #22: 7,058.60\n";
 
-        // 3
-        new QueryAndResult(
-            "select\n"
-            + "  [Product].[All Products].[Drink].children on columns\n"
-            + "from Sales\n"
-            + "where ([Measures].[Unit Sales], [Promotion Media].[All Media].[Street Handout], [Time].[1997])",
+    private static final String queryT3 =
+        "select\n"
+        + "  [Product].[Drink].children on columns\n"
+        + "from Sales\n"
+        + "where ([Measures].[Unit Sales], [Promotion].[Media Type].[Street Handout], [Time].[1997])";
 
-            "Axis #0:\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Street Handout], [Time].[1997]}\n"
-            + "Axis #1:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Product].[Drink].[Beverages]}\n"
-            + "{[Product].[Drink].[Dairy]}\n"
-            + "Row #0: 158\n"
-            + "Row #0: 270\n"
-            + "Row #0: 84\n"),
+    private static final String resultT3 =
+        "Axis #0:\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Street Handout], [Time].[Time].[1997]}\n"
+        + "Axis #1:\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+        + "{[Product].[Products].[Drink].[Beverages]}\n"
+        + "{[Product].[Products].[Drink].[Dairy]}\n"
+        + "Row #0: 158\n"
+        + "Row #0: 270\n"
+        + "Row #0: 84\n";
 
-        // 4
-        new QueryAndResult(
-            "select\n"
-            + "  NON EMPTY CrossJoin([Product].[All Products].[Drink].children, [Customers].[All Customers].[USA].[WA].Children) on rows,\n"
-            + "  CrossJoin(\n"
-            + "    {[Measures].[Unit Sales], [Measures].[Store Sales]},\n"
-            + "    { [Promotion Media].[All Media].[Radio],\n"
-            + "      [Promotion Media].[All Media].[TV],\n"
-            + "      [Promotion Media].[All Media].[Sunday Paper],\n"
-            + "      [Promotion Media].[All Media].[Street Handout] }\n"
-            + "   ) on columns\n"
-            + "from Sales\n"
-            + "where ([Time].[1997])",
+    private static final String queryT4 =
+        "select\n"
+        + "  NON EMPTY CrossJoin([Product].[Drink].children, [Customers].[USA].[WA].Children) on rows,\n"
+        + "  CrossJoin(\n"
+        + "    {[Measures].[Unit Sales], [Measures].[Store Sales]},\n"
+        + "    { [Promotion].[Media Type].[Radio],\n"
+        + "      [Promotion].[Media Type].[TV],\n"
+        + "      [Promotion].[Media Type].[Sunday Paper],\n"
+        + "      [Promotion].[Media Type].[Street Handout] }\n"
+        + "   ) on columns\n"
+        + "from Sales\n"
+        + "where ([Time].[1997])";
 
-            "Axis #0:\n"
-            + "{[Time].[1997]}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Radio]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[TV]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Sunday Paper]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Street Handout]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[Radio]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[TV]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[Sunday Paper]}\n"
-            + "{[Measures].[Store Sales], [Promotion Media].[Street Handout]}\n"
-            + "Axis #2:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Anacortes]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Ballard]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Bellingham]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Bremerton]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Burien]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Everett]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Issaquah]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Kirkland]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Lynnwood]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Marysville]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Olympia]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Port Orchard]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Puyallup]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Redmond]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Renton]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Seattle]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Spokane]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Tacoma]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages], [Customers].[USA].[WA].[Yakima]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Anacortes]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Ballard]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Bremerton]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Burien]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Edmonds]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Everett]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Issaquah]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Kirkland]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Lynnwood]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Marysville]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Olympia]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Port Orchard]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Puyallup]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Redmond]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Seattle]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Sedro Woolley]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Spokane]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Tacoma]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Walla Walla]}\n"
-            + "{[Product].[Drink].[Beverages], [Customers].[USA].[WA].[Yakima]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Ballard]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Bellingham]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Bremerton]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Burien]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Everett]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Issaquah]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Kirkland]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Lynnwood]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Marysville]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Olympia]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Port Orchard]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Puyallup]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Redmond]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Renton]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Seattle]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Spokane]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Tacoma]}\n"
-            + "{[Product].[Drink].[Dairy], [Customers].[USA].[WA].[Yakima]}\n"
-            + "Row #0: \n"
-            + "Row #0: 2\n"
-            + "Row #0: \n"
-            + "Row #0: \n"
-            + "Row #0: \n"
-            + "Row #0: 1.14\n"
-            + "Row #0: \n"
-            + "Row #0: \n"
-            + "Row #1: 4\n"
-            + "Row #1: \n"
-            + "Row #1: \n"
-            + "Row #1: 4\n"
-            + "Row #1: 10.40\n"
-            + "Row #1: \n"
-            + "Row #1: \n"
-            + "Row #1: 2.16\n"
-            + "Row #2: \n"
-            + "Row #2: 1\n"
-            + "Row #2: \n"
-            + "Row #2: \n"
-            + "Row #2: \n"
-            + "Row #2: 2.37\n"
-            + "Row #2: \n"
-            + "Row #2: \n"
-            + "Row #3: \n"
-            + "Row #3: \n"
-            + "Row #3: 24\n"
-            + "Row #3: \n"
-            + "Row #3: \n"
-            + "Row #3: \n"
-            + "Row #3: 46.09\n"
-            + "Row #3: \n"
-            + "Row #4: 3\n"
-            + "Row #4: \n"
-            + "Row #4: \n"
-            + "Row #4: 8\n"
-            + "Row #4: 2.10\n"
-            + "Row #4: \n"
-            + "Row #4: \n"
-            + "Row #4: 9.63\n"
-            + "Row #5: 6\n"
-            + "Row #5: \n"
-            + "Row #5: \n"
-            + "Row #5: 5\n"
-            + "Row #5: 8.06\n"
-            + "Row #5: \n"
-            + "Row #5: \n"
-            + "Row #5: 6.21\n"
-            + "Row #6: 3\n"
-            + "Row #6: \n"
-            + "Row #6: \n"
-            + "Row #6: 7\n"
-            + "Row #6: 7.80\n"
-            + "Row #6: \n"
-            + "Row #6: \n"
-            + "Row #6: 15.00\n"
-            + "Row #7: 14\n"
-            + "Row #7: \n"
-            + "Row #7: \n"
-            + "Row #7: \n"
-            + "Row #7: 36.10\n"
-            + "Row #7: \n"
-            + "Row #7: \n"
-            + "Row #7: \n"
-            + "Row #8: 3\n"
-            + "Row #8: \n"
-            + "Row #8: \n"
-            + "Row #8: 16\n"
-            + "Row #8: 10.29\n"
-            + "Row #8: \n"
-            + "Row #8: \n"
-            + "Row #8: 32.20\n"
-            + "Row #9: 3\n"
-            + "Row #9: \n"
-            + "Row #9: \n"
-            + "Row #9: \n"
-            + "Row #9: 10.56\n"
-            + "Row #9: \n"
-            + "Row #9: \n"
-            + "Row #9: \n"
-            + "Row #10: \n"
-            + "Row #10: \n"
-            + "Row #10: 15\n"
-            + "Row #10: 11\n"
-            + "Row #10: \n"
-            + "Row #10: \n"
-            + "Row #10: 34.79\n"
-            + "Row #10: 15.67\n"
-            + "Row #11: \n"
-            + "Row #11: \n"
-            + "Row #11: 7\n"
-            + "Row #11: \n"
-            + "Row #11: \n"
-            + "Row #11: \n"
-            + "Row #11: 17.44\n"
-            + "Row #11: \n"
-            + "Row #12: \n"
-            + "Row #12: \n"
-            + "Row #12: 22\n"
-            + "Row #12: 9\n"
-            + "Row #12: \n"
-            + "Row #12: \n"
-            + "Row #12: 32.35\n"
-            + "Row #12: 17.43\n"
-            + "Row #13: 7\n"
-            + "Row #13: \n"
-            + "Row #13: \n"
-            + "Row #13: 4\n"
-            + "Row #13: 4.77\n"
-            + "Row #13: \n"
-            + "Row #13: \n"
-            + "Row #13: 15.16\n"
-            + "Row #14: 4\n"
-            + "Row #14: \n"
-            + "Row #14: \n"
-            + "Row #14: 4\n"
-            + "Row #14: 3.64\n"
-            + "Row #14: \n"
-            + "Row #14: \n"
-            + "Row #14: 9.64\n"
-            + "Row #15: 2\n"
-            + "Row #15: \n"
-            + "Row #15: \n"
-            + "Row #15: 7\n"
-            + "Row #15: 6.86\n"
-            + "Row #15: \n"
-            + "Row #15: \n"
-            + "Row #15: 8.38\n"
-            + "Row #16: \n"
-            + "Row #16: \n"
-            + "Row #16: \n"
-            + "Row #16: 28\n"
-            + "Row #16: \n"
-            + "Row #16: \n"
-            + "Row #16: \n"
-            + "Row #16: 61.98\n"
-            + "Row #17: \n"
-            + "Row #17: \n"
-            + "Row #17: 3\n"
-            + "Row #17: 4\n"
-            + "Row #17: \n"
-            + "Row #17: \n"
-            + "Row #17: 10.56\n"
-            + "Row #17: 8.96\n"
-            + "Row #18: 6\n"
-            + "Row #18: \n"
-            + "Row #18: \n"
-            + "Row #18: 3\n"
-            + "Row #18: 7.16\n"
-            + "Row #18: \n"
-            + "Row #18: \n"
-            + "Row #18: 8.10\n"
-            + "Row #19: 7\n"
-            + "Row #19: \n"
-            + "Row #19: \n"
-            + "Row #19: \n"
-            + "Row #19: 15.63\n"
-            + "Row #19: \n"
-            + "Row #19: \n"
-            + "Row #19: \n"
-            + "Row #20: 3\n"
-            + "Row #20: \n"
-            + "Row #20: \n"
-            + "Row #20: 13\n"
-            + "Row #20: 6.96\n"
-            + "Row #20: \n"
-            + "Row #20: \n"
-            + "Row #20: 12.22\n"
-            + "Row #21: \n"
-            + "Row #21: \n"
-            + "Row #21: 16\n"
-            + "Row #21: \n"
-            + "Row #21: \n"
-            + "Row #21: \n"
-            + "Row #21: 45.08\n"
-            + "Row #21: \n"
-            + "Row #22: 3\n"
-            + "Row #22: \n"
-            + "Row #22: \n"
-            + "Row #22: 18\n"
-            + "Row #22: 6.39\n"
-            + "Row #22: \n"
-            + "Row #22: \n"
-            + "Row #22: 21.08\n"
-            + "Row #23: \n"
-            + "Row #23: \n"
-            + "Row #23: \n"
-            + "Row #23: 21\n"
-            + "Row #23: \n"
-            + "Row #23: \n"
-            + "Row #23: \n"
-            + "Row #23: 33.22\n"
-            + "Row #24: \n"
-            + "Row #24: \n"
-            + "Row #24: \n"
-            + "Row #24: 9\n"
-            + "Row #24: \n"
-            + "Row #24: \n"
-            + "Row #24: \n"
-            + "Row #24: 22.65\n"
-            + "Row #25: 2\n"
-            + "Row #25: \n"
-            + "Row #25: \n"
-            + "Row #25: 9\n"
-            + "Row #25: 6.80\n"
-            + "Row #25: \n"
-            + "Row #25: \n"
-            + "Row #25: 18.90\n"
-            + "Row #26: 3\n"
-            + "Row #26: \n"
-            + "Row #26: \n"
-            + "Row #26: 9\n"
-            + "Row #26: 1.50\n"
-            + "Row #26: \n"
-            + "Row #26: \n"
-            + "Row #26: 23.01\n"
-            + "Row #27: \n"
-            + "Row #27: \n"
-            + "Row #27: \n"
-            + "Row #27: 22\n"
-            + "Row #27: \n"
-            + "Row #27: \n"
-            + "Row #27: \n"
-            + "Row #27: 50.71\n"
-            + "Row #28: 4\n"
-            + "Row #28: \n"
-            + "Row #28: \n"
-            + "Row #28: \n"
-            + "Row #28: 5.16\n"
-            + "Row #28: \n"
-            + "Row #28: \n"
-            + "Row #28: \n"
-            + "Row #29: \n"
-            + "Row #29: \n"
-            + "Row #29: 20\n"
-            + "Row #29: 14\n"
-            + "Row #29: \n"
-            + "Row #29: \n"
-            + "Row #29: 48.02\n"
-            + "Row #29: 28.80\n"
-            + "Row #30: \n"
-            + "Row #30: \n"
-            + "Row #30: 14\n"
-            + "Row #30: \n"
-            + "Row #30: \n"
-            + "Row #30: \n"
-            + "Row #30: 19.96\n"
-            + "Row #30: \n"
-            + "Row #31: \n"
-            + "Row #31: \n"
-            + "Row #31: 10\n"
-            + "Row #31: 40\n"
-            + "Row #31: \n"
-            + "Row #31: \n"
-            + "Row #31: 26.36\n"
-            + "Row #31: 74.49\n"
-            + "Row #32: 6\n"
-            + "Row #32: \n"
-            + "Row #32: \n"
-            + "Row #32: \n"
-            + "Row #32: 17.01\n"
-            + "Row #32: \n"
-            + "Row #32: \n"
-            + "Row #32: \n"
-            + "Row #33: 4\n"
-            + "Row #33: \n"
-            + "Row #33: \n"
-            + "Row #33: \n"
-            + "Row #33: 2.80\n"
-            + "Row #33: \n"
-            + "Row #33: \n"
-            + "Row #33: \n"
-            + "Row #34: 4\n"
-            + "Row #34: \n"
-            + "Row #34: \n"
-            + "Row #34: \n"
-            + "Row #34: 7.98\n"
-            + "Row #34: \n"
-            + "Row #34: \n"
-            + "Row #34: \n"
-            + "Row #35: \n"
-            + "Row #35: \n"
-            + "Row #35: \n"
-            + "Row #35: 46\n"
-            + "Row #35: \n"
-            + "Row #35: \n"
-            + "Row #35: \n"
-            + "Row #35: 81.71\n"
-            + "Row #36: \n"
-            + "Row #36: \n"
-            + "Row #36: 21\n"
-            + "Row #36: 6\n"
-            + "Row #36: \n"
-            + "Row #36: \n"
-            + "Row #36: 37.93\n"
-            + "Row #36: 14.73\n"
-            + "Row #37: \n"
-            + "Row #37: \n"
-            + "Row #37: 3\n"
-            + "Row #37: \n"
-            + "Row #37: \n"
-            + "Row #37: \n"
-            + "Row #37: 7.92\n"
-            + "Row #37: \n"
-            + "Row #38: 25\n"
-            + "Row #38: \n"
-            + "Row #38: \n"
-            + "Row #38: 3\n"
-            + "Row #38: 51.65\n"
-            + "Row #38: \n"
-            + "Row #38: \n"
-            + "Row #38: 2.34\n"
-            + "Row #39: 3\n"
-            + "Row #39: \n"
-            + "Row #39: \n"
-            + "Row #39: 4\n"
-            + "Row #39: 4.47\n"
-            + "Row #39: \n"
-            + "Row #39: \n"
-            + "Row #39: 9.20\n"
-            + "Row #40: \n"
-            + "Row #40: 1\n"
-            + "Row #40: \n"
-            + "Row #40: \n"
-            + "Row #40: \n"
-            + "Row #40: 1.47\n"
-            + "Row #40: \n"
-            + "Row #40: \n"
-            + "Row #41: \n"
-            + "Row #41: \n"
-            + "Row #41: 15\n"
-            + "Row #41: \n"
-            + "Row #41: \n"
-            + "Row #41: \n"
-            + "Row #41: 18.88\n"
-            + "Row #41: \n"
-            + "Row #42: \n"
-            + "Row #42: \n"
-            + "Row #42: \n"
-            + "Row #42: 3\n"
-            + "Row #42: \n"
-            + "Row #42: \n"
-            + "Row #42: \n"
-            + "Row #42: 3.75\n"
-            + "Row #43: 9\n"
-            + "Row #43: \n"
-            + "Row #43: \n"
-            + "Row #43: 10\n"
-            + "Row #43: 31.41\n"
-            + "Row #43: \n"
-            + "Row #43: \n"
-            + "Row #43: 15.12\n"
-            + "Row #44: 3\n"
-            + "Row #44: \n"
-            + "Row #44: \n"
-            + "Row #44: 3\n"
-            + "Row #44: 7.41\n"
-            + "Row #44: \n"
-            + "Row #44: \n"
-            + "Row #44: 2.55\n"
-            + "Row #45: 3\n"
-            + "Row #45: \n"
-            + "Row #45: \n"
-            + "Row #45: \n"
-            + "Row #45: 1.71\n"
-            + "Row #45: \n"
-            + "Row #45: \n"
-            + "Row #45: \n"
-            + "Row #46: \n"
-            + "Row #46: \n"
-            + "Row #46: \n"
-            + "Row #46: 7\n"
-            + "Row #46: \n"
-            + "Row #46: \n"
-            + "Row #46: \n"
-            + "Row #46: 11.86\n"
-            + "Row #47: \n"
-            + "Row #47: \n"
-            + "Row #47: \n"
-            + "Row #47: 3\n"
-            + "Row #47: \n"
-            + "Row #47: \n"
-            + "Row #47: \n"
-            + "Row #47: 2.76\n"
-            + "Row #48: \n"
-            + "Row #48: \n"
-            + "Row #48: 4\n"
-            + "Row #48: 5\n"
-            + "Row #48: \n"
-            + "Row #48: \n"
-            + "Row #48: 4.50\n"
-            + "Row #48: 7.27\n"
-            + "Row #49: \n"
-            + "Row #49: \n"
-            + "Row #49: 7\n"
-            + "Row #49: \n"
-            + "Row #49: \n"
-            + "Row #49: \n"
-            + "Row #49: 10.01\n"
-            + "Row #49: \n"
-            + "Row #50: \n"
-            + "Row #50: \n"
-            + "Row #50: 5\n"
-            + "Row #50: 4\n"
-            + "Row #50: \n"
-            + "Row #50: \n"
-            + "Row #50: 12.88\n"
-            + "Row #50: 5.28\n"
-            + "Row #51: 2\n"
-            + "Row #51: \n"
-            + "Row #51: \n"
-            + "Row #51: \n"
-            + "Row #51: 2.64\n"
-            + "Row #51: \n"
-            + "Row #51: \n"
-            + "Row #51: \n"
-            + "Row #52: \n"
-            + "Row #52: \n"
-            + "Row #52: \n"
-            + "Row #52: 5\n"
-            + "Row #52: \n"
-            + "Row #52: \n"
-            + "Row #52: \n"
-            + "Row #52: 12.34\n"
-            + "Row #53: \n"
-            + "Row #53: \n"
-            + "Row #53: \n"
-            + "Row #53: 5\n"
-            + "Row #53: \n"
-            + "Row #53: \n"
-            + "Row #53: \n"
-            + "Row #53: 3.41\n"
-            + "Row #54: \n"
-            + "Row #54: \n"
-            + "Row #54: \n"
-            + "Row #54: 4\n"
-            + "Row #54: \n"
-            + "Row #54: \n"
-            + "Row #54: \n"
-            + "Row #54: 2.44\n"
-            + "Row #55: \n"
-            + "Row #55: \n"
-            + "Row #55: 2\n"
-            + "Row #55: \n"
-            + "Row #55: \n"
-            + "Row #55: \n"
-            + "Row #55: 6.92\n"
-            + "Row #55: \n"
-            + "Row #56: 13\n"
-            + "Row #56: \n"
-            + "Row #56: \n"
-            + "Row #56: 7\n"
-            + "Row #56: 23.69\n"
-            + "Row #56: \n"
-            + "Row #56: \n"
-            + "Row #56: 7.07\n"),
+    private static final String resultT4 =
+        "Axis #0:\n"
+        + "{[Time].[Time].[1997]}\n"
+        + "Axis #1:\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Radio]}\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[TV]}\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Sunday Paper]}\n"
+        + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Street Handout]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[Radio]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[TV]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[Sunday Paper]}\n"
+        + "{[Measures].[Store Sales], [Promotion].[Media Type].[Street Handout]}\n"
+        + "Axis #2:\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Anacortes]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Ballard]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Bellingham]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Bremerton]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Burien]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Everett]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Issaquah]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Kirkland]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Lynnwood]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Marysville]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Olympia]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Port Orchard]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Puyallup]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Redmond]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Renton]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Seattle]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Spokane]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Tacoma]}\n"
+        + "{[Product].[Products].[Drink].[Alcoholic Beverages], [Customer].[Customers].[USA].[WA].[Yakima]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Anacortes]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Ballard]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Bremerton]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Burien]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Edmonds]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Everett]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Issaquah]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Kirkland]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Lynnwood]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Marysville]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Olympia]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Port Orchard]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Puyallup]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Redmond]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Seattle]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Sedro Woolley]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Spokane]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Tacoma]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Walla Walla]}\n"
+        + "{[Product].[Products].[Drink].[Beverages], [Customer].[Customers].[USA].[WA].[Yakima]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Ballard]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Bellingham]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Bremerton]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Burien]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Everett]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Issaquah]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Kirkland]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Lynnwood]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Marysville]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Olympia]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Port Orchard]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Puyallup]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Redmond]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Renton]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Seattle]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Spokane]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Tacoma]}\n"
+        + "{[Product].[Products].[Drink].[Dairy], [Customer].[Customers].[USA].[WA].[Yakima]}\n"
+        + "Row #0: \n"
+        + "Row #0: 2\n"
+        + "Row #0: \n"
+        + "Row #0: \n"
+        + "Row #0: \n"
+        + "Row #0: 1.14\n"
+        + "Row #0: \n"
+        + "Row #0: \n"
+        + "Row #1: 4\n"
+        + "Row #1: \n"
+        + "Row #1: \n"
+        + "Row #1: 4\n"
+        + "Row #1: 10.40\n"
+        + "Row #1: \n"
+        + "Row #1: \n"
+        + "Row #1: 2.16\n"
+        + "Row #2: \n"
+        + "Row #2: 1\n"
+        + "Row #2: \n"
+        + "Row #2: \n"
+        + "Row #2: \n"
+        + "Row #2: 2.37\n"
+        + "Row #2: \n"
+        + "Row #2: \n"
+        + "Row #3: \n"
+        + "Row #3: \n"
+        + "Row #3: 24\n"
+        + "Row #3: \n"
+        + "Row #3: \n"
+        + "Row #3: \n"
+        + "Row #3: 46.09\n"
+        + "Row #3: \n"
+        + "Row #4: 3\n"
+        + "Row #4: \n"
+        + "Row #4: \n"
+        + "Row #4: 8\n"
+        + "Row #4: 2.10\n"
+        + "Row #4: \n"
+        + "Row #4: \n"
+        + "Row #4: 9.63\n"
+        + "Row #5: 6\n"
+        + "Row #5: \n"
+        + "Row #5: \n"
+        + "Row #5: 5\n"
+        + "Row #5: 8.06\n"
+        + "Row #5: \n"
+        + "Row #5: \n"
+        + "Row #5: 6.21\n"
+        + "Row #6: 3\n"
+        + "Row #6: \n"
+        + "Row #6: \n"
+        + "Row #6: 7\n"
+        + "Row #6: 7.80\n"
+        + "Row #6: \n"
+        + "Row #6: \n"
+        + "Row #6: 15.00\n"
+        + "Row #7: 14\n"
+        + "Row #7: \n"
+        + "Row #7: \n"
+        + "Row #7: \n"
+        + "Row #7: 36.10\n"
+        + "Row #7: \n"
+        + "Row #7: \n"
+        + "Row #7: \n"
+        + "Row #8: 3\n"
+        + "Row #8: \n"
+        + "Row #8: \n"
+        + "Row #8: 16\n"
+        + "Row #8: 10.29\n"
+        + "Row #8: \n"
+        + "Row #8: \n"
+        + "Row #8: 32.20\n"
+        + "Row #9: 3\n"
+        + "Row #9: \n"
+        + "Row #9: \n"
+        + "Row #9: \n"
+        + "Row #9: 10.56\n"
+        + "Row #9: \n"
+        + "Row #9: \n"
+        + "Row #9: \n"
+        + "Row #10: \n"
+        + "Row #10: \n"
+        + "Row #10: 15\n"
+        + "Row #10: 11\n"
+        + "Row #10: \n"
+        + "Row #10: \n"
+        + "Row #10: 34.79\n"
+        + "Row #10: 15.67\n"
+        + "Row #11: \n"
+        + "Row #11: \n"
+        + "Row #11: 7\n"
+        + "Row #11: \n"
+        + "Row #11: \n"
+        + "Row #11: \n"
+        + "Row #11: 17.44\n"
+        + "Row #11: \n"
+        + "Row #12: \n"
+        + "Row #12: \n"
+        + "Row #12: 22\n"
+        + "Row #12: 9\n"
+        + "Row #12: \n"
+        + "Row #12: \n"
+        + "Row #12: 32.35\n"
+        + "Row #12: 17.43\n"
+        + "Row #13: 7\n"
+        + "Row #13: \n"
+        + "Row #13: \n"
+        + "Row #13: 4\n"
+        + "Row #13: 4.77\n"
+        + "Row #13: \n"
+        + "Row #13: \n"
+        + "Row #13: 15.16\n"
+        + "Row #14: 4\n"
+        + "Row #14: \n"
+        + "Row #14: \n"
+        + "Row #14: 4\n"
+        + "Row #14: 3.64\n"
+        + "Row #14: \n"
+        + "Row #14: \n"
+        + "Row #14: 9.64\n"
+        + "Row #15: 2\n"
+        + "Row #15: \n"
+        + "Row #15: \n"
+        + "Row #15: 7\n"
+        + "Row #15: 6.86\n"
+        + "Row #15: \n"
+        + "Row #15: \n"
+        + "Row #15: 8.38\n"
+        + "Row #16: \n"
+        + "Row #16: \n"
+        + "Row #16: \n"
+        + "Row #16: 28\n"
+        + "Row #16: \n"
+        + "Row #16: \n"
+        + "Row #16: \n"
+        + "Row #16: 61.98\n"
+        + "Row #17: \n"
+        + "Row #17: \n"
+        + "Row #17: 3\n"
+        + "Row #17: 4\n"
+        + "Row #17: \n"
+        + "Row #17: \n"
+        + "Row #17: 10.56\n"
+        + "Row #17: 8.96\n"
+        + "Row #18: 6\n"
+        + "Row #18: \n"
+        + "Row #18: \n"
+        + "Row #18: 3\n"
+        + "Row #18: 7.16\n"
+        + "Row #18: \n"
+        + "Row #18: \n"
+        + "Row #18: 8.10\n"
+        + "Row #19: 7\n"
+        + "Row #19: \n"
+        + "Row #19: \n"
+        + "Row #19: \n"
+        + "Row #19: 15.63\n"
+        + "Row #19: \n"
+        + "Row #19: \n"
+        + "Row #19: \n"
+        + "Row #20: 3\n"
+        + "Row #20: \n"
+        + "Row #20: \n"
+        + "Row #20: 13\n"
+        + "Row #20: 6.96\n"
+        + "Row #20: \n"
+        + "Row #20: \n"
+        + "Row #20: 12.22\n"
+        + "Row #21: \n"
+        + "Row #21: \n"
+        + "Row #21: 16\n"
+        + "Row #21: \n"
+        + "Row #21: \n"
+        + "Row #21: \n"
+        + "Row #21: 45.08\n"
+        + "Row #21: \n"
+        + "Row #22: 3\n"
+        + "Row #22: \n"
+        + "Row #22: \n"
+        + "Row #22: 18\n"
+        + "Row #22: 6.39\n"
+        + "Row #22: \n"
+        + "Row #22: \n"
+        + "Row #22: 21.08\n"
+        + "Row #23: \n"
+        + "Row #23: \n"
+        + "Row #23: \n"
+        + "Row #23: 21\n"
+        + "Row #23: \n"
+        + "Row #23: \n"
+        + "Row #23: \n"
+        + "Row #23: 33.22\n"
+        + "Row #24: \n"
+        + "Row #24: \n"
+        + "Row #24: \n"
+        + "Row #24: 9\n"
+        + "Row #24: \n"
+        + "Row #24: \n"
+        + "Row #24: \n"
+        + "Row #24: 22.65\n"
+        + "Row #25: 2\n"
+        + "Row #25: \n"
+        + "Row #25: \n"
+        + "Row #25: 9\n"
+        + "Row #25: 6.80\n"
+        + "Row #25: \n"
+        + "Row #25: \n"
+        + "Row #25: 18.90\n"
+        + "Row #26: 3\n"
+        + "Row #26: \n"
+        + "Row #26: \n"
+        + "Row #26: 9\n"
+        + "Row #26: 1.50\n"
+        + "Row #26: \n"
+        + "Row #26: \n"
+        + "Row #26: 23.01\n"
+        + "Row #27: \n"
+        + "Row #27: \n"
+        + "Row #27: \n"
+        + "Row #27: 22\n"
+        + "Row #27: \n"
+        + "Row #27: \n"
+        + "Row #27: \n"
+        + "Row #27: 50.71\n"
+        + "Row #28: 4\n"
+        + "Row #28: \n"
+        + "Row #28: \n"
+        + "Row #28: \n"
+        + "Row #28: 5.16\n"
+        + "Row #28: \n"
+        + "Row #28: \n"
+        + "Row #28: \n"
+        + "Row #29: \n"
+        + "Row #29: \n"
+        + "Row #29: 20\n"
+        + "Row #29: 14\n"
+        + "Row #29: \n"
+        + "Row #29: \n"
+        + "Row #29: 48.02\n"
+        + "Row #29: 28.80\n"
+        + "Row #30: \n"
+        + "Row #30: \n"
+        + "Row #30: 14\n"
+        + "Row #30: \n"
+        + "Row #30: \n"
+        + "Row #30: \n"
+        + "Row #30: 19.96\n"
+        + "Row #30: \n"
+        + "Row #31: \n"
+        + "Row #31: \n"
+        + "Row #31: 10\n"
+        + "Row #31: 40\n"
+        + "Row #31: \n"
+        + "Row #31: \n"
+        + "Row #31: 26.36\n"
+        + "Row #31: 74.49\n"
+        + "Row #32: 6\n"
+        + "Row #32: \n"
+        + "Row #32: \n"
+        + "Row #32: \n"
+        + "Row #32: 17.01\n"
+        + "Row #32: \n"
+        + "Row #32: \n"
+        + "Row #32: \n"
+        + "Row #33: 4\n"
+        + "Row #33: \n"
+        + "Row #33: \n"
+        + "Row #33: \n"
+        + "Row #33: 2.80\n"
+        + "Row #33: \n"
+        + "Row #33: \n"
+        + "Row #33: \n"
+        + "Row #34: 4\n"
+        + "Row #34: \n"
+        + "Row #34: \n"
+        + "Row #34: \n"
+        + "Row #34: 7.98\n"
+        + "Row #34: \n"
+        + "Row #34: \n"
+        + "Row #34: \n"
+        + "Row #35: \n"
+        + "Row #35: \n"
+        + "Row #35: \n"
+        + "Row #35: 46\n"
+        + "Row #35: \n"
+        + "Row #35: \n"
+        + "Row #35: \n"
+        + "Row #35: 81.71\n"
+        + "Row #36: \n"
+        + "Row #36: \n"
+        + "Row #36: 21\n"
+        + "Row #36: 6\n"
+        + "Row #36: \n"
+        + "Row #36: \n"
+        + "Row #36: 37.93\n"
+        + "Row #36: 14.73\n"
+        + "Row #37: \n"
+        + "Row #37: \n"
+        + "Row #37: 3\n"
+        + "Row #37: \n"
+        + "Row #37: \n"
+        + "Row #37: \n"
+        + "Row #37: 7.92\n"
+        + "Row #37: \n"
+        + "Row #38: 25\n"
+        + "Row #38: \n"
+        + "Row #38: \n"
+        + "Row #38: 3\n"
+        + "Row #38: 51.65\n"
+        + "Row #38: \n"
+        + "Row #38: \n"
+        + "Row #38: 2.34\n"
+        + "Row #39: 3\n"
+        + "Row #39: \n"
+        + "Row #39: \n"
+        + "Row #39: 4\n"
+        + "Row #39: 4.47\n"
+        + "Row #39: \n"
+        + "Row #39: \n"
+        + "Row #39: 9.20\n"
+        + "Row #40: \n"
+        + "Row #40: 1\n"
+        + "Row #40: \n"
+        + "Row #40: \n"
+        + "Row #40: \n"
+        + "Row #40: 1.47\n"
+        + "Row #40: \n"
+        + "Row #40: \n"
+        + "Row #41: \n"
+        + "Row #41: \n"
+        + "Row #41: 15\n"
+        + "Row #41: \n"
+        + "Row #41: \n"
+        + "Row #41: \n"
+        + "Row #41: 18.88\n"
+        + "Row #41: \n"
+        + "Row #42: \n"
+        + "Row #42: \n"
+        + "Row #42: \n"
+        + "Row #42: 3\n"
+        + "Row #42: \n"
+        + "Row #42: \n"
+        + "Row #42: \n"
+        + "Row #42: 3.75\n"
+        + "Row #43: 9\n"
+        + "Row #43: \n"
+        + "Row #43: \n"
+        + "Row #43: 10\n"
+        + "Row #43: 31.41\n"
+        + "Row #43: \n"
+        + "Row #43: \n"
+        + "Row #43: 15.12\n"
+        + "Row #44: 3\n"
+        + "Row #44: \n"
+        + "Row #44: \n"
+        + "Row #44: 3\n"
+        + "Row #44: 7.41\n"
+        + "Row #44: \n"
+        + "Row #44: \n"
+        + "Row #44: 2.55\n"
+        + "Row #45: 3\n"
+        + "Row #45: \n"
+        + "Row #45: \n"
+        + "Row #45: \n"
+        + "Row #45: 1.71\n"
+        + "Row #45: \n"
+        + "Row #45: \n"
+        + "Row #45: \n"
+        + "Row #46: \n"
+        + "Row #46: \n"
+        + "Row #46: \n"
+        + "Row #46: 7\n"
+        + "Row #46: \n"
+        + "Row #46: \n"
+        + "Row #46: \n"
+        + "Row #46: 11.86\n"
+        + "Row #47: \n"
+        + "Row #47: \n"
+        + "Row #47: \n"
+        + "Row #47: 3\n"
+        + "Row #47: \n"
+        + "Row #47: \n"
+        + "Row #47: \n"
+        + "Row #47: 2.76\n"
+        + "Row #48: \n"
+        + "Row #48: \n"
+        + "Row #48: 4\n"
+        + "Row #48: 5\n"
+        + "Row #48: \n"
+        + "Row #48: \n"
+        + "Row #48: 4.50\n"
+        + "Row #48: 7.27\n"
+        + "Row #49: \n"
+        + "Row #49: \n"
+        + "Row #49: 7\n"
+        + "Row #49: \n"
+        + "Row #49: \n"
+        + "Row #49: \n"
+        + "Row #49: 10.01\n"
+        + "Row #49: \n"
+        + "Row #50: \n"
+        + "Row #50: \n"
+        + "Row #50: 5\n"
+        + "Row #50: 4\n"
+        + "Row #50: \n"
+        + "Row #50: \n"
+        + "Row #50: 12.88\n"
+        + "Row #50: 5.28\n"
+        + "Row #51: 2\n"
+        + "Row #51: \n"
+        + "Row #51: \n"
+        + "Row #51: \n"
+        + "Row #51: 2.64\n"
+        + "Row #51: \n"
+        + "Row #51: \n"
+        + "Row #51: \n"
+        + "Row #52: \n"
+        + "Row #52: \n"
+        + "Row #52: \n"
+        + "Row #52: 5\n"
+        + "Row #52: \n"
+        + "Row #52: \n"
+        + "Row #52: \n"
+        + "Row #52: 12.34\n"
+        + "Row #53: \n"
+        + "Row #53: \n"
+        + "Row #53: \n"
+        + "Row #53: 5\n"
+        + "Row #53: \n"
+        + "Row #53: \n"
+        + "Row #53: \n"
+        + "Row #53: 3.41\n"
+        + "Row #54: \n"
+        + "Row #54: \n"
+        + "Row #54: \n"
+        + "Row #54: 4\n"
+        + "Row #54: \n"
+        + "Row #54: \n"
+        + "Row #54: \n"
+        + "Row #54: 2.44\n"
+        + "Row #55: \n"
+        + "Row #55: \n"
+        + "Row #55: 2\n"
+        + "Row #55: \n"
+        + "Row #55: \n"
+        + "Row #55: \n"
+        + "Row #55: 6.92\n"
+        + "Row #55: \n"
+        + "Row #56: 13\n"
+        + "Row #56: \n"
+        + "Row #56: \n"
+        + "Row #56: 7\n"
+        + "Row #56: 23.69\n"
+        + "Row #56: \n"
+        + "Row #56: \n"
+        + "Row #56: 7.07\n";
 
-        // 5
-        new QueryAndResult(
-            "select from Sales\n"
-            + "where ([Measures].[Store Sales], [Time].[1997], [Promotion Media].[All Media].[TV])",
+    private static final String queryT5 =
+        "select from Sales\n"
+        + "where ([Measures].[Store Sales], [Time].[1997], [Promotion].[Media Type].[TV])";
 
-            "Axis #0:\n"
-            + "{[Measures].[Store Sales], [Time].[1997], [Promotion Media].[TV]}\n"
-            + "7,786.21"));
+    private static final String resultT5 =
+        "Axis #0:\n"
+        + "{[Measures].[Store Sales], [Time].[Time].[1997], [Promotion].[Media Type].[TV]}\n"
+        + "7,786.21";
+
+    private static final List<QueryAndResult> taglibQueries = Arrays.asList(
+        new QueryAndResult(queryT0, resultT0),
+        new QueryAndResult(queryT1, resultT1),
+        new QueryAndResult(queryT2, resultT2),
+        new QueryAndResult(queryT3, resultT3),
+        new QueryAndResult(queryT4, resultT4),
+        new QueryAndResult(queryT5, resultT5));
 
     public void testTaglib0() {
-        assertQueryReturns(
-            taglibQueries.get(0).query, taglibQueries.get(0).result);
+        if (!FunctionTest.FILTER_SNOWFLAKE) {
+            return;
+        }
+        assertQueryReturns(queryT0, resultT0);
     }
 
     public void testTaglib1() {
-        assertQueryReturns(
-            taglibQueries.get(1).query, taglibQueries.get(1).result);
+        if (!FunctionTest.FILTER_SNOWFLAKE) {
+            return;
+        }
+        assertQueryReturns(queryT1, resultT1);
     }
 
     public void testTaglib2() {
-        assertQueryReturns(
-            taglibQueries.get(2).query, taglibQueries.get(2).result);
+        if (!FunctionTest.FILTER_SNOWFLAKE) {
+            return;
+        }
+        assertQueryReturns(queryT2, resultT2);
     }
 
     public void testTaglib3() {
-        assertQueryReturns(
-            taglibQueries.get(3).query, taglibQueries.get(3).result);
+        assertQueryReturns(queryT3, resultT3);
     }
 
     public void testTaglib4() {
-        assertQueryReturns(
-            taglibQueries.get(4).query, taglibQueries.get(4).result);
+        assertQueryReturns(queryT4, resultT4);
     }
 
     public void testTaglib5() {
-        assertQueryReturns(
-            taglibQueries.get(5).query, taglibQueries.get(5).result);
+        assertQueryReturns(queryT5, resultT5);
     }
 
     public void testCellValue() {
@@ -2684,13 +2707,13 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[USales]}\n"
             + "Axis #2:\n"
-            + "{[Store Type].[All Store Types]}\n"
-            + "{[Store Type].[Deluxe Supermarket]}\n"
-            + "{[Store Type].[Gourmet Supermarket]}\n"
-            + "{[Store Type].[HeadQuarters]}\n"
-            + "{[Store Type].[Mid-Size Grocery]}\n"
-            + "{[Store Type].[Small Grocery]}\n"
-            + "{[Store Type].[Supermarket]}\n"
+            + "{[Store].[Store Type].[All Store Types]}\n"
+            + "{[Store].[Store Type].[Deluxe Supermarket]}\n"
+            + "{[Store].[Store Type].[Gourmet Supermarket]}\n"
+            + "{[Store].[Store Type].[HeadQuarters]}\n"
+            + "{[Store].[Store Type].[Mid-Size Grocery]}\n"
+            + "{[Store].[Store Type].[Small Grocery]}\n"
+            + "{[Store].[Store Type].[Supermarket]}\n"
             + "Row #0: <b>266773.00</b>\n"
             + "Row #1: <b>76837.00</b>\n"
             + "Row #2: <i>21333.00</i>\n"
@@ -2713,9 +2736,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[_Foo]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[Canada]}\n"
-            + "{[Customers].[Mexico]}\n"
-            + "{[Customers].[USA]}\n"
+            + "{[Customer].[Customers].[Canada]}\n"
+            + "{[Customer].[Customers].[Mexico]}\n"
+            + "{[Customer].[Customers].[USA]}\n"
             + "Row #0: NULL\n"
             + "Row #1: NULL\n"
             + "Row #2: $565,238.13\n");
@@ -2739,6 +2762,9 @@ public class BasicQueryTest extends FoodMartTestCase {
      * "Small negative numbers cause exceptions w 2-section format".
      */
     public void testFormatOfNil() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member measures.formatTest as '0.000001',\n"
             + " FORMAT_STRING='#.##;(#.##)' \n"
@@ -2762,28 +2788,28 @@ public class BasicQueryTest extends FoodMartTestCase {
             "with member [Measures].[USales] as '[Measures].[Unit Sales]',\n"
             + " format_string = iif([Measures].[Sales Count] > 30, \"#.00 good\",\"#.00 bad\")\n"
             + "select {[Measures].[USales], [Measures].[Store Cost], [Measures].[Store Sales]} ON columns,\n"
-            + " Crossjoin({[Promotion Media].[All Media].[Radio], [Promotion Media].[All Media].[TV], [Promotion Media]. [All Media].[Sunday Paper], [Promotion Media].[All Media].[Street Handout]}, [Product].[All Products].[Drink].Children) ON rows\n"
+            + " Crossjoin({[Promotion].[Media Type].[Radio], [Promotion].[Media Type].[TV], [Promotion].[Media Type]. [All Media].[Sunday Paper], [Promotion].[Media Type].[Street Handout]}, [Product].[Drink].Children) ON rows\n"
             + "from [Sales] where ([Time].[1997])",
 
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[USales]}\n"
             + "{[Measures].[Store Cost]}\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Promotion Media].[Radio], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[Radio], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[Radio], [Product].[Drink].[Dairy]}\n"
-            + "{[Promotion Media].[TV], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[TV], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[TV], [Product].[Drink].[Dairy]}\n"
-            + "{[Promotion Media].[Sunday Paper], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[Sunday Paper], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[Sunday Paper], [Product].[Drink].[Dairy]}\n"
-            + "{[Promotion Media].[Street Handout], [Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Promotion Media].[Street Handout], [Product].[Drink].[Beverages]}\n"
-            + "{[Promotion Media].[Street Handout], [Product].[Drink].[Dairy]}\n"
+            + "{[Promotion].[Media Type].[Radio], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+            + "{[Promotion].[Media Type].[Radio], [Product].[Products].[Drink].[Beverages]}\n"
+            + "{[Promotion].[Media Type].[Radio], [Product].[Products].[Drink].[Dairy]}\n"
+            + "{[Promotion].[Media Type].[TV], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+            + "{[Promotion].[Media Type].[TV], [Product].[Products].[Drink].[Beverages]}\n"
+            + "{[Promotion].[Media Type].[TV], [Product].[Products].[Drink].[Dairy]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper], [Product].[Products].[Drink].[Beverages]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper], [Product].[Products].[Drink].[Dairy]}\n"
+            + "{[Promotion].[Media Type].[Street Handout], [Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+            + "{[Promotion].[Media Type].[Street Handout], [Product].[Products].[Drink].[Beverages]}\n"
+            + "{[Promotion].[Media Type].[Street Handout], [Product].[Products].[Drink].[Dairy]}\n"
             + "Row #0: 75.00 bad\n"
             + "Row #0: 70.40\n"
             + "Row #0: 168.62\n"
@@ -2836,13 +2862,13 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "from [Sales] where [Time].[1997]",
 
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[xxx]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: BBB48836.21\n"
             + "Row #1: AAA409035.59\n"
             + "Row #2: BBB107366.33\n");
@@ -2859,12 +2885,12 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where ([Time].[1997], [Customers])",
             "Axis #0:\n"
-            + "{[Time].[1997], [Customers].[All Customers]}\n"
+            + "{[Time].[Time].[1997], [Customer].[Customers].[All Customers]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 131,558\n"
             + "Row #1: 135,215\n");
     }
@@ -2878,15 +2904,15 @@ public class BasicQueryTest extends FoodMartTestCase {
         TestContext.instance().flushSchemaCache();
         assertQueryReturns(
             "select {[Measures].[Customer Count]} ON columns,\n"
-            + "  {([Promotion Media].[All Media], [Product].[All Products])} ON rows\n"
+            + "  {([Promotion].[Media Type].[All Media], [Product].[All Products])} ON rows\n"
             + "from [Sales]\n"
             + "where [Time].[1997]",
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Promotion Media].[All Media], [Product].[All Products]}\n"
+            + "{[Promotion].[Media Type].[All Media], [Product].[Products].[All Products]}\n"
             + "Row #0: 5,581\n");
     }
 
@@ -2898,26 +2924,29 @@ public class BasicQueryTest extends FoodMartTestCase {
      * visible' but is still correctly returned from [Measures].Members.
      */
     public void testStoreCube() {
+        if (!Bug.CubeStoreFeature) {
+            return;
+        }
         assertQueryReturns(
             "select {[Measures].members} on columns,\n"
-            + " {[Store Type].members} on rows\n"
+            + " {[Store].[Store Type].members} on rows\n"
             + "from [Store]"
             + "where [Store].[USA].[CA]",
 
             "Axis #0:\n"
-            + "{[Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Store Sqft]}\n"
             + "{[Measures].[Grocery Sqft]}\n"
             + "{[Measures].[Fact Count]}\n"
             + "Axis #2:\n"
-            + "{[Store Type].[All Store Types]}\n"
-            + "{[Store Type].[Deluxe Supermarket]}\n"
-            + "{[Store Type].[Gourmet Supermarket]}\n"
-            + "{[Store Type].[HeadQuarters]}\n"
-            + "{[Store Type].[Mid-Size Grocery]}\n"
-            + "{[Store Type].[Small Grocery]}\n"
-            + "{[Store Type].[Supermarket]}\n"
+            + "{[Store].[Store Type].[All Store Types]}\n"
+            + "{[Store].[Store Type].[Deluxe Supermarket]}\n"
+            + "{[Store].[Store Type].[Gourmet Supermarket]}\n"
+            + "{[Store].[Store Type].[HeadQuarters]}\n"
+            + "{[Store].[Store Type].[Mid-Size Grocery]}\n"
+            + "{[Store].[Store Type].[Small Grocery]}\n"
+            + "{[Store].[Store Type].[Supermarket]}\n"
             + "Row #0: 69,764\n"
             + "Row #0: 44,868\n"
             + "Row #0: 5\n"
@@ -2988,7 +3017,7 @@ public class BasicQueryTest extends FoodMartTestCase {
         // minimal test case
         assertQueryReturns(
             "select {[Measures].[Unit Sales]} ON columns,\n"
-            + "{[Product].[All Products].[Drink].[Beverages].[Drinks].[Flavored Drinks].children} ON rows\n"
+            + "{[Product].[Drink].[Beverages].[Drinks].[Flavored Drinks].children} ON rows\n"
             + "from [Sales]",
 
             "Axis #0:\n"
@@ -2996,11 +3025,11 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Excellent]}\n"
-            + "{[Product].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Fabulous]}\n"
-            + "{[Product].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Skinner]}\n"
-            + "{[Product].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Token]}\n"
-            + "{[Product].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Washington]}\n"
+            + "{[Product].[Products].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Excellent]}\n"
+            + "{[Product].[Products].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Fabulous]}\n"
+            + "{[Product].[Products].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Skinner]}\n"
+            + "{[Product].[Products].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Token]}\n"
+            + "{[Product].[Products].[Drink].[Beverages].[Drinks].[Flavored Drinks].[Washington]}\n"
             + "Row #0: 468\n"
             + "Row #1: 469\n"
             + "Row #2: 506\n"
@@ -3011,8 +3040,8 @@ public class BasicQueryTest extends FoodMartTestCase {
         executeQuery(
             "select {[Measures].[Unit Sales], [Measures].[Store Cost], [Measures].[Store Sales]} ON columns,"
             + "ToggleDrillState({"
-            + "([Promotion Media].[All Media].[Radio], [Product].[All Products].[Drink].[Beverages].[Drinks].[Flavored Drinks])"
-            + "}, {[Product].[All Products].[Drink].[Beverages].[Drinks].[Flavored Drinks]}) ON rows "
+            + "([Promotion].[Media Type].[Radio], [Product].[Drink].[Beverages].[Drinks].[Flavored Drinks])"
+            + "}, {[Product].[Drink].[Beverages].[Drinks].[Flavored Drinks]}) ON rows "
             + "from [Sales] where ([Time].[1997])");
     }
 
@@ -3025,36 +3054,36 @@ public class BasicQueryTest extends FoodMartTestCase {
         executeQuery(
             "select {[Measures].[Unit Sales], [Measures].[Store Cost],[Measures].[Store Sales]} ON columns, "
             + "Order("
-            + "{([Store].[All Stores].[USA].[CA], [Product].[All Products].[Drink].[Alcoholic Beverages]), "
-            + "([Store].[All Stores].[USA].[CA], [Product].[All Products].[Drink].[Beverages]), "
-            + "Crossjoin({[Store].[All Stores].[USA].[CA].Children}, {[Product].[All Products].[Drink].[Beverages]}), "
-            + "([Store].[All Stores].[USA].[CA], [Product].[All Products].[Drink].[Dairy]), "
-            + "([Store].[All Stores].[USA].[OR], [Product].[All Products].[Drink].[Alcoholic Beverages]), "
-            + "([Store].[All Stores].[USA].[OR], [Product].[All Products].[Drink].[Beverages]), "
-            + "([Store].[All Stores].[USA].[OR], [Product].[All Products].[Drink].[Dairy]), "
-            + "([Store].[All Stores].[USA].[WA], [Product].[All Products].[Drink].[Alcoholic Beverages]), "
-            + "([Store].[All Stores].[USA].[WA], [Product].[All Products].[Drink].[Beverages]), "
-            + "([Store].[All Stores].[USA].[WA], [Product].[All Products].[Drink].[Dairy])}, "
+            + "{([Store].[USA].[CA], [Product].[Drink].[Alcoholic Beverages]), "
+            + "([Store].[USA].[CA], [Product].[Drink].[Beverages]), "
+            + "Crossjoin({[Store].[USA].[CA].Children}, {[Product].[Drink].[Beverages]}), "
+            + "([Store].[USA].[CA], [Product].[Drink].[Dairy]), "
+            + "([Store].[USA].[OR], [Product].[Drink].[Alcoholic Beverages]), "
+            + "([Store].[USA].[OR], [Product].[Drink].[Beverages]), "
+            + "([Store].[USA].[OR], [Product].[Drink].[Dairy]), "
+            + "([Store].[USA].[WA], [Product].[Drink].[Alcoholic Beverages]), "
+            + "([Store].[USA].[WA], [Product].[Drink].[Beverages]), "
+            + "([Store].[USA].[WA], [Product].[Drink].[Dairy])}, "
             + "[Measures].[Store Cost], BDESC) ON rows "
             + "from [Sales] "
             + "where ([Time].[1997])");
         executeQuery(
             "select {[Measures].[Unit Sales], [Measures].[Store Cost], [Measures].[Store Sales]} ON columns, "
             + "Order("
-            + "{([Store].[All Stores].[USA].[WA], [Product].[All Products].[Drink].[Beverages]), "
-            + "([Store].[All Stores].[USA].[CA], [Product].[All Products].[Drink].[Beverages]), "
-            + "([Store].[All Stores].[USA].[OR], [Product].[All Products].[Drink].[Beverages]), "
-            + "([Store].[All Stores].[USA].[WA], [Product].[All Products].[Drink].[Alcoholic Beverages]), "
-            + "([Store].[All Stores].[USA].[CA], [Product].[All Products].[Drink].[Alcoholic Beverages]), "
-            + "([Store].[All Stores].[USA].[OR], [Product].[All Products].[Drink].[Alcoholic Beverages]), "
-            + "([Store].[All Stores].[USA].[WA], [Product].[All Products].[Drink].[Dairy]), "
-            + "([Store].[All Stores].[USA].[CA].[San Diego], [Product].[All Products].[Drink].[Beverages]), "
-            + "([Store].[All Stores].[USA].[CA].[Los Angeles], [Product].[All Products].[Drink].[Beverages]), "
-            + "Crossjoin({[Store].[All Stores].[USA].[CA].[Los Angeles]}, {[Product].[All Products].[Drink].[Beverages].Children}), "
-            + "([Store].[All Stores].[USA].[CA].[Beverly Hills], [Product].[All Products].[Drink].[Beverages]), "
-            + "([Store].[All Stores].[USA].[CA], [Product].[All Products].[Drink].[Dairy]), "
-            + "([Store].[All Stores].[USA].[OR], [Product].[All Products].[Drink].[Dairy]), "
-            + "([Store].[All Stores].[USA].[CA].[San Francisco], [Product].[All Products].[Drink].[Beverages])}, "
+            + "{([Store].[USA].[WA], [Product].[Drink].[Beverages]), "
+            + "([Store].[USA].[CA], [Product].[Drink].[Beverages]), "
+            + "([Store].[USA].[OR], [Product].[Drink].[Beverages]), "
+            + "([Store].[USA].[WA], [Product].[Drink].[Alcoholic Beverages]), "
+            + "([Store].[USA].[CA], [Product].[Drink].[Alcoholic Beverages]), "
+            + "([Store].[USA].[OR], [Product].[Drink].[Alcoholic Beverages]), "
+            + "([Store].[USA].[WA], [Product].[Drink].[Dairy]), "
+            + "([Store].[USA].[CA].[San Diego], [Product].[Drink].[Beverages]), "
+            + "([Store].[USA].[CA].[Los Angeles], [Product].[Drink].[Beverages]), "
+            + "Crossjoin({[Store].[USA].[CA].[Los Angeles]}, {[Product].[Drink].[Beverages].Children}), "
+            + "([Store].[USA].[CA].[Beverly Hills], [Product].[Drink].[Beverages]), "
+            + "([Store].[USA].[CA], [Product].[Drink].[Dairy]), "
+            + "([Store].[USA].[OR], [Product].[Drink].[Dairy]), "
+            + "([Store].[USA].[CA].[San Francisco], [Product].[Drink].[Beverages])}, "
             + "[Measures].[Store Cost], BDESC) ON rows "
             + "from [Sales] "
             + "where ([Time].[1997])");
@@ -3071,22 +3100,22 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where [Time].[1997]",
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Store Cost]}\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Baked Goods].[Bread]}\n"
-            + "{[Product].[Food].[Deli].[Meat]}\n"
-            + "{[Product].[Food].[Dairy].[Dairy]}\n"
-            + "{[Product].[Food].[Baking Goods].[Baking Goods]}\n"
-            + "{[Product].[Food].[Baking Goods].[Jams and Jellies]}\n"
-            + "{[Product].[Food].[Canned Foods].[Canned Soup]}\n"
-            + "{[Product].[Food].[Frozen Foods].[Vegetables]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods]}\n"
-            + "{[Product].[Food].[Produce].[Fruit]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread]}\n"
+            + "{[Product].[Products].[Food].[Deli].[Meat]}\n"
+            + "{[Product].[Products].[Food].[Dairy].[Dairy]}\n"
+            + "{[Product].[Products].[Food].[Baking Goods].[Baking Goods]}\n"
+            + "{[Product].[Products].[Food].[Baking Goods].[Jams and Jellies]}\n"
+            + "{[Product].[Products].[Food].[Canned Foods].[Canned Soup]}\n"
+            + "{[Product].[Products].[Food].[Frozen Foods].[Vegetables]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Fruit]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables]}\n"
             + "Row #0: 7,870\n"
             + "Row #0: 6,564.09\n"
             + "Row #0: 16,455.43\n"
@@ -3125,7 +3154,7 @@ public class BasicQueryTest extends FoodMartTestCase {
      * the validation time was <code>O(2 ^ depth)</code>.)
      */
     public void _testBug793616() {
-        if (props.TestExpDependencies.get() > 0) {
+        if (propSaver.props.TestExpDependencies.get() > 0) {
             // Don't run this test if dependency-checking is enabled.
             // Dependency checking will hugely slow down evaluation, and give
             // the false impression that the validation performance bug has
@@ -3153,67 +3182,67 @@ public class BasicQueryTest extends FoodMartTestCase {
             + " [Product].[All Products])})),\n"
             + " Crossjoin(Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status].[M])},\n"
-            + " [Customers].[All Customers].Children),\n"
+            + " [Customers].Children),\n"
             + " {[Product].[All Products]})),\n"
             + " Crossjoin(Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status].[M])},\n"
-            + " [Customers].[All Customers].[USA].Children),\n"
+            + " [Customers].[USA].Children),\n"
             + " {[Product].[All Products]})),\n"
-            + " Crossjoin ({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[All Customers].[USA].[CA])},\n"
-            + "   [Product].[All Products].Children)),\n"
-            + " Crossjoin({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[All Customers].[USA].[OR])},\n"
-            + "   [Product].[All Products].Children)),\n"
-            + " Crossjoin({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[All Customers].[USA].[WA])},\n"
-            + "   [Product].[All Products].Children)),\n"
-            + " Crossjoin ({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[All Customers].[USA])},\n"
-            + "   [Product].[All Products].Children)),\n"
+            + " Crossjoin ({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[USA].[CA])},\n"
+            + "   [Product].Children)),\n"
+            + " Crossjoin({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[USA].[OR])},\n"
+            + "   [Product].Children)),\n"
+            + " Crossjoin({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[USA].[WA])},\n"
+            + "   [Product].Children)),\n"
+            + " Crossjoin ({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[M], [Customers].[USA])},\n"
+            + "   [Product].Children)),\n"
             + " Crossjoin(\n"
-            + "   Crossjoin({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[S])}, [Customers].[All Customers].Children),\n"
+            + "   Crossjoin({([Gender].[All Gender].[F], [Marital Status].[All Marital Status].[S])}, [Customers].Children),\n"
             + "   {[Product].[All Products]})),\n"
             + " Crossjoin(Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status].[S])},\n"
-            + " [Customers].[All Customers].[USA].Children),\n"
+            + " [Customers].[USA].Children),\n"
             + " {[Product].[All Products]})),\n"
             + " Crossjoin ({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status].[S],\n"
-            + " [Customers].[All Customers].[USA].[CA])},\n"
-            + " [Product].[All Products].Children)),\n"
+            + " [Customers].[USA].[CA])},\n"
+            + " [Product].Children)),\n"
             + " Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status].[S],\n"
-            + " [Customers].[All Customers].[USA].[OR])},\n"
-            + " [Product].[All Products].Children)),\n"
+            + " [Customers].[USA].[OR])},\n"
+            + " [Product].Children)),\n"
             + " Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status].[S],\n"
-            + " [Customers].[All Customers].[USA].[WA])},\n"
-            + " [Product].[All Products].Children)),\n"
+            + " [Customers].[USA].[WA])},\n"
+            + " [Product].Children)),\n"
             + " Crossjoin ({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status].[S],\n"
-            + " [Customers].[All Customers].[USA])},\n"
-            + " [Product].[All Products].Children)),\n"
+            + " [Customers].[USA])},\n"
+            + " [Product].Children)),\n"
             + " Crossjoin(Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status])},\n"
-            + " [Customers].[All Customers].Children),\n"
+            + " [Customers].Children),\n"
             + " {[Product].[All Products]})),\n"
             + " Crossjoin(Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status])},\n"
-            + " [Customers].[All Customers].[USA].Children),\n"
+            + " [Customers].[USA].Children),\n"
             + " {[Product].[All Products]})),\n"
             + " Crossjoin ({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status],\n"
-            + " [Customers].[All Customers].[USA].[CA])},\n"
-            + " [Product].[All Products].Children)),\n"
+            + " [Customers].[USA].[CA])},\n"
+            + " [Product].Children)),\n"
             + " Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status],\n"
-            + " [Customers].[All Customers].[USA].[OR])},\n"
-            + " [Product].[All Products].Children)),\n"
+            + " [Customers].[USA].[OR])},\n"
+            + " [Product].Children)),\n"
             + " Crossjoin({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status],\n"
-            + " [Customers].[All Customers].[USA].[WA])},\n"
-            + " [Product].[All Products].Children)),\n"
+            + " [Customers].[USA].[WA])},\n"
+            + " [Product].Children)),\n"
             + " Crossjoin ({([Gender].[All Gender].[F],\n"
             + " [Marital Status].[All Marital Status],\n"
-            + " [Customers].[All Customers].[USA])},\n"
-            + " [Product].[All Products].Children))) ON rows  from [Sales]  where [Time].[1997]";
+            + " [Customers].[USA])},\n"
+            + " [Product].Children))) ON rows  from [Sales]  where [Time].[1997]";
         Query query = connection.parseQuery(queryString);
         // If this call took longer than 10 seconds, the performance bug has
         // probably resurfaced again.
@@ -3246,163 +3275,6 @@ public class BasicQueryTest extends FoodMartTestCase {
             execNonDbMillis <= 2000 && execMillis <= 30000);
     }
 
-    public void testCatalogHierarchyBasedOnView() {
-        // Don't run this test if aggregates are enabled: two levels mapped to
-        // the "gender" column confuse the agg engine.
-        if (props.ReadAggregates.get()) {
-            return;
-        }
-        TestContext testContext = TestContext.instance().createSubstitutingCube(
-            "Sales",
-            "<Dimension name=\"Gender2\" foreignKey=\"customer_id\">\n"
-            + "  <Hierarchy hasAll=\"true\" allMemberName=\"All Gender\" primaryKey=\"customer_id\">\n"
-            + "    <View alias=\"gender2\">\n"
-            + "      <SQL dialect=\"generic\">\n"
-            + "        <![CDATA[SELECT * FROM customer]]>\n"
-            + "      </SQL>\n"
-            + "      <SQL dialect=\"oracle\">\n"
-            + "        <![CDATA[SELECT * FROM \"customer\"]]>\n"
-            + "      </SQL>\n"
-            + "      <SQL dialect=\"hsqldb\">\n"
-            + "        <![CDATA[SELECT * FROM \"customer\"]]>\n"
-            + "      </SQL>\n"
-            + "      <SQL dialect=\"derby\">\n"
-            + "        <![CDATA[SELECT * FROM \"customer\"]]>\n"
-            + "      </SQL>\n"
-            + "      <SQL dialect=\"luciddb\">\n"
-            + "        <![CDATA[SELECT * FROM \"customer\"]]>\n"
-            + "      </SQL>\n"
-            + "      <SQL dialect=\"db2\">\n"
-            + "        <![CDATA[SELECT * FROM \"customer\"]]>\n"
-            + "      </SQL>\n"
-            + "      <SQL dialect=\"neoview\">\n"
-            + "        <![CDATA[SELECT * FROM \"customer\"]]>\n"
-            + "      </SQL>\n"
-            + "      <SQL dialect=\"netezza\">\n"
-            + "        <![CDATA[SELECT * FROM \"customer\"]]>\n"
-            + "      </SQL>\n"
-            + "    </View>\n"
-            + "    <Level name=\"Gender\" column=\"gender\" uniqueMembers=\"true\"/>\n"
-            + "  </Hierarchy>\n"
-            + "</Dimension>",
-            null);
-        if (!testContext.getDialect().allowsFromQuery()) {
-            return;
-        }
-        testContext.assertAxisReturns(
-            "[Gender2].members",
-            "[Gender2].[All Gender]\n"
-            + "[Gender2].[F]\n"
-            + "[Gender2].[M]");
-    }
-
-    /**
-     * Run a query against a large hierarchy, to make sure that we can generate
-     * joins correctly. This probably won't work in MySQL.
-     */
-    public void testCatalogHierarchyBasedOnView2() {
-        // Don't run this test if aggregates are enabled: two levels mapped to
-        // the "gender" column confuse the agg engine.
-        if (props.ReadAggregates.get()) {
-            return;
-        }
-        if (getTestContext().getDialect().allowsFromQuery()) {
-            return;
-        }
-        TestContext testContext = TestContext.instance().createSubstitutingCube(
-            "Sales",
-            "<Dimension name=\"ProductView\" foreignKey=\"product_id\">\n"
-            + "   <Hierarchy hasAll=\"true\" primaryKey=\"product_id\" primaryKeyTable=\"productView\">\n"
-            + "       <View alias=\"productView\">\n"
-            + "           <SQL dialect=\"db2\"><![CDATA[\n"
-            + "SELECT *\n"
-            + "FROM \"product\", \"product_class\"\n"
-            + "WHERE \"product\".\"product_class_id\" = \"product_class\".\"product_class_id\"\n"
-            + "]]>\n"
-            + "           </SQL>\n"
-            + "           <SQL dialect=\"mssql\"><![CDATA[\n"
-            + "SELECT \"product\".\"product_id\",\n"
-            + "\"product\".\"brand_name\",\n"
-            + "\"product\".\"product_name\",\n"
-            + "\"product\".\"SKU\",\n"
-            + "\"product\".\"SRP\",\n"
-            + "\"product\".\"gross_weight\",\n"
-            + "\"product\".\"net_weight\",\n"
-            + "\"product\".\"recyclable_package\",\n"
-            + "\"product\".\"low_fat\",\n"
-            + "\"product\".\"units_per_case\",\n"
-            + "\"product\".\"cases_per_pallet\",\n"
-            + "\"product\".\"shelf_width\",\n"
-            + "\"product\".\"shelf_height\",\n"
-            + "\"product\".\"shelf_depth\",\n"
-            + "\"product_class\".\"product_class_id\",\n"
-            + "\"product_class\".\"product_subcategory\",\n"
-            + "\"product_class\".\"product_category\",\n"
-            + "\"product_class\".\"product_department\",\n"
-            + "\"product_class\".\"product_family\"\n"
-            + "FROM \"product\" inner join \"product_class\"\n"
-            + "ON \"product\".\"product_class_id\" = \"product_class\".\"product_class_id\"\n"
-            + "]]>\n"
-            + "           </SQL>\n"
-            + "           <SQL dialect=\"mysql\"><![CDATA[\n"
-            + "SELECT `product`.`product_id`,\n"
-            + "`product`.`brand_name`,\n"
-            + "`product`.`product_name`,\n"
-            + "`product`.`SKU`,\n"
-            + "`product`.`SRP`,\n"
-            + "`product`.`gross_weight`,\n"
-            + "`product`.`net_weight`,\n"
-            + "`product`.`recyclable_package`,\n"
-            + "`product`.`low_fat`,\n"
-            + "`product`.`units_per_case`,\n"
-            + "`product`.`cases_per_pallet`,\n"
-            + "`product`.`shelf_width`,\n"
-            + "`product`.`shelf_height`,\n"
-            + "`product`.`shelf_depth`,\n"
-            + "`product_class`.`product_class_id`,\n"
-            + "`product_class`.`product_family`,\n"
-            + "`product_class`.`product_department`,\n"
-            + "`product_class`.`product_category`,\n"
-            + "`product_class`.`product_subcategory` \n"
-            + "FROM `product`, `product_class`\n"
-            + "WHERE `product`.`product_class_id` = `product_class`.`product_class_id`\n"
-            + "]]>\n"
-            + "           </SQL>\n"
-            + "           <SQL dialect=\"generic\"><![CDATA[\n"
-            + "SELECT *\n"
-            + "FROM \"product\", \"product_class\"\n"
-            + "WHERE \"product\".\"product_class_id\" = \"product_class\".\"product_class_id\"\n"
-            + "]]>\n"
-            + "           </SQL>\n"
-            + "       </View>\n"
-            + "       <Level name=\"Product Family\" column=\"product_family\" uniqueMembers=\"true\"/>\n"
-            + "       <Level name=\"Product Department\" column=\"product_department\" uniqueMembers=\"false\"/>\n"
-            + "       <Level name=\"Product Category\" column=\"product_category\" uniqueMembers=\"false\"/>\n"
-            + "       <Level name=\"Product Subcategory\" column=\"product_subcategory\" uniqueMembers=\"false\"/>\n"
-            + "       <Level name=\"Brand Name\" column=\"brand_name\" uniqueMembers=\"false\"/>\n"
-            + "       <Level name=\"Product Name\" column=\"product_name\" uniqueMembers=\"true\"/>\n"
-            + "   </Hierarchy>\n"
-            + "</Dimension>");
-        testContext.assertQueryReturns(
-            "select {[Measures].[Unit Sales]} on columns,\n"
-            + " {[ProductView].[Drink].[Beverages].children} on rows\n"
-            + "from Sales",
-
-            "Axis #0:\n"
-            + "{}\n"
-            + "Axis #1:\n"
-            + "{[Measures].[Unit Sales]}\n"
-            + "Axis #2:\n"
-            + "{[ProductView].[Drink].[Beverages].[Carbonated Beverages]}\n"
-            + "{[ProductView].[Drink].[Beverages].[Drinks]}\n"
-            + "{[ProductView].[Drink].[Beverages].[Hot Beverages]}\n"
-            + "{[ProductView].[Drink].[Beverages].[Pure Juice Beverages]}\n"
-            + "Row #0: 3,407\n"
-            + "Row #1: 2,469\n"
-            + "Row #2: 4,301\n"
-            + "Row #3: 3,396\n");
-    }
-
     public void testCountDistinct() {
         assertQueryReturns(
             "select {[Measures].[Unit Sales], [Measures].[Customer Count]} on columns,\n"
@@ -3414,9 +3286,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 266,773\n"
             + "Row #0: 5,581\n"
             + "Row #1: 131,558\n"
@@ -3432,44 +3304,25 @@ public class BasicQueryTest extends FoodMartTestCase {
      * then no aggregate tables is be read in any event.
      */
     public void testCountDistinctAgg() {
-        boolean use_agg_orig = props.UseAggregates.get();
-
         // turn off caching
-        propSaver.set(props.DisableCaching, true);
+        propSaver.set(propSaver.props.DisableCaching, true);
 
-        assertQueryReturns(
-            "select {[Measures].[Unit Sales], [Measures].[Customer Count]} on rows,\n"
-            + "NON EMPTY {[Time].[1997].[Q1].[1]} ON COLUMNS\n"
-            + "from Sales",
-            "Axis #0:\n"
-            + "{}\n"
-            + "Axis #1:\n"
-            + "{[Time].[1997].[Q1].[1]}\n"
-            + "Axis #2:\n"
-            + "{[Measures].[Unit Sales]}\n"
-            + "{[Measures].[Customer Count]}\n"
-            + "Row #0: 21,628\n"
-            + "Row #1: 1,396\n");
-
-        if (use_agg_orig) {
-            propSaver.set(props.UseAggregates, false);
-        } else {
-            propSaver.set(props.UseAggregates, true);
+        for (boolean b : new boolean[]{false, true}) {
+            propSaver.set(propSaver.props.UseAggregates, b);
+            assertQueryReturns(
+                "select {[Measures].[Unit Sales], [Measures].[Customer Count]} on rows,\n"
+                + "NON EMPTY {[Time].[1997].[Q1].[1]} ON COLUMNS\n"
+                + "from Sales",
+                "Axis #0:\n"
+                + "{}\n"
+                + "Axis #1:\n"
+                + "{[Time].[Time].[1997].[Q1].[1]}\n"
+                + "Axis #2:\n"
+                + "{[Measures].[Unit Sales]}\n"
+                + "{[Measures].[Customer Count]}\n"
+                + "Row #0: 21,628\n"
+                + "Row #1: 1,396\n");
         }
-
-        assertQueryReturns(
-            "select {[Measures].[Unit Sales], [Measures].[Customer Count]} on rows,\n"
-            + "NON EMPTY {[Time].[1997].[Q1].[1]} ON COLUMNS\n"
-            + "from Sales",
-            "Axis #0:\n"
-            + "{}\n"
-            + "Axis #1:\n"
-            + "{[Time].[1997].[Q1].[1]}\n"
-            + "Axis #2:\n"
-            + "{[Measures].[Unit Sales]}\n"
-            + "{[Measures].[Customer Count]}\n"
-            + "Row #0: 21,628\n"
-            + "Row #1: 1,396\n");
     }
 
     /**
@@ -3535,36 +3388,36 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store Size in SQFT].[All Store Size in SQFTs]}\n"
+            + "{[Store].[Store Size in SQFT].[All Store Size in SQFTs]}\n"
 
             // null is at the start in order under DBMSs that sort null low
             + (!nullsSortHigh
-                ? "{[Store Size in SQFT].[#null]}\n"
+                ? "{[Store].[Store Size in SQFT].[#null]}\n"
                 : "")
-            + "{[Store Size in SQFT].[20319]}\n"
-            + "{[Store Size in SQFT].[21215]}\n"
-            + "{[Store Size in SQFT].[22478]}\n"
-            + "{[Store Size in SQFT].[23112]}\n"
-            + "{[Store Size in SQFT].[23593]}\n"
-            + "{[Store Size in SQFT].[23598]}\n"
-            + "{[Store Size in SQFT].[23688]}\n"
-            + "{[Store Size in SQFT].[23759]}\n"
-            + "{[Store Size in SQFT].[24597]}\n"
-            + "{[Store Size in SQFT].[27694]}\n"
-            + "{[Store Size in SQFT].[28206]}\n"
-            + "{[Store Size in SQFT].[30268]}\n"
-            + "{[Store Size in SQFT].[30584]}\n"
-            + "{[Store Size in SQFT].[30797]}\n"
-            + "{[Store Size in SQFT].[33858]}\n"
-            + "{[Store Size in SQFT].[34452]}\n"
-            + "{[Store Size in SQFT].[34791]}\n"
-            + "{[Store Size in SQFT].[36509]}\n"
-            + "{[Store Size in SQFT].[38382]}\n"
-            + "{[Store Size in SQFT].[39696]}\n"
+            + "{[Store].[Store Size in SQFT].[20319]}\n"
+            + "{[Store].[Store Size in SQFT].[21215]}\n"
+            + "{[Store].[Store Size in SQFT].[22478]}\n"
+            + "{[Store].[Store Size in SQFT].[23112]}\n"
+            + "{[Store].[Store Size in SQFT].[23593]}\n"
+            + "{[Store].[Store Size in SQFT].[23598]}\n"
+            + "{[Store].[Store Size in SQFT].[23688]}\n"
+            + "{[Store].[Store Size in SQFT].[23759]}\n"
+            + "{[Store].[Store Size in SQFT].[24597]}\n"
+            + "{[Store].[Store Size in SQFT].[27694]}\n"
+            + "{[Store].[Store Size in SQFT].[28206]}\n"
+            + "{[Store].[Store Size in SQFT].[30268]}\n"
+            + "{[Store].[Store Size in SQFT].[30584]}\n"
+            + "{[Store].[Store Size in SQFT].[30797]}\n"
+            + "{[Store].[Store Size in SQFT].[33858]}\n"
+            + "{[Store].[Store Size in SQFT].[34452]}\n"
+            + "{[Store].[Store Size in SQFT].[34791]}\n"
+            + "{[Store].[Store Size in SQFT].[36509]}\n"
+            + "{[Store].[Store Size in SQFT].[38382]}\n"
+            + "{[Store].[Store Size in SQFT].[39696]}\n"
 
             // null is at the end in order for DBMSs that sort nulls high
             + (nullsSortHigh
-               ? "{[Store Size in SQFT].[#null]}\n"
+               ? "{[Store].[Store Size in SQFT].[#null]}\n"
                : "")
             + "Row #" + row++ + ": 266,773\n"
             + (!nullsSortHigh ? "Row #" + row++ + ": 39,329\n" : "")
@@ -3598,14 +3451,12 @@ public class BasicQueryTest extends FoodMartTestCase {
      * "NPE in Query with Crossjoin Descendants of Unknown Member"</a>.
      */
     public void testCrossjoinWithDescendantsAndUnknownMember() {
-        propSaver.set(
-            MondrianProperties.instance().IgnoreInvalidMembersDuringQuery,
-            true);
+        propSaver.set(propSaver.props.IgnoreInvalidMembersDuringQuery, true);
         assertQueryReturns(
             "select {[Measures].[Unit Sales]} on columns,\n"
             + "NON EMPTY CrossJoin(\n"
             + " Descendants([Product].[All Products], [Product].[Product Family]),\n"
-            + " Descendants([Store].[All Stores].[Foo], [Store].[Store State])) on rows\n"
+            + " Descendants([Store].[Foo], [Store].[Store State])) on rows\n"
             + "from [Sales]",
             "Axis #0:\n"
             + "{}\n"
@@ -3615,25 +3466,26 @@ public class BasicQueryTest extends FoodMartTestCase {
     }
 
     /**
-     * Slicer contains <code>[Promotion Media].[Daily Paper]</code>, but
-     * filter expression is in terms of <code>[Promotion Media].[Radio]</code>.
+     * Slicer contains <code>[Promotion].[Media Type].[Daily Paper]</code>, but
+     * filter expression is in terms of <code>[Promotion].[Media
+     * Type].[Radio]</code>.
      */
     public void testSlicerOverride() {
         assertQueryReturns(
             "with member [Measures].[Radio Unit Sales] as \n"
-            + " '([Measures].[Unit Sales], [Promotion Media].[Radio])'\n"
+            + " '([Measures].[Unit Sales], [Promotion].[Media Type].[Radio])'\n"
             + "select {[Measures].[Unit Sales], [Measures].[Radio Unit Sales]} on columns,\n"
-            + " filter([Product].[Product Department].members, [Promotion Media].[Radio] > 50) on rows\n"
+            + " filter([Product].[Product Department].members, [Promotion].[Media Type].[Radio] > 50) on rows\n"
             + "from Sales\n"
-            + "where ([Promotion Media].[Daily Paper], [Time].[1997].[Q1])",
+            + "where ([Promotion].[Media Type].[Daily Paper], [Time].[1997].[Q1])",
             "Axis #0:\n"
-            + "{[Promotion Media].[Daily Paper], [Time].[1997].[Q1]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper], [Time].[Time].[1997].[Q1]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Radio Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
+            + "{[Product].[Products].[Food].[Produce]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods]}\n"
             + "Row #0: 692\n"
             + "Row #0: 87\n"
             + "Row #1: 447\n"
@@ -3732,7 +3584,7 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void _testLookupCube() {
         assertQueryReturns(
             "WITH MEMBER Measures.[Store Unit Sales] AS \n"
-            + " 'LookupCube(\"Sales\", \"(\" + MemberToStr(Store.CurrentMember) + \", Measures.[Unit Sales])\")'\n"
+            + " 'LookupCube(\"Sales\", \"(\" + MemberToStr(Stores.CurrentMember) + \", Measures.[Unit Sales])\")'\n"
             + "SELECT\n"
             + " {Measures.Amount, Measures.[Store Unit Sales]} ON COLUMNS,\n"
             + " Store.CA.CHILDREN ON ROWS\n"
@@ -3783,23 +3635,23 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "{[Measures].[Qualified Count]}\n"
             + "{[Measures].[Qualified Sales]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[All Customers]}\n"
-            + "{[Customers].[Canada]}\n"
-            + "{[Customers].[Canada].[BC]}\n"
-            + "{[Customers].[Mexico]}\n"
-            + "{[Customers].[Mexico].[DF]}\n"
-            + "{[Customers].[Mexico].[Guerrero]}\n"
-            + "{[Customers].[Mexico].[Jalisco]}\n"
-            + "{[Customers].[Mexico].[Mexico]}\n"
-            + "{[Customers].[Mexico].[Oaxaca]}\n"
-            + "{[Customers].[Mexico].[Sinaloa]}\n"
-            + "{[Customers].[Mexico].[Veracruz]}\n"
-            + "{[Customers].[Mexico].[Yucatan]}\n"
-            + "{[Customers].[Mexico].[Zacatecas]}\n"
-            + "{[Customers].[USA]}\n"
-            + "{[Customers].[USA].[CA]}\n"
-            + "{[Customers].[USA].[OR]}\n"
-            + "{[Customers].[USA].[WA]}\n"
+            + "{[Customer].[Customers].[All Customers]}\n"
+            + "{[Customer].[Customers].[Canada]}\n"
+            + "{[Customer].[Customers].[Canada].[BC]}\n"
+            + "{[Customer].[Customers].[Mexico]}\n"
+            + "{[Customer].[Customers].[Mexico].[DF]}\n"
+            + "{[Customer].[Customers].[Mexico].[Guerrero]}\n"
+            + "{[Customer].[Customers].[Mexico].[Jalisco]}\n"
+            + "{[Customer].[Customers].[Mexico].[Mexico]}\n"
+            + "{[Customer].[Customers].[Mexico].[Oaxaca]}\n"
+            + "{[Customer].[Customers].[Mexico].[Sinaloa]}\n"
+            + "{[Customer].[Customers].[Mexico].[Veracruz]}\n"
+            + "{[Customer].[Customers].[Mexico].[Yucatan]}\n"
+            + "{[Customer].[Customers].[Mexico].[Zacatecas]}\n"
+            + "{[Customer].[Customers].[USA]}\n"
+            + "{[Customer].[Customers].[USA].[CA]}\n"
+            + "{[Customer].[Customers].[USA].[OR]}\n"
+            + "{[Customer].[Customers].[USA].[WA]}\n"
             + "Row #0: 4,719.00\n"
             + "Row #0: 553,587.77\n"
             + "Row #1: .00\n"
@@ -3882,31 +3734,31 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Canned Products].[Fruit].[Canned Fruit].[Applause].[Applause Canned Mixed Fruit]}\n"
-            + "{[Product].[Food].[Canned Products].[Fruit].[Canned Fruit].[Big City].[Big City Canned Mixed Fruit]}\n"
-            + "{[Product].[Food].[Canned Products].[Fruit].[Canned Fruit].[Green Ribbon].[Green Ribbon Canned Mixed Fruit]}\n"
-            + "{[Product].[Food].[Canned Products].[Fruit].[Canned Fruit].[Swell].[Swell Canned Mixed Fruit]}\n"
-            + "{[Product].[Food].[Canned Products].[Fruit].[Canned Fruit].[Toucan].[Toucan Canned Mixed Fruit]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Apple Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Grape Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Raspberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Strawberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Apple Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Grape Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Raspberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Strawberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Apple Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Grape Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Raspberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Strawberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Apple Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Grape Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Raspberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Strawberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Apple Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Grape Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Raspberry Fruit Roll]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Strawberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Canned Products].[Fruit].[Canned Fruit].[Applause].[Applause Canned Mixed Fruit]}\n"
+            + "{[Product].[Products].[Food].[Canned Products].[Fruit].[Canned Fruit].[Big City].[Big City Canned Mixed Fruit]}\n"
+            + "{[Product].[Products].[Food].[Canned Products].[Fruit].[Canned Fruit].[Green Ribbon].[Green Ribbon Canned Mixed Fruit]}\n"
+            + "{[Product].[Products].[Food].[Canned Products].[Fruit].[Canned Fruit].[Swell].[Swell Canned Mixed Fruit]}\n"
+            + "{[Product].[Products].[Food].[Canned Products].[Fruit].[Canned Fruit].[Toucan].[Toucan Canned Mixed Fruit]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Apple Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Grape Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Raspberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Best Choice].[Best Choice Strawberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Apple Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Grape Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Raspberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fast].[Fast Strawberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Apple Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Grape Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Raspberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Fort West].[Fort West Strawberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Apple Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Grape Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Raspberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Horatio].[Horatio Strawberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Apple Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Grape Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Raspberry Fruit Roll]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Dried Fruit].[Nationeel].[Nationeel Strawberry Fruit Roll]}\n"
             + "Row #0: 205\n"
             + "Row #1: 204\n"
             + "Row #2: 142\n"
@@ -3940,9 +3792,12 @@ public class BasicQueryTest extends FoodMartTestCase {
      * "Problem with the MID function getting last character in a string."</a>.
      */
     public void testMid() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with\n"
-            + "member measures.x as 'Mid(\"yahoo\",5, 1)'\n"
+            + "member measures.x as Mid('yahoo',5, 1)\n"
             + "select {measures.x} ON COLUMNS from [Sales] ",
             "Axis #0:\n"
             + "{}\n"
@@ -3972,8 +3827,8 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             // todo: "Store.[USA].[CA]" should be "Store.CA"
             "WITH MEMBER Measures.[Unit Sales Percent] AS\n"
-            + "  '((Store.CURRENTMEMBER, Measures.[Unit Sales]) /\n"
-            + "    (Store.CURRENTMEMBER.PARENT, Measures.[Unit Sales])) ',\n"
+            + "  '((Stores.CURRENTMEMBER, Measures.[Unit Sales]) /\n"
+            + "    (Stores.CURRENTMEMBER.PARENT, Measures.[Unit Sales])) ',\n"
             + "  FORMAT_STRING = 'Percent'\n"
             + "SELECT {Measures.[Unit Sales], Measures.[Unit Sales Percent]} ON COLUMNS,\n"
             + "  ORDER(DESCENDANTS(Store.[USA].[CA], Store.[Store City], SELF), \n"
@@ -3986,11 +3841,11 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Unit Sales Percent]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Alameda]}\n"
-            + "{[Store].[USA].[CA].[San Francisco]}\n"
-            + "{[Store].[USA].[CA].[Beverly Hills]}\n"
-            + "{[Store].[USA].[CA].[San Diego]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Alameda]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles]}\n"
             + "Row #0: \n"
             + "Row #0: \n"
             + "Row #1: 2,117\n"
@@ -4105,7 +3960,7 @@ public class BasicQueryTest extends FoodMartTestCase {
      */
     public void testLogicalOps() {
         assertQueryReturns(
-            "WITH MEMBER [Product].[Food OR Drink] AS\n"
+            "WITH MEMBER [Product].[Products].[Food OR Drink] AS\n"
             + "  '([Product].[Food], Measures.[Unit Sales]) + ([Product].[Drink], Measures.[Unit Sales])'\n"
             + "SELECT {Measures.[Unit Sales]} ON COLUMNS,\n"
             + "  DESCENDANTS(Time.[1997], [Quarter], SELF_AND_BEFORE) ON ROWS\n"
@@ -4113,15 +3968,15 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "WHERE [Product].[Food OR Drink]",
 
             "Axis #0:\n"
-            + "{[Product].[Food OR Drink]}\n"
+            + "{[Product].[Products].[Food OR Drink]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997]}\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
-            + "{[Time].[1997].[Q3]}\n"
-            + "{[Time].[1997].[Q4]}\n"
+            + "{[Time].[Time].[1997]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
+            + "{[Time].[Time].[1997].[Q4]}\n"
             + "Row #0: 216,537\n"
             + "Row #1: 53,785\n"
             + "Row #2: 50,720\n"
@@ -4145,15 +4000,15 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "WHERE ([Product].[Drink], [Store].USA)",
 
             "Axis #0:\n"
-            + "{[Product].[Drink], [Store].[USA]}\n"
+            + "{[Product].[Products].[Drink], [Store].[Stores].[USA]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997]}\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
-            + "{[Time].[1997].[Q3]}\n"
-            + "{[Time].[1997].[Q4]}\n"
+            + "{[Time].[Time].[1997]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
+            + "{[Time].[Time].[1997].[Q4]}\n"
             + "Row #0: 24,597\n"
             + "Row #1: 5,976\n"
             + "Row #2: 5,895\n"
@@ -4217,19 +4072,19 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "{[Measures].[Units Shipped]}\n"
             + "{[Measures].[Units Ordered]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Beverly Hills].[Store 6]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles].[Store 7]}\n"
-            + "{[Store].[USA].[CA].[San Diego].[Store 24]}\n"
-            + "{[Store].[USA].[CA].[San Francisco].[Store 14]}\n"
-            + "{[Store].[USA].[OR].[Portland].[Store 11]}\n"
-            + "{[Store].[USA].[OR].[Salem].[Store 13]}\n"
-            + "{[Store].[USA].[WA].[Bellingham].[Store 2]}\n"
-            + "{[Store].[USA].[WA].[Bremerton].[Store 3]}\n"
-            + "{[Store].[USA].[WA].[Seattle].[Store 15]}\n"
-            + "{[Store].[USA].[WA].[Spokane].[Store 16]}\n"
-            + "{[Store].[USA].[WA].[Tacoma].[Store 17]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla].[Store 22]}\n"
-            + "{[Store].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills].[Store 6]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles].[Store 7]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego].[Store 24]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco].[Store 14]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland].[Store 11]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham].[Store 2]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton].[Store 3]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle].[Store 15]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane].[Store 16]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma].[Store 17]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla].[Store 22]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
             + "Row #0: 10759.0\n"
             + "Row #0: 11699.0\n"
             + "Row #1: 24587.0\n"
@@ -4282,7 +4137,7 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void _testMemberPropertyAsCalcMember() {
         assertQueryReturns(
             // todo: implement <member>.PROPERTIES
-            "WITH MEMBER Measures.[Store SqFt] AS '[Store].CURRENTMEMBER.PROPERTIES(\"Store SQFT\")'\n"
+            "WITH MEMBER Measures.[Store SqFt] AS '[Stores].CURRENTMEMBER.PROPERTIES(\"Store SQFT\")'\n"
             + "SELECT { [Measures].[Store SQFT], [Measures].[Units Shipped], [Measures].[Units Ordered] }  ON COLUMNS,\n"
             + "  [Store].[Store Name].MEMBERS ON ROWS\n"
             + "FROM Warehouse",
@@ -4379,10 +4234,10 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             // todo: implement "GENERATE"
             "WITH MEMBER Measures.[Country Name] AS \n"
-            + "  'Ancestor(Store.CurrentMember, [Store Country]).Name'\n"
+            + "  'Ancestor(Stores.CurrentMember, [Store Country]).Name'\n"
             + "SELECT {Measures.[Country Name], Measures.[Unit Sales]} ON COLUMNS,\n"
             + "  GENERATE([Store Country].MEMBERS, \n"
-            + "    TOPCOUNT(DESCENDANTS([Store].CURRENTMEMBER, [Store].[Store Name]),\n"
+            + "    TOPCOUNT(DESCENDANTS([Stores].CURRENTMEMBER, [Store].[Store Name]),\n"
             + "      1, [Measures].[Unit Sales])) ON ROWS\n"
             + "FROM Sales",
             "");
@@ -4419,7 +4274,7 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "SELECT {Measures.[Unit Sales]} ON COLUMNS,\n"
             + "  CROSSJOIN(Customers.CHILDREN,\n"
-            + "    TOPCOUNT(DESCENDANTS([Store].CURRENTMEMBER, [Store].[Store Name]),\n"
+            + "    TOPCOUNT(DESCENDANTS([Stores].CURRENTMEMBER, [Store].[Store Name]),\n"
             + "             1, [Measures].[Unit Sales])) ON ROWS\n"
             + "FROM Sales",
 
@@ -4428,9 +4283,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[Canada], [Store].[USA].[OR].[Salem].[Store 13]}\n"
-            + "{[Customers].[Mexico], [Store].[USA].[OR].[Salem].[Store 13]}\n"
-            + "{[Customers].[USA], [Store].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Customer].[Customers].[Canada], [Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Customer].[Customers].[Mexico], [Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: 41,580\n");
@@ -4468,35 +4323,35 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "FROM Sales\n"
             + "WHERE [Product].[Non-Consumable]",
             "Axis #0:\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[OR].[Salem].[Store 13]}\n"
-            + "{[Store].[USA].[WA].[Tacoma].[Store 17]}\n"
-            + "{[Store].[USA].[OR].[Portland].[Store 11]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles].[Store 7]}\n"
-            + "{[Store].[USA].[CA].[San Diego].[Store 24]}\n"
-            + "{[Store].[USA].[WA].[Seattle].[Store 15]}\n"
-            + "{[Store].[USA].[WA].[Bremerton].[Store 3]}\n"
-            + "{[Store].[USA].[WA].[Spokane].[Store 16]}\n"
-            + "{[Store].[USA].[CA].[Beverly Hills].[Store 6]}\n"
-            + "{[Store].[USA].[WA].[Yakima].[Store 23]}\n"
-            + "{[Store].[USA].[WA].[Bellingham].[Store 2]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla].[Store 22]}\n"
-            + "{[Store].[USA].[CA].[San Francisco].[Store 14]}\n"
-            + "{[Store].[Canada].[BC].[Vancouver].[Store 19]}\n"
-            + "{[Store].[Canada].[BC].[Victoria].[Store 20]}\n"
-            + "{[Store].[Mexico].[DF].[Mexico City].[Store 9]}\n"
-            + "{[Store].[Mexico].[DF].[San Andres].[Store 21]}\n"
-            + "{[Store].[Mexico].[Guerrero].[Acapulco].[Store 1]}\n"
-            + "{[Store].[Mexico].[Jalisco].[Guadalajara].[Store 5]}\n"
-            + "{[Store].[Mexico].[Veracruz].[Orizaba].[Store 10]}\n"
-            + "{[Store].[Mexico].[Yucatan].[Merida].[Store 8]}\n"
-            + "{[Store].[Mexico].[Zacatecas].[Camacho].[Store 4]}\n"
-            + "{[Store].[Mexico].[Zacatecas].[Hidalgo].[Store 12]}\n"
-            + "{[Store].[Mexico].[Zacatecas].[Hidalgo].[Store 18]}\n"
-            + "{[Store].[USA].[CA].[Alameda].[HQ]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma].[Store 17]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland].[Store 11]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles].[Store 7]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego].[Store 24]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle].[Store 15]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton].[Store 3]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane].[Store 16]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills].[Store 6]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham].[Store 2]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla].[Store 22]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco].[Store 14]}\n"
+            + "{[Store].[Stores].[Canada].[BC].[Vancouver].[Store 19]}\n"
+            + "{[Store].[Stores].[Canada].[BC].[Victoria].[Store 20]}\n"
+            + "{[Store].[Stores].[Mexico].[DF].[Mexico City].[Store 9]}\n"
+            + "{[Store].[Stores].[Mexico].[DF].[San Andres].[Store 21]}\n"
+            + "{[Store].[Stores].[Mexico].[Guerrero].[Acapulco].[Store 1]}\n"
+            + "{[Store].[Stores].[Mexico].[Jalisco].[Guadalajara].[Store 5]}\n"
+            + "{[Store].[Stores].[Mexico].[Veracruz].[Orizaba].[Store 10]}\n"
+            + "{[Store].[Stores].[Mexico].[Yucatan].[Merida].[Store 8]}\n"
+            + "{[Store].[Stores].[Mexico].[Zacatecas].[Camacho].[Store 4]}\n"
+            + "{[Store].[Stores].[Mexico].[Zacatecas].[Hidalgo].[Store 12]}\n"
+            + "{[Store].[Stores].[Mexico].[Zacatecas].[Hidalgo].[Store 18]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Alameda].[HQ]}\n"
             + "Row #0: 7,940\n"
             + "Row #1: 6,712\n"
             + "Row #2: 5,076\n"
@@ -4547,7 +4402,7 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testDifferentCalculationsForDifferentLevels() {
         assertQueryReturns(
             "WITH MEMBER Measures.[Average Units Ordered] AS\n"
-            + "  'AVG(DESCENDANTS([Store].CURRENTMEMBER, [Store].[Store Name]), [Measures].[Units Ordered])',\n"
+            + "  'AVG(DESCENDANTS([Stores].CURRENTMEMBER, [Store].[Store Name]), [Measures].[Units Ordered])',\n"
             + "  FORMAT_STRING='#.00'\n"
             + "SELECT {[Measures].[Units ordered], Measures.[Average Units Ordered]} ON COLUMNS,\n"
             + "  [Store].[Store State].MEMBERS ON ROWS\n"
@@ -4559,16 +4414,16 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "{[Measures].[Units Ordered]}\n"
             + "{[Measures].[Average Units Ordered]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Canada].[BC]}\n"
-            + "{[Store].[Mexico].[DF]}\n"
-            + "{[Store].[Mexico].[Guerrero]}\n"
-            + "{[Store].[Mexico].[Jalisco]}\n"
-            + "{[Store].[Mexico].[Veracruz]}\n"
-            + "{[Store].[Mexico].[Yucatan]}\n"
-            + "{[Store].[Mexico].[Zacatecas]}\n"
-            + "{[Store].[USA].[CA]}\n"
-            + "{[Store].[USA].[OR]}\n"
-            + "{[Store].[USA].[WA]}\n"
+            + "{[Store].[Stores].[Canada].[BC]}\n"
+            + "{[Store].[Stores].[Mexico].[DF]}\n"
+            + "{[Store].[Stores].[Mexico].[Guerrero]}\n"
+            + "{[Store].[Stores].[Mexico].[Jalisco]}\n"
+            + "{[Store].[Stores].[Mexico].[Veracruz]}\n"
+            + "{[Store].[Stores].[Mexico].[Yucatan]}\n"
+            + "{[Store].[Stores].[Mexico].[Zacatecas]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[OR]}\n"
+            + "{[Store].[Stores].[USA].[WA]}\n"
             + "Row #0: \n"
             + "Row #0: \n"
             + "Row #1: \n"
@@ -4603,23 +4458,23 @@ public class BasicQueryTest extends FoodMartTestCase {
             //  "[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]"
             // should be "[Product].[Beer]"
             "WITH MEMBER Measures.[Average Units Ordered] AS\n"
-            + "  'AVG(DESCENDANTS([Store].CURRENTMEMBER, [Store].[Store Name]), [Measures].[Units Ordered])'\n"
+            + "  'AVG(DESCENDANTS([Stores].CURRENTMEMBER, [Store].[Store Name]), [Measures].[Units Ordered])'\n"
             + "SELECT {[Measures].[Units ordered], Measures.[Average Units Ordered]} ON COLUMNS,\n"
             + "  [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].CHILDREN ON ROWS\n"
             + "FROM Warehouse\n"
             + "WHERE [Store].[USA].[CA]",
 
             "Axis #0:\n"
-            + "{[Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Units Ordered]}\n"
             + "{[Measures].[Average Units Ordered]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
             + "Row #0: \n"
             + "Row #0: \n"
             + "Row #1: 151.0\n"
@@ -4782,7 +4637,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "    [Gender].[All Gender],\n"
             + "    [Marital Status].[All Marital Status],\n"
             + "    [Product].[All Products], \n"
-            + "    [Promotion Media].[All Media],\n"
+            + "    [Promotion].[Media Type].[All Media],\n"
             + "    [Promotions].[All Promotions],\n"
             + "    [Store].[All Stores],\n"
             + "    [Store Size in SQFT].[All Store Size in SQFT],\n"
@@ -4823,10 +4678,10 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             // note: "[Product].[Drink Forecast - Standard]"
             // was "[Drink Forecast - Standard]"
-            "WITH MEMBER [Product].[Drink Forecast - Standard] AS\n"
-            + "  '[Product].[All Products].[Drink] * 2'\n"
-            + "MEMBER [Product].[Drink Forecast - Dynamic] AS \n"
-            + "  '[Product].[All Products].[Drink] * \n"
+            "WITH MEMBER [Product].[Products].[Drink Forecast - Standard] AS\n"
+            + "  '[Product].[Drink] * 2'\n"
+            + "MEMBER [Product].[Products].[Drink Forecast - Dynamic] AS \n"
+            + "  '[Product].[Drink] * \n"
             + "   IIF([Time].[Time].CurrentMember.Name = \"1\", 1.2,\n"
             + "     IIF([Time].[Time].CurrentMember.Name = \"2\", 1.3,\n"
             + "       IIF([Time].[Time].CurrentMember.Name = \"3\", 1.4,\n"
@@ -4846,24 +4701,24 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997].[Q1].[1]}\n"
-            + "{[Time].[1997].[Q1].[2]}\n"
-            + "{[Time].[1997].[Q1].[3]}\n"
-            + "{[Time].[1997].[Q2].[4]}\n"
-            + "{[Time].[1997].[Q2].[5]}\n"
-            + "{[Time].[1997].[Q2].[6]}\n"
-            + "{[Time].[1997].[Q3].[7]}\n"
-            + "{[Time].[1997].[Q3].[8]}\n"
-            + "{[Time].[1997].[Q3].[9]}\n"
-            + "{[Time].[1997].[Q4].[10]}\n"
-            + "{[Time].[1997].[Q4].[11]}\n"
-            + "{[Time].[1997].[Q4].[12]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
+            + "{[Time].[Time].[1997].[Q2].[5]}\n"
+            + "{[Time].[Time].[1997].[Q2].[6]}\n"
+            + "{[Time].[Time].[1997].[Q3].[7]}\n"
+            + "{[Time].[Time].[1997].[Q3].[8]}\n"
+            + "{[Time].[Time].[1997].[Q3].[9]}\n"
+            + "{[Time].[Time].[1997].[Q4].[10]}\n"
+            + "{[Time].[Time].[1997].[Q4].[11]}\n"
+            + "{[Time].[Time].[1997].[Q4].[12]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
-            + "{[Product].[Drink Forecast - Standard]}\n"
-            + "{[Product].[Drink Forecast - Dynamic]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink Forecast - Standard]}\n"
+            + "{[Product].[Products].[Drink Forecast - Dynamic]}\n"
             + "Row #0: 881.847\n"
             + "Row #0: 579.051\n"
             + "Row #0: 476.292\n"
@@ -4940,10 +4795,10 @@ public class BasicQueryTest extends FoodMartTestCase {
      */
     public void _testDc4dtp2() {
         assertQueryReturns(
-            "WITH MEMBER [Product].[Drink Forecast - Standard] AS\n"
-            + "  '[Product].[All Products].[Drink] * 2'\n"
-            + "MEMBER [Product].[Drink Forecast - Dynamic] AS \n"
-            + "  '[Product].[All Products].[Drink] * \n"
+            "WITH MEMBER [Product].[Products].[Drink Forecast - Standard] AS\n"
+            + "  '[Product].[Drink] * 2'\n"
+            + "MEMBER [Product].[Products].[Drink Forecast - Dynamic] AS \n"
+            + "  '[Product].[Drink] * \n"
             + "   [Time].CURRENTMEMBER.PROPERTIES(\"Dynamic Forecast Multiplier\")'\n"
             + "SELECT DESCENDANTS(Time.[1997], [Month], SELF) ON COLUMNS, \n"
             + "  {[Product].CHILDREN, [Drink Forecast - Standard], [Drink Forecast - Dynamic]} ON ROWS\n"
@@ -4992,8 +4847,8 @@ public class BasicQueryTest extends FoodMartTestCase {
     }
 
 
-    /*
-     * takes quite long
+    /**
+     * Disabled, because takes quite a long time.
      */
     public void dont_testParallelMutliple() {
         for (int i = 0; i < 5; i++) {
@@ -5081,17 +4936,17 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "  'Aggregate(Filter([Customers].[City].Members, (([Measures].[Unit Sales] / ([Measures].[Unit Sales], [Product].[All Products])) > 0.1)))' \n"
             + "select  \n"
             + "  {[Measures].[Unit Sales]} ON columns, \n"
-            + "  {[Product].[All Products].[Food].[Deli], [Product].[All Products].[Food].[Frozen Foods]} ON rows \n"
+            + "  {[Product].[Food].[Deli], [Product].[Food].[Frozen Foods]} ON rows \n"
             + "from [Sales] \n"
             + "where ([Customers].[my], [Time].[1997])\n",
 
             "Axis #0:\n"
-            + "{[Customers].[my], [Time].[1997]}\n"
+            + "{[Customer].[Customers].[my], [Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Deli]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
+            + "{[Product].[Products].[Food].[Deli]}\n"
+            + "{[Product].[Products].[Food].[Frozen Foods]}\n"
             + "Row #0: 13\n"
             + "Row #1: 15,111\n");
     }
@@ -5107,8 +4962,8 @@ public class BasicQueryTest extends FoodMartTestCase {
             "WITH SET [#DataSet#] AS 'Filter(Crossjoin({[Store].[All Stores]}, {[Customers].[All Customers]}), "
             + "[Measures].[Unit Sales] > 5)' "
             + "MEMBER [Customers].[#GT#] as 'Aggregate({[#DataSet#]})' "
-            + "MEMBER [Store].[#GT#] as 'Aggregate({[#DataSet#]})' "
-            + "SET [#GrandTotalSet#] as 'Crossjoin({[Store].[#GT#]}, {[Customers].[#GT#]})' "
+            + "MEMBER [Store].[Stores].[#GT#] as 'Aggregate({[#DataSet#]})' "
+            + "SET [#GrandTotalSet#] as 'Crossjoin({[Store].[Stores].[#GT#]}, {[Customers].[#GT#]})' "
             + "SELECT {[Measures].[Unit Sales]} "
             + "on columns, Union([#GrandTotalSet#], Hierarchize({[#DataSet#]})) on rows FROM [Sales]";
 
@@ -5125,7 +4980,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[#GT#], [Customers].[#GT#]}\n"
+            + "{[Store].[Stores].[#GT#], [Customer].[Customers].[#GT#]}\n"
             + "Row #0: \n";
 
         String expectedResultWithFilter =
@@ -5134,8 +4989,8 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[#GT#], [Customers].[#GT#]}\n"
-            + "{[Store].[All Stores], [Customers].[All Customers]}\n"
+            + "{[Store].[Stores].[#GT#], [Customer].[Customers].[#GT#]}\n"
+            + "{[Store].[Stores].[All Stores], [Customer].[Customers].[All Customers]}\n"
             + "Row #0: 266,773\n"
             + "Row #1: 266,773\n";
 
@@ -5145,7 +5000,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[All Stores], [Customers].[All Customers]}\n"
+            + "{[Store].[Stores].[All Stores], [Customer].[Customers].[All Customers]}\n"
             + "Row #0: 266,773\n";
 
         // With bug 1755778, the following test below fails because it returns
@@ -5176,16 +5031,16 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "  NON EMPTY Crossjoin(\n"
             + "    Filter([Customers].[Name].Members,\n"
             + "      (([Measures].[Store Sales],\n"
-            + "        [Store].[All Stores].[USA].[CA].[San Francisco].[Store 14],\n"
+            + "        [Store].[USA].[CA].[San Francisco].[Store 14],\n"
             + "        [Time].[1997].[Q1].[1]) > 5.0)),\n"
             + "    Filter([Product].[Product Name].Members,\n"
             + "      (([Measures].[Store Sales],\n"
-            + "        [Store].[All Stores].[USA].[CA].[San Francisco].[Store 14],\n"
+            + "        [Store].[USA].[CA].[San Francisco].[Store 14],\n"
             + "        [Time].[1997].[Q1].[1]) > 5.0))\n"
             + " ) ON rows\n"
             + "from [Sales]\n"
             + "where (\n"
-            + "  [Store].[All Stores].[USA].[CA].[San Francisco].[Store 14],\n"
+            + "  [Store].[USA].[CA].[San Francisco].[Store 14],\n"
             + "  [Time].[1997].[Q1].[1]\n"
             + ")\n");
         // ok if no OutOfMemoryError occurs
@@ -5198,7 +5053,7 @@ public class BasicQueryTest extends FoodMartTestCase {
      * we can push down evaluation to SQL.
      */
     public void testNonEmptyCrossJoin() {
-        if (!props.EnableNativeCrossJoin.get()) {
+        if (!propSaver.props.EnableNativeCrossJoin.get()) {
             // If we try to evaluate the crossjoin in memory we run out of
             // memory.
             return;
@@ -5212,7 +5067,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + " ) ON rows\n"
             + "from [Sales]\n"
             + "where (\n"
-            + "  [Store].[All Stores].[USA].[CA].[San Francisco].[Store 14],\n"
+            + "  [Store].[USA].[CA].[San Francisco].[Store 14],\n"
             + "  [Time].[1997].[Q1].[1]\n"
             + ")\n");
         // ok if no OutOfMemoryError occurs
@@ -5234,7 +5089,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "      {[Promotions].[Promotion Name].members})\n"
             + "   on rows\n"
             + "from Sales\n"
-            + "where ([Customers].[All Customers].[USA].[WA].[Anacortes])\n");
+            + "where ([Customers].[USA].[WA].[Anacortes])\n");
         Axis a = result.getAxes()[1];
         assertEquals(306, a.getPositions().size());
     }
@@ -5248,7 +5103,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "      {[Promotions].[Promotion Name].members})\n"
             + "   on rows\n"
             + "from Sales\n"
-            + "where ([Customers].[All Customers].[USA].[WA].[Anacortes])\n");
+            + "where ([Customers].[USA].[WA].[Anacortes])\n");
         Axis a = result.getAxes()[1];
         assertEquals(10, a.getPositions().size());
     }
@@ -5262,7 +5117,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "      {[Promotions].[Promotion Name].members})\n"
             + "   on rows\n"
             + "from Sales\n"
-            + "where ([Customers].[All Customers].[USA].[WA].[Anacortes])\n");
+            + "where ([Customers].[USA].[WA].[Anacortes])\n");
         Axis a = result.getAxes()[1];
         assertEquals(1, a.getPositions().size());
     }
@@ -5276,7 +5131,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "      {[Promotions].[Promotion Name].members})\n"
             + "   on rows\n"
             + "from Sales\n"
-            + "where ([Customers].[All Customers].[USA].[WA].[Anacortes])\n");
+            + "where ([Customers].[USA].[WA].[Anacortes])\n");
         Axis a = result.getAxes()[1];
         assertEquals(1, a.getPositions().size());
     }
@@ -5308,7 +5163,7 @@ public class BasicQueryTest extends FoodMartTestCase {
      */
     public void testOverlappingCalculatedMembers() {
         assertQueryReturns(
-            "WITH MEMBER [Store].[Total] AS 'SUM([Store].[Store Country].MEMBERS)' "
+            "WITH MEMBER [Stores].[Total] AS 'SUM([Store].[Store Country].MEMBERS)' "
             + "MEMBER [Store Type].[Total] AS 'SUM([Store Type].[Store Type].MEMBERS)' "
             + "MEMBER [Gender].[Total] AS 'SUM([Gender].[Gender].MEMBERS)' "
             + "MEMBER [Measures].[x] AS '[Measures].[Store Sales]' "
@@ -5320,7 +5175,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[x]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Total], [Store Type].[Total], [Gender].[Total]}\n"
+            + "{[Store].[Stores].[Total], [Store].[Store Type].[Total], [Customer].[Gender].[Total]}\n"
             + "Row #0: 565,238.13\n");
     }
 
@@ -5333,14 +5188,14 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "select     {[Measures].[Unit Sales]} on columns, "
             + "filter([Store].[Store Name].members,"
-            + "[Store].currentmember.properties(\"Store Manager\")=\"Smith\") on rows"
+            + "[Stores].currentmember.properties(\"Store Manager\")=\"Smith\") on rows"
             + " from Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[WA].[Bellingham].[Store 2]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham].[Store 2]}\n"
             + "Row #0: 2,237\n");
     }
 
@@ -5355,11 +5210,11 @@ public class BasicQueryTest extends FoodMartTestCase {
         // 6] whereas store has values [1, 24].
         TestContext testContext = TestContext.instance().createSubstitutingCube(
             "Sales",
-            "<DimensionUsage name=\"Other Store\" source=\"Store\" foreignKey=\"unit_sales\" />");
+            "<DimensionUsage name='Other Store' source='Store' foreignKey='unit_sales' />");
         Axis axis = testContext.executeAxis("[Other Store].members");
         assertEquals(63, axis.getPositions().size());
 
-        axis = testContext.executeAxis("[Store].members");
+        axis = testContext.executeAxis("[Store].[Stores].members");
         assertEquals(63, axis.getPositions().size());
 
         final String q1 =
@@ -5427,15 +5282,15 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA], [Other Store].[USA]}\n"
-            + "{[Store].[USA], [Other Store].[USA].[CA]}\n"
-            + "{[Store].[USA], [Other Store].[USA].[OR].[Portland]}\n"
-            + "{[Store].[USA].[CA], [Other Store].[USA]}\n"
-            + "{[Store].[USA].[CA], [Other Store].[USA].[CA]}\n"
-            + "{[Store].[USA].[CA], [Other Store].[USA].[OR].[Portland]}\n"
-            + "{[Store].[USA].[OR].[Portland], [Other Store].[USA]}\n"
-            + "{[Store].[USA].[OR].[Portland], [Other Store].[USA].[CA]}\n"
-            + "{[Store].[USA].[OR].[Portland], [Other Store].[USA].[OR].[Portland]}\n"
+            + "{[Store].[Stores].[USA], [Other Store].[USA]}\n"
+            + "{[Store].[Stores].[USA], [Other Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA], [Other Store].[USA].[OR].[Portland]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Other Store].[USA]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Other Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Other Store].[USA].[OR].[Portland]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland], [Other Store].[USA]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland], [Other Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland], [Other Store].[USA].[OR].[Portland]}\n"
             + "Row #0: 155,951\n"
             + "Row #1: 222\n"
             + "Row #2: \n"
@@ -5481,139 +5336,123 @@ public class BasicQueryTest extends FoodMartTestCase {
         String cubeName = "Sales_MemberVis";
         final TestContext testContext = TestContext.instance().create(
             null,
-            "<Cube name=\""
+            "<Cube name='"
             + cubeName
-            + "\">\n"
-            + "  <Table name=\"sales_fact_1997\"/>\n"
-            + "  <Measure name=\"Unit Sales\" column=\"unit_sales\" aggregator=\"sum\"\n"
-            + "      formatString=\"Standard\" visible=\"false\"/>\n"
-            + "  <Measure name=\"Store Cost\" column=\"store_cost\" aggregator=\"sum\"\n"
-            + "      formatString=\"#,###.00\"/>\n"
-            + "  <Measure name=\"Store Sales\" column=\"store_sales\" aggregator=\"sum\"\n"
-            + "      formatString=\"#,###.00\"/>\n"
-            + "  <Measure name=\"Sales Count\" column=\"product_id\" aggregator=\"count\"\n"
-            + "      formatString=\"#,###\"/>\n"
-            + "  <Measure name=\"Customer Count\" column=\"customer_id\"\n"
-            + "      aggregator=\"distinct-count\" formatString=\"#,###\"/>\n"
-            + "  <CalculatedMember\n"
-            + "      name=\"Profit\"\n"
-            + "      dimension=\"Measures\"\n"
-            + "      visible=\"false\"\n"
-            + "      formula=\"[Measures].[Store Sales]-[Measures].[Store Cost]\">\n"
-            + "    <CalculatedMemberProperty name=\"FORMAT_STRING\" value=\"$#,##0.00\"/>\n"
-            + "  </CalculatedMember>\n"
-            + "</Cube>", null, null, null, null);
+            + "'>\n"
+            + "  <MeasureGroups>\n"
+            + "    <MeasureGroup name='sales' table='sales_fact_1997'>\n"
+            + "      <Measures>\n"
+            + "  <Measure name='Unit Sales' column='unit_sales' aggregator='sum'\n"
+            + "      formatString='Standard' visible='false'/>\n"
+            + "  <Measure name='Store Cost' column='store_cost' aggregator='sum'\n"
+            + "      formatString='#,###.00'/>\n"
+            + "  <Measure name='Store Sales' column='store_sales' aggregator='sum'\n"
+            + "      formatString='#,###.00'/>\n"
+            + "  <Measure name='Sales Count' column='product_id' aggregator='count'\n"
+            + "      formatString='#,###'/>\n"
+            + "  <Measure name='Customer Count' column='customer_id'\n"
+            + "      aggregator='distinct-count' formatString='#,###'/>\n"
+            + "      </Measures>\n"
+            + "    </MeasureGroup>\n"
+            + "  </MeasureGroups>"
+            + "  <CalculatedMembers>\n"
+            + "    <CalculatedMember\n"
+            + "        name='Profit'\n"
+            + "        dimension='Measures'\n"
+            + "        visible='false'\n"
+            + "        formula='[Measures].[Store Sales]-[Measures].[Store Cost]'>\n"
+            + "      <CalculatedMemberProperty name='FORMAT_STRING' value='$#,##0.00'/>\n"
+            + "    </CalculatedMember>\n"
+            + "  </CalculatedMembers>\n"
+            + "</Cube>",
+            null, null, null, null);
         SchemaReader scr = testContext.getConnection().getSchema().lookupCube(
             cubeName, true).getSchemaReader(null);
         Member member = scr.getMemberByUniqueName(
             Id.Segment.toList(
                 "Measures", "Unit Sales"), true);
-        Object visible = member.getPropertyValue(Property.VISIBLE.name);
+        Object visible = member.getPropertyValue(Property.VISIBLE);
         assertEquals(Boolean.FALSE, visible);
 
         member = scr.getMemberByUniqueName(
             Id.Segment.toList(
                 "Measures", "Store Cost"), true);
-        visible = member.getPropertyValue(Property.VISIBLE.name);
+        visible = member.getPropertyValue(Property.VISIBLE);
         assertEquals(Boolean.TRUE, visible);
 
         member = scr.getMemberByUniqueName(
             Id.Segment.toList(
                 "Measures", "Profit"), true);
-        visible = member.getPropertyValue(Property.VISIBLE.name);
+        visible = member.getPropertyValue(Property.VISIBLE);
         assertEquals(Boolean.FALSE, visible);
     }
 
-    public void testAllMemberCaption() {
-        TestContext testContext = TestContext.instance()
-        .createSubstitutingCube(
-            "Sales",
-            "<Dimension name=\"Gender3\" foreignKey=\"customer_id\">\n"
-            + "  <Hierarchy hasAll=\"true\" allMemberName=\"All Gender\"\n"
-            + " allMemberCaption=\"Frauen und Maenner\" primaryKey=\"customer_id\">\n"
-            + "  <Table name=\"customer\"/>\n"
-            + "    <Level name=\"Gender\" column=\"gender\" uniqueMembers=\"true\"/>\n"
-            + "  </Hierarchy>\n"
-            + "</Dimension>");
-        String mdx = "select {[Gender3].[All Gender]} on columns from Sales";
-        Result result = testContext.executeQuery(mdx);
-        Axis axis0 = result.getAxes()[0];
-        Position pos0 = axis0.getPositions().get(0);
-        Member allGender = pos0.get(0);
-        String caption = allGender.getCaption();
-        Assert.assertEquals(caption, "Frauen und Maenner");
-    }
-
-    public void testAllLevelName() {
-        TestContext testContext = TestContext.instance()
-        .createSubstitutingCube(
-            "Sales",
-            "<Dimension name=\"Gender4\" foreignKey=\"customer_id\">\n"
-            + "  <Hierarchy hasAll=\"true\" allMemberName=\"All Gender\"\n"
-            + " allLevelName=\"GenderLevel\" primaryKey=\"customer_id\">\n"
-            + "  <Table name=\"customer\"/>\n"
-            + "    <Level name=\"Gender\" column=\"gender\" uniqueMembers=\"true\"/>\n"
-            + "  </Hierarchy>\n"
-            + "</Dimension>");
-        String mdx = "select {[Gender4].[All Gender]} on columns from Sales";
-        Result result = testContext.executeQuery(mdx);
-        Axis axis0 = result.getAxes()[0];
-        Position pos0 = axis0.getPositions().get(0);
-        Member allGender = pos0.get(0);
-        String caption = allGender.getLevel().getName();
-        Assert.assertEquals(caption, "GenderLevel");
-    }
-
     /**
-     * Bug 1250080 caused a dimension with no 'all' member to be constrained
-     * twice.
+     * Tests bug
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-105">MONDRIAN-105,
+     * "bug with hierarchy with no all member when in query"</a>. It caused a
+     * dimension with no 'all' member to be constrained twice.
+     *
+     * @see mondrian.test.LegacySchemaTest#testDimWithoutAll()
      */
     public void testDimWithoutAll() {
         // Create a test context with a new ""Sales_DimWithoutAll" cube, and
         // which evaluates expressions against that cube.
         final String schema = TestContext.instance().getSchema(
             null,
-            "<Cube name=\"Sales_DimWithoutAll\">\n"
-            + "  <Table name=\"sales_fact_1997\"/>\n"
-            + "  <Dimension name=\"Product\" foreignKey=\"product_id\">\n"
-            + "    <Hierarchy hasAll=\"false\" primaryKey=\"product_id\" "
-            + "primaryKeyTable=\"product\">\n"
-            + "      <Join leftKey=\"product_class_id\" "
-            + "rightKey=\"product_class_id\">\n"
-            + "        <Table name=\"product\"/>\n"
-            + "        <Table name=\"product_class\"/>\n"
-            + "      </Join>\n"
-            + "      <Level name=\"Product Family\" table=\"product_class\" "
-            + "column=\"product_family\"\n"
-            + "          uniqueMembers=\"true\"/>\n"
-            + "      <Level name=\"Product Department\" "
-            + "table=\"product_class\" column=\"product_department\"\n"
-            + "          uniqueMembers=\"false\"/>\n"
-            + "      <Level name=\"Product Category\" table=\"product_class\""
-            + " column=\"product_category\"\n"
-            + "          uniqueMembers=\"false\"/>\n"
-            + "      <Level name=\"Product Subcategory\" "
-            + "table=\"product_class\" column=\"product_subcategory\"\n"
-            + "          uniqueMembers=\"false\"/>\n"
-            + "      <Level name=\"Brand Name\" table=\"product\" "
-            + "column=\"brand_name\" uniqueMembers=\"false\"/>\n"
-            + "      <Level name=\"Product Name\" table=\"product\" "
-            + "column=\"product_name\"\n"
-            + "          uniqueMembers=\"true\"/>\n"
-            + "    </Hierarchy>\n"
-            + "  </Dimension>\n"
-            + "  <Dimension name=\"Gender\" foreignKey=\"customer_id\">\n"
-            + "    <Hierarchy hasAll=\"false\" primaryKey=\"customer_id\">\n"
-            + "    <Table name=\"customer\"/>\n"
-            + "      <Level name=\"Gender\" column=\"gender\" "
-            + "uniqueMembers=\"true\"/>\n"
-            + "    </Hierarchy>\n"
-            + "  </Dimension>"
-            + "  <Measure name=\"Unit Sales\" column=\"unit_sales\" "
-            + "aggregator=\"sum\"\n"
-            + "      formatString=\"Standard\" visible=\"false\"/>\n"
-            + "  <Measure name=\"Store Cost\" column=\"store_cost\" aggregator=\"sum\"\n"
-            + "      formatString=\"#,###.00\"/>\n"
+            "<Cube name='Sales_DimWithoutAll'>\n"
+            + "  <Dimensions>\n"
+            + "    <Dimension name='Product' key='Product Id'>\n"
+            + "      <Attributes>\n"
+            + "        <Attribute name='Product Family' table='product_class' keyColumn='product_family'/>\n"
+            + "        <Attribute name='Product Department' table='product_class'>\n"
+            + "          <Key>\n"
+            + "            <Column name='product_family'/>\n"
+            + "            <Column name='product_department'/>\n"
+            + "          </Key>\n"
+            + "          <Name>\n"
+            + "            <Column name='product_department'/>\n"
+            + "          </Name>\n"
+            + "        </Attribute>\n"
+            + "        <Attribute name='Product Category' table='product_class'>\n"
+            + "          <Key>\n"
+            + "            <Column name='product_family'/>\n"
+            + "            <Column name='product_department'/>\n"
+            + "            <Column name='product_category'/>\n"
+            + "          </Key>\n"
+            + "          <Name>\n"
+            + "            <Column name='product_category'/>\n"
+            + "          </Name>\n"
+            + "        </Attribute>\n"
+            + "        <Attribute name='Product Id' table='product' keyColumn='product_id'/>\n"
+            + "      </Attributes>\n"
+            + "      <Hierarchies>\n"
+            + "        <Hierarchy name='Products' allMemberName='All Products' hasAll='false'>\n"
+            + "          <Level attribute='Product Family'/>\n"
+            + "          <Level attribute='Product Department'/>\n"
+            + "          <Level attribute='Product Category'/>\n"
+            + "        </Hierarchy>\n"
+            + "      </Hierarchies>\n"
+            + "    </Dimension>\n"
+            + "    <Dimension name='Gender' table='customer' key='Name'>\n"
+            + "      <Attributes>\n"
+            + "        <Attribute name='Name' keyColumn='customer_id' nameColumn='full_name' orderByColumn='full_name' hasHierarchy='false'/>\n"
+            + "        <Attribute name='Gender' keyColumn='gender' hierarchyHasAll='false'/>\n"
+            + "      </Attributes>\n"
+            + "    </Dimension>\n"
+            + "  </Dimensions>\n"
+            + "  <MeasureGroups>\n"
+            + "    <MeasureGroup name='s' table='sales_fact_1997'>\n"
+            + "      <Measures>\n"
+            + "        <Measure name='Unit Sales' column='unit_sales' aggregator='sum' formatString='Standard' visible='false'/>\n"
+            + "        <Measure name='Store Cost' column='store_cost' aggregator='sum' formatString='#,###.00'/>\n"
+            + "      </Measures>\n"
+            + "      <DimensionLinks>\n"
+            + "        <ForeignKeyLink dimension='Product' foreignKeyColumn='product_id'/>\n"
+            + "        <ForeignKeyLink dimension='Gender' foreignKeyColumn='customer_id'/>\n"
+            + "      </DimensionLinks>"
+            + "    </MeasureGroup>\n"
+            + "  </MeasureGroups>\n"
             + "</Cube>",
             null,
             null,
@@ -5625,7 +5464,8 @@ public class BasicQueryTest extends FoodMartTestCase {
                 .withCube("Sales_DimWithoutAll");
         // the default member of the Gender dimension is the first member
         testContext.assertExprReturns("[Gender].CurrentMember.Name", "F");
-        testContext.assertExprReturns("[Product].CurrentMember.Name", "Drink");
+        testContext.assertExprReturns(
+            "[Product].[Products].CurrentMember.Name", "Drink");
         // There is no all member.
         testContext.assertExprThrows(
             "([Gender].[All Gender], [Measures].[Unit Sales])",
@@ -5663,9 +5503,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Sales Count]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA]}\n"
-            + "{[Store].[USA].[OR]}\n"
-            + "{[Store].[USA].[WA]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[OR]}\n"
+            + "{[Store].[Stores].[USA].[WA]}\n"
             + "Row #0: 24,442\n"
             + "Row #1: 21,611\n"
             + "Row #2: 40,784\n");
@@ -5702,14 +5542,14 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "    {[Product].children},\n"
             + "    {[Measures].[Unit Sales]}) on columns,\n"
             + "    {([Product],\n"
-            + "      [Store].CurrentMember)} on rows\n"
+            + "      [Stores].CurrentMember)} on rows\n"
             + "from [Sales]",
-            "Hierarchy '[Product]' appears in more than one independent axis");
+            "Hierarchy '[Product].[Products]' appears in more than one independent axis");
 
         // clash between columns and slicer
         assertQueryThrows(
             "select {[Measures].[Unit Sales]} on columns,\n"
-            + " {[Store].Members} on rows\n"
+            + " {[Store].[Stores].Members} on rows\n"
             + "from [Sales]\n"
             + "where ([Time].[1997].[Q1], [Measures].[Store Sales])",
             "Hierarchy '[Measures]' appears in more than one independent axis");
@@ -5723,7 +5563,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "    [Measures].[Unit Sales]} on Columns,\n"
             + " CrossJoin(\n"
             + "   {[Product].children},\n"
-            + "   {[Store].children}) on Rows\n"
+            + "   {[Store].[Stores].children}) on Rows\n"
             + "from [Sales]");
     }
 
@@ -5733,7 +5573,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "    {[Product].children},\n"
             + "    {[Measures].[Unit Sales]}) on columns,\n"
             + "    {([Product],\n"
-            + "      [Store].members)} on rows\n"
+            + "      [Store].[Stores].members)} on rows\n"
             + "from [Sales]",
             "Dimension '[Product]' appears in more than one independent axis");
     }
@@ -5742,7 +5582,7 @@ public class BasicQueryTest extends FoodMartTestCase {
         // clash within slicer
         assertQueryThrows(
             "select {[Measures].[Unit Sales]} on columns,\n"
-            + " {[Store].Members} on rows\n"
+            + " {[Store].[Stores].Members} on rows\n"
             + "from [Sales]\n"
             + "where ([Time].[1997].[Q1], [Product], [Time].[1997].[Q2])",
             "Dimension '[Time]' more than once in same tuple");
@@ -5766,11 +5606,11 @@ public class BasicQueryTest extends FoodMartTestCase {
                 + "FROM [Sales] \n"
                 + "WHERE [Time].[1997]",
                 "Axis #0:\n"
-                + "{[Time].[1997]}\n"
+                + "{[Time].[Time].[1997]}\n"
                 + "Axis #1:\n"
                 + "{[Measures].[Store Cost]}\n"
                 + "Axis #2:\n"
-                + "{[Store Size in SQFT].[#null]}\n"
+                + "{[Store].[Store Size in SQFT].[#null]}\n"
                 + "Row #0: 33,307.69\n");
         }
     }
@@ -5785,96 +5625,21 @@ public class BasicQueryTest extends FoodMartTestCase {
                 + "FROM [Sales] \n"
                 + "WHERE [Time].[1997]",
                 "Axis #0:\n"
-                + "{[Time].[1997]}\n"
+                + "{[Time].[Time].[1997]}\n"
                 + "Axis #1:\n"
                 + "{[Measures].[Store Cost]}\n"
                 + "Axis #2:\n"
-                + "{[Store Size in SQFT].[#null]}\n"
-                + "{[Store Size in SQFT].[39696]}\n"
+                + "{[Store].[Store Size in SQFT].[#null]}\n"
+                + "{[Store].[Store Size in SQFT].[39696]}\n"
                 + "Row #0: 33,307.69\n"
                 + "Row #1: 21,121.96\n");
         }
     }
 
-    /**
-     * Tests whether the agg mgr behaves correctly if a cell request causes
-     * a column to be constrained multiple times. This happens if two levels
-     * map to the same column via the same join-path. If the constraints are
-     * inconsistent, no data will be returned.
-     */
-    public void testMultipleConstraintsOnSameColumn() {
-        final String cubeName = "Sales_withCities";
-        final TestContext testContext = TestContext.instance().create(
-            null,
-            "<Cube name=\"" + cubeName + "\">\n"
-            + "  <Table name=\"sales_fact_1997\"/>\n"
-            + "  <DimensionUsage name=\"Time\" source=\"Time\" foreignKey=\"time_id\"/>\n"
-            + "  <Dimension name=\"Cities\" foreignKey=\"customer_id\">\n"
-            + "    <Hierarchy hasAll=\"true\" allMemberName=\"All Cities\" primaryKey=\"customer_id\">\n"
-            + "      <Table name=\"customer\"/>\n"
-            + "      <Level name=\"City\" column=\"city\" uniqueMembers=\"false\"/> \n"
-            + "    </Hierarchy>\n"
-            + "  </Dimension>\n"
-            + "  <Dimension name=\"Customers\" foreignKey=\"customer_id\">\n"
-            + "    <Hierarchy hasAll=\"true\" allMemberName=\"All Customers\" primaryKey=\"customer_id\">\n"
-            + "      <Table name=\"customer\"/>\n"
-            + "      <Level name=\"Country\" column=\"country\" uniqueMembers=\"true\"/>\n"
-            + "      <Level name=\"State Province\" column=\"state_province\" uniqueMembers=\"true\"/>\n"
-            + "      <Level name=\"City\" column=\"city\" uniqueMembers=\"false\"/>\n"
-            + "      <Level name=\"Name\" column=\"fullname\" uniqueMembers=\"true\">\n"
-            + "        <Property name=\"Gender\" column=\"gender\"/>\n"
-            + "        <Property name=\"Marital Status\" column=\"marital_status\"/>\n"
-            + "        <Property name=\"Education\" column=\"education\"/>\n"
-            + "        <Property name=\"Yearly Income\" column=\"yearly_income\"/>\n"
-            + "      </Level>\n"
-            + "    </Hierarchy>\n"
-            + "  </Dimension>\n"
-            + "  <Dimension name=\"Gender\" foreignKey=\"customer_id\">\n"
-            + "    <Hierarchy hasAll=\"true\" primaryKey=\"customer_id\">\n"
-            + "    <Table name=\"customer\"/>\n"
-            + "      <Level name=\"Gender\" column=\"gender\" uniqueMembers=\"true\"/>\n"
-            + "    </Hierarchy>\n"
-            + "  </Dimension>"
-            + "  <Measure name=\"Unit Sales\" column=\"unit_sales\" aggregator=\"sum\"\n"
-            + "      formatString=\"Standard\" visible=\"false\"/>\n"
-            + "  <Measure name=\"Store Sales\" column=\"store_sales\" aggregator=\"sum\"\n"
-            + "      formatString=\"#,###.00\"/>\n"
-            + "</Cube>",
-            null,
-            null,
-            null,
-            null);
-
-        testContext.assertQueryReturns(
-            "select {\n"
-            + " [Customers].[All Customers].[USA],\n"
-            + " [Customers].[All Customers].[USA].[OR],\n"
-            + " [Customers].[All Customers].[USA].[CA],\n"
-            + " [Customers].[All Customers].[USA].[CA].[Altadena],\n"
-            + " [Customers].[All Customers].[USA].[CA].[Burbank],\n"
-            + " [Customers].[All Customers].[USA].[CA].[Burbank].[Alma Son]} ON COLUMNS\n"
-            + "from ["
-            + cubeName
-            + "] \n"
-            + "where ([Cities].[All Cities].[Burbank], [Measures].[Store Sales])",
-            "Axis #0:\n"
-            + "{[Cities].[Burbank], [Measures].[Store Sales]}\n"
-            + "Axis #1:\n"
-            + "{[Customers].[USA]}\n"
-            + "{[Customers].[USA].[OR]}\n"
-            + "{[Customers].[USA].[CA]}\n"
-            + "{[Customers].[USA].[CA].[Altadena]}\n"
-            + "{[Customers].[USA].[CA].[Burbank]}\n"
-            + "{[Customers].[USA].[CA].[Burbank].[Alma Son]}\n"
-            + "Row #0: 6,577.33\n"
-            + "Row #0: \n"
-            + "Row #0: 6,577.33\n"
-            + "Row #0: \n"
-            + "Row #0: 6,577.33\n"
-            + "Row #0: 36.50\n");
-    }
-
     public void testOverrideDimension() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member  [Gender].[test] as '\n"
             + "  aggregate(\n"
@@ -5890,68 +5655,12 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997]}\n"
-            + "{[Time].[1998]}\n"
+            + "{[Time].[Time].[1997]}\n"
+            + "{[Time].[Time].[1998]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[test]}\n"
+            + "{[Customer].[Gender].[test]}\n"
             + "Row #0: 66,291\n"
             + "Row #0: 66,291\n");
-    }
-
-    public void testBadMeasure1() {
-        final TestContext testContext = TestContext.instance().create(
-            null,
-            "<Cube name=\"SalesWithBadMeasure\">\n"
-            + "  <Table name=\"sales_fact_1997\"/>\n"
-            + "  <DimensionUsage name=\"Time\" source=\"Time\" foreignKey=\"time_id\"/>\n"
-            + "  <Measure name=\"Bad Measure\" aggregator=\"sum\"\n"
-            + "      formatString=\"Standard\"/>\n"
-            + "</Cube>",
-            null,
-            null,
-            null,
-            null);
-        Throwable throwable = null;
-        try {
-            testContext.assertSimpleQuery();
-        } catch (Throwable e) {
-            throwable = e;
-        }
-        // neither a source column or source expression specified
-        TestContext.checkThrowable(
-            throwable,
-            "must contain either a source column or a source expression, but not both");
-    }
-
-    public void testBadMeasure2() {
-        final TestContext testContext = TestContext.instance().create(
-            null,
-            "<Cube name=\"SalesWithBadMeasure2\">\n"
-            + "  <Table name=\"sales_fact_1997\"/>\n"
-            + "  <DimensionUsage name=\"Time\" source=\"Time\" foreignKey=\"time_id\"/>\n"
-            + "  <Measure name=\"Bad Measure\" column=\"unit_sales\" aggregator=\"sum\"\n"
-            + "      formatString=\"Standard\">\n"
-            + "    <MeasureExpression>\n"
-            + "       <SQL dialect=\"generic\">\n"
-            + "         unit_sales\n"
-            + "       </SQL>\n"
-            + "    </MeasureExpression>\n"
-            + "  </Measure>\n"
-            + "</Cube>",
-            null,
-            null,
-            null,
-            null);
-        Throwable throwable = null;
-        try {
-            testContext.assertSimpleQuery();
-        } catch (Throwable e) {
-            throwable = e;
-        }
-        // both a source column and source expression specified
-        TestContext.checkThrowable(
-            throwable,
-            "must contain either a source column or a source expression, but not both");
     }
 
     public void testInvalidMembersInQuery() {
@@ -5964,7 +5673,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             "select {[Measures].[Unit Sales]} on columns,\n"
             + "nonemptycrossjoin(\n"
             + "{[Time].[1997].[Q1], [Time].[1997].[QTOO]},\n"
-            + "[Customers].[All Customers].[USA].children) on rows\n"
+            + "[Customers].[USA].children) on rows\n"
             + "from [Sales]";
 
         String mdx3 =
@@ -5983,9 +5692,7 @@ public class BasicQueryTest extends FoodMartTestCase {
 
         // Now set property
 
-        propSaver.set(
-            props.IgnoreInvalidMembersDuringQuery,
-            true);
+        propSaver.set(propSaver.props.IgnoreInvalidMembersDuringQuery, true);
 
         assertQueryReturns(
             mdx,
@@ -5994,7 +5701,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
             + "Row #0: 66,291\n");
 
         // Illegal member in slicer
@@ -6009,7 +5716,7 @@ public class BasicQueryTest extends FoodMartTestCase {
         // usage of native NECJ (LER-5165).
 
         propSaver.set(
-            props.AlertNativeEvaluationUnsupported,
+            propSaver.props.AlertNativeEvaluationUnsupported,
             "ERROR");
 
         assertQueryReturns(
@@ -6019,16 +5726,22 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1], [Customers].[USA].[CA]}\n"
-            + "{[Time].[1997].[Q1], [Customers].[USA].[OR]}\n"
-            + "{[Time].[1997].[Q1], [Customers].[USA].[WA]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Customer].[Customers].[USA].[CA]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Customer].[Customers].[USA].[OR]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Customer].[Customers].[USA].[WA]}\n"
             + "Row #0: 16,890\n"
             + "Row #1: 19,287\n"
             + "Row #2: 30,114\n");
     }
 
+    /**
+     * Test case for {@link MondrianProperties#CompareSiblingsByOrderKey},
+     * which partially fixes
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-259">MONDRIAN-259,
+     * "MEMBER_ORDINAL property incompatible with native filtering"</a>.
+     */
     public void testMemberOrdinalCaching() {
-        propSaver.set(props.CompareSiblingsByOrderKey, true);
+        propSaver.set(propSaver.props.CompareSiblingsByOrderKey, true);
         // Use a fresh connection to make sure bad member ordinals haven't
         // been assigned by previous tests.
         final TestContext context = getTestContext().withFreshConnection();
@@ -6042,9 +5755,9 @@ public class BasicQueryTest extends FoodMartTestCase {
     private void tryMemberOrdinalCaching(TestContext context) {
         // NOTE jvs 20-Feb-2007: If you change the calculated measure
         // definition below from zero to
-        // [Customers].[Name].currentmember.Properties(\"MEMBER_ORDINAL\"), you
+        // [Customers].[Name].currentmember.Properties('MEMBER_ORDINAL'), you
         // can see that the absolute ordinals returned are incorrect due to bug
-        // 1660383 (http://tinyurl.com/3xb56f).  For now, this test just
+        // http://jira.pentaho.com/browse/MONDRIAN-259.  For now, this test just
         // verifies that the member sorting is correct when using relative
         // order key rather than absolute ordinal value.  If absolute ordinals
         // get fixed, replace zero with the MEMBER_ORDINAL property.
@@ -6061,11 +5774,11 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[o]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[WA], [Customers].[USA].[WA].[Yakima].[Tracy Meyer]}\n"
-            + "{[Store].[USA].[WA], [Customers].[USA].[WA].[Yakima].[Vanessa Thompson]}\n"
-            + "{[Store].[USA].[WA], [Customers].[USA].[WA].[Yakima].[Velma Lykes]}\n"
-            + "{[Store].[USA].[WA], [Customers].[USA].[WA].[Yakima].[William Battaglia]}\n"
-            + "{[Store].[USA].[WA], [Customers].[USA].[WA].[Yakima].[Wilma Fink]}\n"
+            + "{[Store].[Stores].[USA].[WA], [Customer].[Customers].[USA].[WA].[Yakima].[Tracy Meyer]}\n"
+            + "{[Store].[Stores].[USA].[WA], [Customer].[Customers].[USA].[WA].[Yakima].[Vanessa Thompson]}\n"
+            + "{[Store].[Stores].[USA].[WA], [Customer].[Customers].[USA].[WA].[Yakima].[Velma Lykes]}\n"
+            + "{[Store].[Stores].[USA].[WA], [Customer].[Customers].[USA].[WA].[Yakima].[William Battaglia]}\n"
+            + "{[Store].[Stores].[USA].[WA], [Customer].[Customers].[USA].[WA].[Yakima].[Wilma Fink]}\n"
             + "Row #0: 0\n"
             + "Row #1: 0\n"
             + "Row #2: 0\n"
@@ -6086,11 +5799,11 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[o]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Tracy Meyer]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Vanessa Thompson]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Velma Lykes]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[William Battaglia]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Wilma Fink]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Tracy Meyer]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Vanessa Thompson]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Velma Lykes]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[William Battaglia]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Wilma Fink]}\n"
             + "Row #0: 0\n"
             + "Row #1: 0\n"
             + "Row #2: 0\n"
@@ -6122,9 +5835,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             null,
             null,
             null,
-            "<UserDefinedFunction name=\"SleepUdf\" className=\""
+            "<UserDefinedFunction name='SleepUdf' className='"
             + SleepUdf.class.getName()
-            + "\"/>",
+            + "'/>",
             null);
         Connection connection = tc.getConnection();
 
@@ -6184,9 +5897,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             null,
             null,
             null,
-            "<UserDefinedFunction name=\"SleepUdf\" className=\""
+            "<UserDefinedFunction name='SleepUdf' className='"
             + SleepUdf.class.getName()
-            + "\"/>",
+            + "'/>",
             null);
 
         String query =
@@ -6197,7 +5910,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "  {[Product].members} ON ROWS\n"
             + "FROM [Sales]";
         Throwable throwable = null;
-        propSaver.set(props.QueryTimeout, 2);
+        propSaver.set(propSaver.props.QueryTimeout, 2);
         try {
             tc.executeQuery(query);
         } catch (Throwable ex) {
@@ -6208,6 +5921,9 @@ public class BasicQueryTest extends FoodMartTestCase {
     }
 
     public void testFormatInheritance() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member measures.foo as 'measures.bar' "
             + "member measures.bar as "
@@ -6220,6 +5936,9 @@ public class BasicQueryTest extends FoodMartTestCase {
     }
 
     public void testFormatInheritanceWithIIF() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member measures.foo as 'measures.bar' "
             + "member measures.bar as "
@@ -6236,22 +5955,25 @@ public class BasicQueryTest extends FoodMartTestCase {
      * neither [unit sales] nor [customer count] format is used.
      */
     public void testFormatInheritanceWorksWithFirstFormatItFinds() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member measures.foo as 'measures.bar' "
             + "member measures.bar as "
             + "'iif(measures.profit>3000,measures.[unit sales],measures.[Customer Count])' "
-            + "select {[Store].[All Stores].[USA].[WA].children} on 0 "
+            + "select {[Store].[USA].[WA].children} on 0 "
             + "from sales where measures.foo",
             "Axis #0:\n"
             + "{[Measures].[foo]}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA].[WA].[Bellingham]}\n"
-            + "{[Store].[USA].[WA].[Bremerton]}\n"
-            + "{[Store].[USA].[WA].[Seattle]}\n"
-            + "{[Store].[USA].[WA].[Spokane]}\n"
-            + "{[Store].[USA].[WA].[Tacoma]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla]}\n"
-            + "{[Store].[USA].[WA].[Yakima]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima]}\n"
             + "Row #0: $190.00\n"
             + "Row #0: $24,576.00\n"
             + "Row #0: $25,011.00\n"
@@ -6299,24 +6021,29 @@ public class BasicQueryTest extends FoodMartTestCase {
     }
 
     /**
-     * This tests a fix for bug #1603653
+     * Test case for bug
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-244">MONDRIAN-244,
+     * "Avg - cast problem in Mondrian 2.1.1"</a>.
      */
     public void testAvgCastProblem() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member measures.bar as "
             + "'iif(measures.profit>3000,min([Education Level].[Education Level].Members),min([Education Level].[Education Level].Members))' "
-            + "select {[Store].[All Stores].[USA].[WA].children} on 0 "
+            + "select {[Store].[USA].[WA].children} on 0 "
             + "from sales where measures.bar",
             "Axis #0:\n"
             + "{[Measures].[bar]}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA].[WA].[Bellingham]}\n"
-            + "{[Store].[USA].[WA].[Bremerton]}\n"
-            + "{[Store].[USA].[WA].[Seattle]}\n"
-            + "{[Store].[USA].[WA].[Spokane]}\n"
-            + "{[Store].[USA].[WA].[Tacoma]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla]}\n"
-            + "{[Store].[USA].[WA].[Yakima]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima]}\n"
             + "Row #0: $95.00\n"
             + "Row #0: $1,835.00\n"
             + "Row #0: $1,277.00\n"
@@ -6331,6 +6058,9 @@ public class BasicQueryTest extends FoodMartTestCase {
      * first does not have one.
      */
     public void testFormatInheritanceUseSecondIfFirstHasNoFormat() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member measures.foo as 'measures.bar+measures.blah'"
             + " member measures.bar as '10'"
@@ -6346,19 +6076,22 @@ public class BasicQueryTest extends FoodMartTestCase {
      * format of the first member that has a valid format is used.
      */
     public void testFormatInheritanceUseFirstValid() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
             "with member measures.foo as '13+31*measures.[Unit Sales]/"
             + "iif(measures.profit>0,measures.profit,measures.[Customer Count])'"
-            + " select {[Store].[All Stores].[USA].[CA].children} on 0 "
+            + " select {[Store].[USA].[CA].children} on 0 "
             + "from sales where measures.foo",
             "Axis #0:\n"
             + "{[Measures].[foo]}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA].[CA].[Alameda]}\n"
-            + "{[Store].[USA].[CA].[Beverly Hills]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles]}\n"
-            + "{[Store].[USA].[CA].[San Diego]}\n"
-            + "{[Store].[USA].[CA].[San Francisco]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Alameda]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco]}\n"
             + "Row #0: 13\n"
             + "Row #0: 37\n"
             + "Row #0: 37\n"
@@ -6376,15 +6109,15 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Set [*GENERATED_MEMBERS_Dates] as 'Generate([*NATIVE_CJ_SET], {[Time].[Time].CurrentMember})' "
             + "Set [*GENERATED_MEMBERS_Measures] as '{[Measures].[*SUMMARY_METRIC_0]}' "
             + "Set [*BASE_MEMBERS_Stores] as '{[Store].[USA].[CA], [Store].[USA].[WA], [Store].[USA].[OR]}' "
-            + "Set [*GENERATED_MEMBERS_Stores] as 'Generate([*NATIVE_CJ_SET], {[Store].CurrentMember})' "
+            + "Set [*GENERATED_MEMBERS_Stores] as 'Generate([*NATIVE_CJ_SET], {[Stores].CurrentMember})' "
             + "Member [Time].[Time].[*SM_CTX_SEL] as 'Aggregate([*GENERATED_MEMBERS_Dates])' "
             + "Member [Measures].[*SUMMARY_METRIC_0] as '[Measures].[Unit Sales]/([Measures].[Unit Sales],[Time].[*SM_CTX_SEL])' "
             + "Member [Time].[Time].[*SUBTOTAL_MEMBER_SEL~SUM] as 'sum([*GENERATED_MEMBERS_Dates])' "
-            + "Member [Store].[*SUBTOTAL_MEMBER_SEL~SUM] as 'sum([*GENERATED_MEMBERS_Stores])' "
+            + "Member [Stores].[*SUBTOTAL_MEMBER_SEL~SUM] as 'sum([*GENERATED_MEMBERS_Stores])' "
             + "select crossjoin({[Time].[*SUBTOTAL_MEMBER_SEL~SUM]}, {[Store].[*SUBTOTAL_MEMBER_SEL~SUM]}) "
             + "on columns from [Sales]";
 
-        propSaver.set(props.IterationLimit, 11);
+        propSaver.set(propSaver.props.IterationLimit, 11);
 
         Throwable throwable = null;
         try {
@@ -6405,118 +6138,98 @@ public class BasicQueryTest extends FoodMartTestCase {
     }
 
     public void testGetCaptionUsingMemberDotCaption() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
-            "SELECT Filter(Store.allmembers, "
-            + "[store].currentMember.caption = \"USA\") on 0 FROM SALES",
+            "SELECT Filter(Stores.allmembers, "
+            + "[stores].currentMember.caption = \"USA\") on 0 FROM SALES",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA]}\n"
+            + "{[Store].[Stores].[USA]}\n"
             + "Row #0: 266,773\n");
     }
 
     public void testGetCaptionUsingMemberDotPropertiesCaption() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
         assertQueryReturns(
-            "SELECT Filter(Store.allmembers, "
-            + "[store].currentMember.properties(\"caption\") = \"USA\") "
+            "SELECT Filter(Stores.allmembers, "
+            + "[stores].currentMember.properties(\"caption\") = \"USA\") "
             + "on 0 FROM SALES",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA]}\n"
+            + "{[Store].[Stores].[USA]}\n"
             + "Row #0: 266,773\n");
     }
 
-    public void testDefaultMeasureInCube() {
-        TestContext testContext = TestContext.instance().create(
+    private TestContext defaultMeasureContext(String name) {
+        return TestContext.instance().create(
             null,
-            "<Cube name=\"DefaultMeasureTesting\" defaultMeasure=\"Supply Time\">\n"
-            + "  <Table name=\"inventory_fact_1997\"/>\n"
-            + "  <DimensionUsage name=\"Store\" source=\"Store\" "
-            + "foreignKey=\"store_id\"/>\n"
-            + "  <DimensionUsage name=\"Store Type\" source=\"Store Type\" "
-            + "foreignKey=\"store_id\"/>\n"
-            + "  <Measure name=\"Store Invoice\" column=\"store_invoice\" "
-            + "aggregator=\"sum\"/>\n"
-            + "  <Measure name=\"Supply Time\" column=\"supply_time\" "
-            + "aggregator=\"sum\"/>\n"
-            + "  <Measure name=\"Warehouse Cost\" column=\"warehouse_cost\" "
-            + "aggregator=\"sum\"/>\n"
+            "<Cube name='DefaultMeasureTesting' defaultMeasure='"
+            + name
+            + "'>\n"
+            + "  <Dimensions>\n"
+            + "    <Dimension source='Store'/>\n"
+            + "  </Dimensions>\n"
+            + "  <MeasureGroups>\n"
+            + "    <MeasureGroup name='Inventory' table='inventory_fact_1997'>\n"
+            + "      <Measures>\n"
+            + "        <Measure name='Store Invoice' column='store_invoice' aggregator='sum'/>\n"
+            + "        <Measure name='Supply Time' column='supply_time' aggregator='sum'/>\n"
+            + "        <Measure name='Warehouse Cost' column='warehouse_cost' aggregator='sum'/>\n"
+            + "      </Measures>\n"
+            + "      <DimensionLinks>\n"
+            + "        <ForeignKeyLink dimension='Store' foreignKeyColumn='store_id'/>\n"
+            + "      </DimensionLinks>\n"
+            + "    </MeasureGroup>\n"
+            + "  </MeasureGroups>\n"
             + "</Cube>",
             null,
             null,
             null,
             null);
+    }
+
+    public void testDefaultMeasureInCube() {
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
+        TestContext testContext = defaultMeasureContext("Supply Time");
         String queryWithoutFilter =
-            "select store.members on 0 from "
+            "select stores.members on 0 from "
             + "DefaultMeasureTesting";
-        String queryWithDeflaultMeasureFilter =
-            "select store.members on 0 "
+        String queryWithDefaultMeasureFilter =
+            "select stores.members on 0 "
             + "from DefaultMeasureTesting where [measures].[Supply Time]";
         assertQueriesReturnSimilarResults(
-            queryWithoutFilter, queryWithDeflaultMeasureFilter, testContext);
+            queryWithoutFilter, queryWithDefaultMeasureFilter, testContext);
     }
 
     public void testDefaultMeasureInCubeForIncorrectMeasureName() {
-        TestContext testContext = TestContext.instance().create(
-            null,
-            "<Cube name=\"DefaultMeasureTesting\" defaultMeasure=\"Supply Time Error\">\n"
-            + "  <Table name=\"inventory_fact_1997\"/>\n"
-            + "  <DimensionUsage name=\"Store\" source=\"Store\" "
-            + "foreignKey=\"store_id\"/>\n"
-            + "  <DimensionUsage name=\"Store Type\" source=\"Store Type\" "
-            + "foreignKey=\"store_id\"/>\n"
-            + "  <Measure name=\"Store Invoice\" column=\"store_invoice\" "
-            + "aggregator=\"sum\"/>\n"
-            + "  <Measure name=\"Supply Time\" column=\"supply_time\" "
-            + "aggregator=\"sum\"/>\n"
-            + "  <Measure name=\"Warehouse Cost\" column=\"warehouse_cost\" "
-            + "aggregator=\"sum\"/>\n"
-            + "</Cube>",
-            null,
-            null,
-            null,
-            null);
-        String queryWithoutFilter =
-            "select store.members on 0 from "
-            + "DefaultMeasureTesting";
-        String queryWithFirstMeasure =
-            "select store.members on 0 "
-            + "from DefaultMeasureTesting where [measures].[Store Invoice]";
-        assertQueriesReturnSimilarResults(
-            queryWithoutFilter, queryWithFirstMeasure, testContext);
+        // It is an error if the default measure does not exist.
+        // (Previous behavior was to silently ignore the measure.)
+        TestContext testContext = defaultMeasureContext("Supply Time Error");
+        testContext.assertErrorList().containsError(
+            "Default measure 'Supply Time Error' not found \\(in Cube 'DefaultMeasureTesting'\\) \\(at ${pos}\\)",
+            "<Cube name='DefaultMeasureTesting' defaultMeasure='Supply Time Error'>");
     }
 
     public void testDefaultMeasureInCubeForCaseSensitivity() {
-        TestContext testContext = TestContext.instance().create(
-            null,
-            "<Cube name=\"DefaultMeasureTesting\" defaultMeasure=\"SUPPLY TIME\">\n"
-            + "  <Table name=\"inventory_fact_1997\"/>\n"
-            + "  <DimensionUsage name=\"Store\" source=\"Store\" "
-            + "foreignKey=\"store_id\"/>\n"
-            + "  <DimensionUsage name=\"Store Type\" source=\"Store Type\" "
-            + "foreignKey=\"store_id\"/>\n"
-            + "  <Measure name=\"Store Invoice\" column=\"store_invoice\" "
-            + "aggregator=\"sum\"/>\n"
-            + "  <Measure name=\"Supply Time\" column=\"supply_time\" "
-            + "aggregator=\"sum\"/>\n"
-            + "  <Measure name=\"Warehouse Cost\" column=\"warehouse_cost\" "
-            + "aggregator=\"sum\"/>\n"
-            + "</Cube>",
-            null,
-            null,
-            null,
-            null);
+        TestContext testContext = defaultMeasureContext("SUPPLY TIME");
         String queryWithoutFilter =
-            "select store.members on 0 from "
+            "select stores.members on 0 from "
             + "DefaultMeasureTesting";
         String queryWithFirstMeasure =
-            "select store.members on 0 "
+            "select stores.members on 0 "
             + "from DefaultMeasureTesting where [measures].[Store Invoice]";
         String queryWithDefaultMeasureFilter =
-            "select store.members on 0 "
+            "select stores.members on 0 "
             + "from DefaultMeasureTesting where [measures].[Supply Time]";
-        if (props.CaseSensitive.get()) {
+        if (propSaver.props.CaseSensitive.get()) {
             assertQueriesReturnSimilarResults(
                 queryWithoutFilter, queryWithFirstMeasure, testContext);
         } else {
@@ -6542,25 +6255,25 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Baked Goods].[Bread]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Bagels]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Bagels].[Colony]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Bagels].[Fantastic]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Bagels].[Great]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Bagels].[Modell]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Bagels].[Sphinx]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Muffins]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Muffins].[Colony]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Muffins].[Fantastic]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Muffins].[Great]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Muffins].[Modell]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Muffins].[Sphinx]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Sliced Bread]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Sliced Bread].[Colony]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Sliced Bread].[Fantastic]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Sliced Bread].[Great]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Sliced Bread].[Modell]}\n"
-            + "{[Product].[Food].[Baked Goods].[Bread].[Sliced Bread].[Sphinx]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Bagels]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Bagels].[Colony]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Bagels].[Fantastic]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Bagels].[Great]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Bagels].[Modell]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Bagels].[Sphinx]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Muffins]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Muffins].[Colony]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Muffins].[Fantastic]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Muffins].[Great]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Muffins].[Modell]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Muffins].[Sphinx]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Sliced Bread]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Sliced Bread].[Colony]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Sliced Bread].[Fantastic]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Sliced Bread].[Great]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Sliced Bread].[Modell]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods].[Bread].[Sliced Bread].[Sphinx]}\n"
             + "Row #0: 7,870\n"
             + "Row #1: 815\n"
             + "Row #2: 163\n"
@@ -6585,38 +6298,38 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testRollupQuery() {
         assertQueryReturns(
             "SELECT {[Product].[Product Department].MEMBERS} ON AXIS(0),\n"
-            + "{{[Gender].[Gender].MEMBERS}, {[Gender].[All Gender]}} ON AXIS(1)\n"
+            + "{{[Gender].[Gender].[Gender].MEMBERS}, {[Gender].[All Gender]}} ON AXIS(1)\n"
             + "FROM [Sales 2] WHERE {[Measures].[Unit Sales]}",
             "Axis #0:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #1:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Product].[Drink].[Beverages]}\n"
-            + "{[Product].[Drink].[Dairy]}\n"
-            + "{[Product].[Food].[Baked Goods]}\n"
-            + "{[Product].[Food].[Baking Goods]}\n"
-            + "{[Product].[Food].[Breakfast Foods]}\n"
-            + "{[Product].[Food].[Canned Foods]}\n"
-            + "{[Product].[Food].[Canned Products]}\n"
-            + "{[Product].[Food].[Dairy]}\n"
-            + "{[Product].[Food].[Deli]}\n"
-            + "{[Product].[Food].[Eggs]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
-            + "{[Product].[Food].[Meat]}\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Seafood]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
-            + "{[Product].[Food].[Snacks]}\n"
-            + "{[Product].[Food].[Starchy Foods]}\n"
-            + "{[Product].[Non-Consumable].[Carousel]}\n"
-            + "{[Product].[Non-Consumable].[Checkout]}\n"
-            + "{[Product].[Non-Consumable].[Health and Hygiene]}\n"
-            + "{[Product].[Non-Consumable].[Household]}\n"
-            + "{[Product].[Non-Consumable].[Periodicals]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+            + "{[Product].[Products].[Drink].[Beverages]}\n"
+            + "{[Product].[Products].[Drink].[Dairy]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods]}\n"
+            + "{[Product].[Products].[Food].[Baking Goods]}\n"
+            + "{[Product].[Products].[Food].[Breakfast Foods]}\n"
+            + "{[Product].[Products].[Food].[Canned Foods]}\n"
+            + "{[Product].[Products].[Food].[Canned Products]}\n"
+            + "{[Product].[Products].[Food].[Dairy]}\n"
+            + "{[Product].[Products].[Food].[Deli]}\n"
+            + "{[Product].[Products].[Food].[Eggs]}\n"
+            + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+            + "{[Product].[Products].[Food].[Meat]}\n"
+            + "{[Product].[Products].[Food].[Produce]}\n"
+            + "{[Product].[Products].[Food].[Seafood]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods]}\n"
+            + "{[Product].[Products].[Food].[Snacks]}\n"
+            + "{[Product].[Products].[Food].[Starchy Foods]}\n"
+            + "{[Product].[Products].[Non-Consumable].[Carousel]}\n"
+            + "{[Product].[Products].[Non-Consumable].[Checkout]}\n"
+            + "{[Product].[Products].[Non-Consumable].[Health and Hygiene]}\n"
+            + "{[Product].[Products].[Non-Consumable].[Household]}\n"
+            + "{[Product].[Products].[Non-Consumable].[Periodicals]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
-            + "{[Gender].[All Gender]}\n"
+            + "{[Gender].[Gender].[F]}\n"
+            + "{[Gender].[Gender].[M]}\n"
+            + "{[Gender].[Gender].[All Gender]}\n"
             + "Row #0: 3,439\n"
             + "Row #0: 6,776\n"
             + "Row #0: 1,987\n"
@@ -6698,23 +6411,32 @@ public class BasicQueryTest extends FoodMartTestCase {
         // In order to reproduce this bug a dimension with 2 levels with more
         // than 1000 member each was necessary. The customer_id column has more
         // than 1000 distinct members so it was used for this test.
-        TestContext testContext = TestContext.instance()
-        .createSubstitutingCube(
+        TestContext testContext = TestContext.instance().createSubstitutingCube(
             "Sales",
-            "  <Dimension name=\"Customer_2\" foreignKey=\"customer_id\">\n"
-            + "    <Hierarchy hasAll=\"true\" "
-            + "allMemberName=\"All Customers\" "
-            + "primaryKey=\"customer_id\" "
-            + " >\n"
-            + "      <Table name=\"customer\"/>\n"
-            + "      <Level name=\"Name1\" column=\"customer_id\" uniqueMembers=\"true\"/>"
-            + "      <Level name=\"Name2\" column=\"customer_id\" uniqueMembers=\"true\"/>\n"
-            + "    </Hierarchy>\n"
-            + "  </Dimension>");
+            "  <Dimension name='Customer_2' key='Id' table='customer'>\n"
+            + "    <Attributes>\n"
+            + "      <Attribute name='Name1' keyColumn='customer_id' uniqueMembers='true'/>\n"
+            + "      <Attribute name='Name2' keyColumn='customer_id' uniqueMembers='true'/>\n"
+            + "      <Attribute name='Id' keyColumn='customer_id' uniqueMembers='true'/>\n"
+            + "    </Attributes>\n"
+            + "    <Hierarchies>\n"
+            + "      <Hierarchy name='Customer' allMemberName='All Customers' primaryKey='customer_id' >\n"
+            + "        <Level attribute='Name1'/>"
+            + "        <Level attribute='Name2'/>"
+            + "      </Hierarchy>\n"
+            + "    </Hierarchies>\n"
+            + "  </Dimension>",
+            null,
+            null,
+            null,
+            ArrayMap.of(
+                "Sales",
+                "<ForeignKeyLink dimension='Customer_2' "
+                + "foreignKeyColumn='customer_id'/>"));
 
         Result result = testContext.executeQuery(
             "WITH SET [#DataSet#] AS "
-            + "   'NonEmptyCrossjoin({Descendants([Customer_2].[All Customers], 2)}, "
+            + "   'NonEmptyCrossjoin({Descendants([Customer_2].[Customer].[All Customers], 2)}, "
             + "   {[Product].[All Products]})' "
             + "SELECT {[Measures].[Unit Sales], [Measures].[Store Sales]} on columns, "
             + "Hierarchize({[#DataSet#]}) on rows FROM [Sales]");
@@ -6736,7 +6458,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[All Products], [Time].[1997].[Q2].[5]}\n"
+            + "{[Product].[Products].[All Products], [Time].[Time].[1997].[Q2].[5]}\n"
             + "Row #0: 21,081\n";
 
         assertQueryReturns(
@@ -6806,11 +6528,11 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[USA]}\n"
-            + "{[Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 131,558\n"
             + "Row #0: 36,759\n"
             + "Row #1: 135,215\n"
@@ -6819,8 +6541,8 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "with member [Measures].[Sum Sqft] as '"
             + "sum("
-            + "  Descendants([Store].CurrentMember, [Store].Levels(5)),"
-            + "  [Store].CurrentMember.Properties(\"Store Sqft\")) '\n"
+            + "  Descendants([Stores].CurrentMember, [Store].Levels(5)),"
+            + "  [Stores].CurrentMember.Properties(\"Store Sqft\")) '\n"
             + "select {[Store].[USA], [Store].[USA].[CA]} on 0,\n"
             + " [Gender].Children on 1\n"
             + "from [Sales]",
@@ -6831,8 +6553,8 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "with member [Measures].[Sum Sqft] as '"
             + "sum("
-            + "  Descendants([Store].CurrentMember, [Store].Levels(\"Store Name\")),"
-            + "  [Store].CurrentMember.Properties(\"Store Sqft\")) '\n"
+            + "  Descendants([Stores].CurrentMember, [Store].Levels(\"Store Name\")),"
+            + "  [Stores].CurrentMember.Properties(\"Store Sqft\")) '\n"
             + "select {[Store].[USA], [Store].[USA].[CA]} on 0,\n"
             + " [Gender].Children on 1\n"
             + "from [Sales]",
@@ -6842,8 +6564,8 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "with member [Measures].[Sum Sqft] as '"
             + "sum("
-            + "  Descendants([Store].CurrentMember, [Store].[Store Name]),"
-            + "  [Store].CurrentMember.Properties(\"Store Sqft\")) '\n"
+            + "  Descendants([Stores].CurrentMember, [Store].[Store Name]),"
+            + "  [Stores].CurrentMember.Properties(\"Store Sqft\")) '\n"
             + "select {[Store].[USA], [Store].[USA].[CA]} on 0,\n"
             + " [Gender].Children on 1\n"
             + "from [Sales]",
@@ -6855,8 +6577,8 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "with member [Measures].[Sum Sqft] as '"
             + "sum("
-            + "  Descendants([Store].CurrentMember, , LEAVES),"
-            + "  [Store].CurrentMember.Properties(\"Store Sqft\")) '\n"
+            + "  Descendants([Stores].CurrentMember, , LEAVES),"
+            + "  [Stores].CurrentMember.Properties(\"Store Sqft\")) '\n"
             + "select {[Store].[USA], [Store].[USA].[CA]} on 0,\n"
             + " [Gender].Children on 1\n"
             + "from [Sales]",
@@ -6867,18 +6589,18 @@ public class BasicQueryTest extends FoodMartTestCase {
         assertQueryReturns(
             "WITH\n"
             + "MEMBER [Gender].agg "
-            + "AS 'IIF(1=1, ([Gender].[All Gender],measures.[unit sales]),"
+            + "AS 'IIF(1=1, ([Gender].[All Gender],Measures.[unit sales]),"
             + "([Gender].[All Gender]))', SOLVE_ORDER = 4 "
             + "SELECT {[Measures].[unit sales]} ON 0, "
-            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM sales",
+            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
-            + "{[Gender].[agg]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
+            + "{[Customer].[Gender].[agg]}\n"
             + "Row #0: 131,558\n"
             + "Row #1: 135,215\n"
             + "Row #2: 266,773\n");
@@ -6889,17 +6611,17 @@ public class BasicQueryTest extends FoodMartTestCase {
             "WITH\n"
             + "MEMBER [Gender].agg "
             + "AS 'IIF(1=1, ([Gender].[All Gender]),"
-            + "([Gender].[All Gender],measures.[unit sales]))', SOLVE_ORDER = 4 "
+            + "([Gender].[All Gender],Measures.[unit sales]))', SOLVE_ORDER = 4 "
             + "SELECT {[Measures].[unit sales]} ON 0, "
-            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM sales",
+            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
-            + "{[Gender].[agg]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
+            + "{[Customer].[Gender].[agg]}\n"
             + "Row #0: 131,558\n"
             + "Row #1: 135,215\n"
             + "Row #2: 266,773\n");
@@ -6912,15 +6634,16 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "AS 'IIF(1=1, ([Gender].[All Gender]),"
             + "([Gender].[All Gender],[Time].[1997]))', SOLVE_ORDER = 4 "
             + "SELECT {[Measures].[unit sales]} ON 0, "
-            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM sales",
+            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 "
+            + "FROM [Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
-            + "{[Gender].[agg]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
+            + "{[Customer].[Gender].[agg]}\n"
             + "Row #0: 131,558\n"
             + "Row #1: 135,215\n"
             + "Row #2: 266,773\n");
@@ -6931,17 +6654,17 @@ public class BasicQueryTest extends FoodMartTestCase {
             "WITH\n"
             + "MEMBER [Gender].agg "
             + "AS 'IIF(1=1, "
-            + "([Store].[All Stores].[USA], [Gender].[All Gender]), "
+            + "([Store].[USA], [Gender].[All Gender]), "
             + "([Gender].[All Gender]))', "
             + "SOLVE_ORDER = 4 "
             + "SELECT {[Measures].[unit sales]} ON 0, "
-            + "{([Gender].agg)} on 1 FROM sales",
+            + "{([Gender].agg)} on 1 FROM [Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[agg]}\n"
+            + "{[Customer].[Gender].[agg]}\n"
             + "Row #0: 266,773\n");
     }
 
@@ -6950,18 +6673,18 @@ public class BasicQueryTest extends FoodMartTestCase {
             "WITH\n"
             + "MEMBER [Gender].agg "
             + "AS 'IIF(Measures.currentMember is [Measures].[Unit Sales], "
-            + "([Store].[All Stores],[Gender].[All Gender],measures.[unit sales]),"
+            + "([Store].[All Stores],[Gender].[All Gender],Measures.[unit sales]),"
             + "([Store].[All Stores],[Gender].[All Gender]))', SOLVE_ORDER = 4 "
-            + "SELECT {[Measures].[unit sales]} ON 0, "
-            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM sales",
+            + "SELECT {[Measures].[Unit Sales]} ON 0, "
+            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
-            + "{[Gender].[agg]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
+            + "{[Customer].[Gender].[agg]}\n"
             + "Row #0: 131,558\n"
             + "Row #1: 135,215\n"
             + "Row #2: 266,773\n");
@@ -6972,25 +6695,29 @@ public class BasicQueryTest extends FoodMartTestCase {
             "WITH\n"
             + "MEMBER [Gender].agg "
             + "AS 'IIF(Measures.currentMember is [Measures].[Unit Sales], "
-            + "([Store].[All Stores],[Gender].[M],measures.[unit sales]),"
+            + "([Store].[All Stores],[Gender].[M],Measures.[unit sales]),"
             + "([Gender].[M],[Store].[All Stores]))', SOLVE_ORDER = 4 "
             + "SELECT {[Measures].[unit sales]} ON 0, "
-            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM sales",
+            + "{{[Gender].[Gender].MEMBERS},{([Gender].agg)}} on 1 FROM Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
-            + "{[Gender].[agg]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
+            + "{[Customer].[Gender].[agg]}\n"
             + "Row #0: 131,558\n"
             + "Row #1: 135,215\n"
             + "Row #2: 135,215\n");
     }
 
     public void testEmptyAggregationListDueToFilterDoesNotThrowException() {
-        propSaver.set(props.IgnoreMeasureForNonJoiningDimension, true);
+        if (propSaver.props.CaseSensitive.get()) {
+            return;
+        }
+        propSaver.set(
+            propSaver.props.IgnoreMeasureForNonJoiningDimension, true);
         assertQueryReturns(
             "WITH \n"
             + "MEMBER [GENDER].[AGG] "
@@ -7006,7 +6733,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[AGG]}\n"
+            + "{[Customer].[Gender].[AGG]}\n"
             + "Row #0: \n");
     }
 
@@ -7023,7 +6750,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[All Stores], [Product].[All Products], [Customers].[All Customers]}\n"
+            + "{[Store].[Stores].[All Stores], [Product].[Products].[All Products], [Customer].[Customers].[All Customers]}\n"
             + "Row #0: 266,773\n";
         assertQueryReturns(
             "select {[Measures].[Unit Sales]} ON COLUMNS, "
@@ -7061,13 +6788,13 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[All Stores], [Product].[All Products], [Customers].[All Customers], [Gender].[All Gender]}\n"
+            + "{[Store].[Stores].[All Stores], [Product].[Products].[All Products], [Customer].[Customers].[All Customers], [Customer].[Gender].[All Gender]}\n"
             + "Row #0: 266,773\n";
         assertQueryReturns(
             "select {[Measures].[Unit Sales]} ON COLUMNS, "
             + "NON EMPTY [Store].[All Stores] "
             + " * [Product].[All Products]"
-            + " * {([Customers].[All Customers], [Gender].[All Gender])} ON ROWS "
+            + " * {([Customers].[All Customers], [Customer].[Gender].[All Gender])} ON ROWS "
             + "from [Sales]",
             expectedResult4);
         assertQueryReturns(
@@ -7079,7 +6806,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             expectedResult4);
         assertQueryReturns(
             "select {[Measures].[Unit Sales]} ON COLUMNS, "
-            + "NON EMPTY {([Store].[All Stores], [Product].[All Products])}"
+            + "NON EMPTY {([Store].[All Stores], [Product].[Products].[All Products])}"
             + " * [Customers].[All Customers]"
             + " * [Gender].[All Gender] ON ROWS "
             + "from [Sales]",
@@ -7111,9 +6838,6 @@ public class BasicQueryTest extends FoodMartTestCase {
      * Tests hierarchies of the same dimension on different axes.
      */
     public void testHierarchiesOfSameDimensionOnDifferentAxes() {
-        if (!MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            return;
-        }
         assertQueryReturns(
             "select [Time].[Year].Members on columns,\n"
             + "[Time].[Weekly].[1997].[6].Children on rows\n"
@@ -7121,29 +6845,29 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997]}\n"
-            + "{[Time].[1998]}\n"
+            + "{[Time].[Time].[1997]}\n"
+            + "{[Time].[Time].[1998]}\n"
             + "Axis #2:\n"
-            + "{[Time].[Weekly].[1997].[6].[1]}\n"
             + "{[Time].[Weekly].[1997].[6].[26]}\n"
             + "{[Time].[Weekly].[1997].[6].[27]}\n"
             + "{[Time].[Weekly].[1997].[6].[28]}\n"
             + "{[Time].[Weekly].[1997].[6].[29]}\n"
             + "{[Time].[Weekly].[1997].[6].[30]}\n"
             + "{[Time].[Weekly].[1997].[6].[31]}\n"
-            + "Row #0: 404\n"
+            + "{[Time].[Weekly].[1997].[6].[1]}\n"
+            + "Row #0: 593\n"
             + "Row #0: \n"
-            + "Row #1: 593\n"
+            + "Row #1: 422\n"
             + "Row #1: \n"
-            + "Row #2: 422\n"
+            + "Row #2: 382\n"
             + "Row #2: \n"
-            + "Row #3: 382\n"
+            + "Row #3: 731\n"
             + "Row #3: \n"
-            + "Row #4: 731\n"
+            + "Row #4: \n"
             + "Row #4: \n"
             + "Row #5: \n"
             + "Row #5: \n"
-            + "Row #6: \n"
+            + "Row #6: 404\n"
             + "Row #6: \n");
     }
 
@@ -7220,12 +6944,21 @@ public class BasicQueryTest extends FoodMartTestCase {
             try {
                 count.incrementAndGet();
                 Thread.sleep(10000);
+<<<<<<< HEAD
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
             } finally {
                 count.decrementAndGet();
             }
             throw new Error("Leaving.");
+=======
+            } catch (Exception ex) {
+                // no op
+            } finally {
+                count.decrementAndGet();
+            }
+            return null;
+>>>>>>> upstream/4.0
         }
 
         static int getCount() {
@@ -7247,7 +6980,7 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testHighCardSqlTupleReaderLeakingConnections() {
         assertQueryReturns(
             "WITH MEMBER [Measures].[NegativeSales] AS '- [Measures].[Store Sales]' "
-            + "MEMBER [Product].[SameName] AS 'Aggregate(Filter("
+            + "MEMBER [Product].[Products].[SameName] AS 'Aggregate(Filter("
             + "[Product].[Product Name].members,([Measures].[Store Sales] > 0)))' "
             + "MEMBER [Measures].[SameName] AS "
             + "'([Measures].[Store Sales],[Product].[SameName])' "
@@ -7257,15 +6990,15 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "from [Sales] "
             + "where [Time].[1997]",
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Store Sales]}\n"
             + "{[Measures].[NegativeSales]}\n"
             + "{[Measures].[SameName]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Canada]}\n"
-            + "{[Store].[Mexico]}\n"
-            + "{[Store].[USA]}\n"
+            + "{[Store].[Stores].[Canada]}\n"
+            + "{[Store].[Stores].[Mexico]}\n"
+            + "{[Store].[Stores].[USA]}\n"
             + "Row #0: \n"
             + "Row #0: \n"
             + "Row #0: \n"
@@ -7282,25 +7015,23 @@ public class BasicQueryTest extends FoodMartTestCase {
             "select"
             + "  {"
             + "    ("
-            + "      [Product].[All Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Tell Tale].[Tell Tale Tomatos],"
+            + "      [Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Tell Tale].[Tell Tale Tomatos],"
             + "      [Warehouse].[All Warehouses].[USA].[WA].[Seattle].[Quality Warehousing and Trucking],"
-            + "      [Store].[All Stores].[USA].[WA].[Seattle].[Store 15],"
+            + "      [Store].[USA].[WA].[Seattle].[Store 15],"
             + "      [Time.Weekly].[All Time.Weeklys].[1997].[24].[3]"
             + "  )"
             + "  }"
             + "  on 0,"
             + "  [Measures].[units shipped] on 1"
-            + " from warehouse";
+            + " from Warehouse";
         assertQueryReturns(
             mdx,
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables]"
-            + ".[Tell Tale].[Tell Tale Tomatos], "
-            + "[Warehouse].[USA].[WA].[Seattle].[Quality Warehousing and "
-            + "Trucking], "
-            + "[Store].[USA].[WA].[Seattle].[Store 15], "
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Tell Tale].[Tell Tale Tomatos], "
+            + "[Warehouse].[Warehouses].[USA].[WA].[Seattle].[Quality Warehousing and Trucking], "
+            + "[Store].[Stores].[USA].[WA].[Seattle].[Store 15], "
             + "[Time].[Weekly].[1997].[24].[3]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Units Shipped]}\n"
@@ -7311,15 +7042,15 @@ public class BasicQueryTest extends FoodMartTestCase {
         TestContext testContext = TestContext.instance().createSubstitutingCube(
             "Sales",
             null,
-            "<CalculatedMember dimension=\"Gender\" visible=\"true\" name=\"last\">"
-            + "<Formula>([Gender].LastChild)</Formula>"
+            "<CalculatedMember hierarchy='[Customer].[Gender]' visible='true' name='last'>"
+            + "<Formula>([Customer].[Gender].LastChild)</Formula>"
             + "</CalculatedMember>");
         testContext.assertQueryReturns(
-            "select {[Gender].[M]} on 0 from sales",
+            "select {[Gender].[M]} on 0 from Sales",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 135,215\n");
     }
 
@@ -7349,9 +7080,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Measures].[Unit Sales]>, resultStyle=VALUE_NOT_NULL, value=[Measures].[Unit Sales])\n"
             + "\n"
             + "Axis (ROWS):\n"
-            + "ImmutableIterCalc(name=ImmutableIterCalc, class=class mondrian.olap.fun.FilterFunDef$ImmutableIterCalc, type=SetType<MemberType<hierarchy=[Product]>>, resultStyle=ITERABLE)\n"
-            + "    Children(name=Children, class=class mondrian.olap.fun.BuiltinFunTable$22$1, type=SetType<MemberType<hierarchy=[Product]>>, resultStyle=LIST)\n"
-            + "        CurrentMemberFixed(hierarchy=[Product], name=CurrentMemberFixed, class=class mondrian.olap.fun.HierarchyCurrentMemberFunDef$FixedCalcImpl, type=MemberType<hierarchy=[Product]>, resultStyle=VALUE)\n"
+            + "ImmutableIterCalc(name=ImmutableIterCalc, class=class mondrian.olap.fun.FilterFunDef$ImmutableIterCalc, type=SetType<MemberType<hierarchy=[Product].[Products]>>, resultStyle=ITERABLE)\n"
+            + "    Children(name=Children, class=class mondrian.olap.fun.BuiltinFunTable$22$1, type=SetType<MemberType<hierarchy=[Product].[Products]>>, resultStyle=LIST)\n"
+            + "        CurrentMemberFixed(hierarchy=[Product].[Products], name=CurrentMemberFixed, class=class mondrian.olap.fun.HierarchyCurrentMemberFunDef$FixedCalcImpl, type=MemberType<hierarchy=[Product].[Products]>, resultStyle=VALUE)\n"
             + "    >(name=>, class=class mondrian.olap.fun.BuiltinFunTable$63$1, type=BOOLEAN, resultStyle=VALUE)\n"
             + "        MemberValueCalc(name=MemberValueCalc, class=class mondrian.calc.impl.MemberValueCalc, type=SCALAR, resultStyle=VALUE)\n"
             + "            Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Measures].[Unit Sales]>, resultStyle=VALUE_NOT_NULL, value=[Measures].[Unit Sales])\n"
@@ -7391,14 +7122,16 @@ public class BasicQueryTest extends FoodMartTestCase {
 
         // Plan before execution.
         final ResultSet resultSet =
-            statement.executeQuery("explain plan for\n" + mdx);
+            statement.executeQuery(
+                "explain plan for\n"
+                + mdx);
         assertTrue(resultSet.next());
         String s = resultSet.getString(1);
         TestContext.assertEqualsVerbose(
             "Axis (FILTER):\n"
-            + "SetListCalc(name=SetListCalc, class=class mondrian.olap.fun.SetFunDef$SetListCalc, type=SetType<MemberType<member=[Gender].[F]>>, resultStyle=MUTABLE_LIST)\n"
-            + "    ()(name=(), class=class mondrian.olap.fun.SetFunDef$SetListCalc$2, type=MemberType<member=[Gender].[F]>, resultStyle=VALUE)\n"
-            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Gender].[F]>, resultStyle=VALUE_NOT_NULL, value=[Gender].[F])\n"
+            + "SetListCalc(name=SetListCalc, class=class mondrian.olap.fun.SetFunDef$SetListCalc, type=SetType<MemberType<member=[Customer].[Gender].[F]>>, resultStyle=MUTABLE_LIST)\n"
+            + "    ()(name=(), class=class mondrian.olap.fun.SetFunDef$SetListCalc$2, type=MemberType<member=[Customer].[Gender].[F]>, resultStyle=VALUE)\n"
+            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Customer].[Gender].[F]>, resultStyle=VALUE_NOT_NULL, value=[Customer].[Gender].[F])\n"
             + "\n"
             + "Axis (COLUMNS):\n"
             + "SetListCalc(name=SetListCalc, class=class mondrian.olap.fun.SetFunDef$SetListCalc, type=SetType<MemberType<member=[Measures].[Unit Sales]>>, resultStyle=MUTABLE_LIST)\n"
@@ -7408,10 +7141,10 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Measures].[Store Margin]>, resultStyle=VALUE_NOT_NULL, value=[Measures].[Store Margin])\n"
             + "\n"
             + "Axis (ROWS):\n"
-            + "CrossJoinIterCalc(name=CrossJoinIterCalc, class=class mondrian.olap.fun.CrossJoinFunDef$CrossJoinIterCalc, type=SetType<TupleType<MemberType<member=[Product].[Drink]>, MemberType<hierarchy=[Marital Status]>>>, resultStyle=ITERABLE)\n"
-            + "    1(name=1, class=class mondrian.mdx.NamedSetExpr$1, type=SetType<MemberType<member=[Product].[Drink]>>, resultStyle=ITERABLE)\n"
-            + "    Members(name=Members, class=class mondrian.olap.fun.BuiltinFunTable$27$1, type=SetType<MemberType<hierarchy=[Marital Status]>>, resultStyle=MUTABLE_LIST)\n"
-            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=HierarchyType<hierarchy=[Marital Status]>, resultStyle=VALUE_NOT_NULL, value=[Marital Status])\n"
+            + "CrossJoinIterCalc(name=CrossJoinIterCalc, class=class mondrian.olap.fun.CrossJoinFunDef$CrossJoinIterCalc, type=SetType<TupleType<MemberType<member=[Product].[Products].[Drink]>, MemberType<hierarchy=[Customer].[Marital Status]>>>, resultStyle=ITERABLE)\n"
+            + "    1(name=1, class=class mondrian.mdx.NamedSetExpr$1, type=SetType<MemberType<member=[Product].[Products].[Drink]>>, resultStyle=ITERABLE)\n"
+            + "    Members(name=Members, class=class mondrian.olap.fun.BuiltinFunTable$27$1, type=SetType<MemberType<hierarchy=[Customer].[Marital Status]>>, resultStyle=MUTABLE_LIST)\n"
+            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=HierarchyType<hierarchy=[Customer].[Marital Status]>, resultStyle=VALUE_NOT_NULL, value=[Customer].[Marital Status])\n"
             + "\n",
             s);
 
@@ -7438,9 +7171,9 @@ public class BasicQueryTest extends FoodMartTestCase {
                 "nnnms");
         TestContext.assertEqualsVerbose(
             "Axis (FILTER):\n"
-            + "SetListCalc(name=SetListCalc, class=class mondrian.olap.fun.SetFunDef$SetListCalc, type=SetType<MemberType<member=[Gender].[F]>>, resultStyle=MUTABLE_LIST, callCount=2, callMillis=nnn, elementCount=2, elementSquaredCount=2)\n"
-            + "    ()(name=(), class=class mondrian.olap.fun.SetFunDef$SetListCalc$2, type=MemberType<member=[Gender].[F]>, resultStyle=VALUE)\n"
-            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Gender].[F]>, resultStyle=VALUE_NOT_NULL, value=[Gender].[F], callCount=2, callMillis=nnn)\n"
+            + "SetListCalc(name=SetListCalc, class=class mondrian.olap.fun.SetFunDef$SetListCalc, type=SetType<MemberType<member=[Customer].[Gender].[F]>>, resultStyle=MUTABLE_LIST, callCount=2, callMillis=nnn, elementCount=2, elementSquaredCount=2)\n"
+            + "    ()(name=(), class=class mondrian.olap.fun.SetFunDef$SetListCalc$2, type=MemberType<member=[Customer].[Gender].[F]>, resultStyle=VALUE)\n"
+            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Customer].[Gender].[F]>, resultStyle=VALUE_NOT_NULL, value=[Customer].[Gender].[F], callCount=2, callMillis=nnn)\n"
             + "\n"
             + "Axis (COLUMNS):\n"
             + "SetListCalc(name=SetListCalc, class=class mondrian.olap.fun.SetFunDef$SetListCalc, type=SetType<MemberType<member=[Measures].[Unit Sales]>>, resultStyle=MUTABLE_LIST, callCount=2, callMillis=nnn, elementCount=4, elementSquaredCount=8)\n"
@@ -7450,18 +7183,18 @@ public class BasicQueryTest extends FoodMartTestCase {
             + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=MemberType<member=[Measures].[Store Margin]>, resultStyle=VALUE_NOT_NULL, value=[Measures].[Store Margin], callCount=2, callMillis=nnn)\n"
             + "\n"
             + "Axis (ROWS):\n"
-            + "CrossJoinIterCalc(name=CrossJoinIterCalc, class=class mondrian.olap.fun.CrossJoinFunDef$CrossJoinIterCalc, type=SetType<TupleType<MemberType<member=[Product].[Drink]>, MemberType<hierarchy=[Marital Status]>>>, resultStyle=ITERABLE, callCount=2, callMillis=nnn, elementCount=0, elementSquaredCount=0)\n"
-            + "    1(name=1, class=class mondrian.mdx.NamedSetExpr$1, type=SetType<MemberType<member=[Product].[Drink]>>, resultStyle=ITERABLE)\n"
-            + "    Members(name=Members, class=class mondrian.olap.fun.BuiltinFunTable$27$1, type=SetType<MemberType<hierarchy=[Marital Status]>>, resultStyle=MUTABLE_LIST)\n"
-            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=HierarchyType<hierarchy=[Marital Status]>, resultStyle=VALUE_NOT_NULL, value=[Marital Status], callCount=2, callMillis=nnn)\n"
+            + "CrossJoinIterCalc(name=CrossJoinIterCalc, class=class mondrian.olap.fun.CrossJoinFunDef$CrossJoinIterCalc, type=SetType<TupleType<MemberType<member=[Product].[Products].[Drink]>, MemberType<hierarchy=[Customer].[Marital Status]>>>, resultStyle=ITERABLE, callCount=2, callMillis=nnn, elementCount=0, elementSquaredCount=0)\n"
+            + "    1(name=1, class=class mondrian.mdx.NamedSetExpr$1, type=SetType<MemberType<member=[Product].[Products].[Drink]>>, resultStyle=ITERABLE)\n"
+            + "    Members(name=Members, class=class mondrian.olap.fun.BuiltinFunTable$27$1, type=SetType<MemberType<hierarchy=[Customer].[Marital Status]>>, resultStyle=MUTABLE_LIST)\n"
+            + "        Literal(name=Literal, class=class mondrian.calc.impl.ConstantCalc, type=HierarchyType<hierarchy=[Customer].[Marital Status]>, resultStyle=VALUE_NOT_NULL, value=[Customer].[Marital Status], callCount=2, callMillis=nnn)\n"
             + "\n",
             actual);
 
         assertTrue(
             strings[1],
             strings[1].contains(
-                "SqlStatement-SqlTupleReader.readTuples [[Product].[Product "
-                + "Category]] invoked 1 times for total of "));
+                "SqlStatement-SqlTupleReader.readTuples [[Product].[Products]."
+                + "[Product Category]] invoked 1 times for total of "));
     }
 
     public void testExplainInvalid() throws SQLException {
@@ -7624,9 +7357,9 @@ public class BasicQueryTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: 24,597\n"
             + "Row #0: 191,940\n"
             + "Row #0: 50,236\n");
@@ -7648,10 +7381,19 @@ public class BasicQueryTest extends FoodMartTestCase {
     public void testStatistics() {
         final String product =
             getTestContext().getDialect().getDatabaseProduct().name();
+<<<<<<< HEAD
         propSaver.set(
             new StringProperty(
                 MondrianProperties.instance(),
                 MondrianProperties.instance().StatisticsProviders.getPath()
+=======
+        final String dialectClassName =
+            getTestContext().getDialect().getClass().getName();
+        propSaver.set(
+            new StringProperty(
+                propSaver.props,
+                propSaver.props.StatisticsProviders.getPath()
+>>>>>>> upstream/4.0
                 + "."
                 + product,
                 null),
@@ -7659,6 +7401,7 @@ public class BasicQueryTest extends FoodMartTestCase {
             + ","
             + SqlStatisticsProvider.class.getName());
         final TestContext testContext = getTestContext().withFreshConnection();
+<<<<<<< HEAD
         testContext.assertSimpleQuery();
 
         final List<StatisticsProvider> statisticsProviders =
@@ -7705,10 +7448,74 @@ public class BasicQueryTest extends FoodMartTestCase {
                 statisticsProvider instanceof JdbcStatisticsProvider
                     ? valueCount == -1
                     : valueCount == 2);
+=======
+        try {
+            testContext.assertSimpleQuery();
+            // bypass dialect cache and always get a fresh dialect instance
+            // with our custom providers
+            Dialect dialect =
+                DialectManager.createDialect(
+                    testContext.getConnection().getDataSource(),
+                    null,
+                    dialectClassName);
+            final List<StatisticsProvider> statisticsProviders =
+                dialect.getStatisticsProviders();
+            assertEquals(2, statisticsProviders.size());
+            assertTrue(
+                statisticsProviders.get(0) instanceof MyJdbcStatisticsProvider);
+            assertTrue(
+                statisticsProviders.get(1) instanceof SqlStatisticsProvider);
+
+            for (StatisticsProvider statisticsProvider : statisticsProviders) {
+                int rowCount =
+                    statisticsProvider.getTableCardinality(
+                        testContext.getDialect(),
+                        testContext.getConnection().getDataSource(),
+                        null,
+                        null,
+                        "customer",
+                        new Execution(
+                            ((RolapSchema) testContext.getConnection()
+                                .getSchema())
+                                    .getInternalConnection()
+                                        .getInternalStatement(),
+                            0));
+
+                if (statisticsProvider instanceof SqlStatisticsProvider) {
+                    assertTrue(
+                        "Row count estimate: " + rowCount + " (actual 10281)",
+                        rowCount > 10000 && rowCount < 15000);
+                }
+
+                int valueCount =
+                    statisticsProvider.getColumnCardinality(
+                        testContext.getDialect(),
+                        testContext.getConnection().getDataSource(),
+                        null,
+                        null,
+                        "customer",
+                        "gender",
+                        new Execution(
+                            ((RolapSchema) testContext.getConnection()
+                                .getSchema())
+                                    .getInternalConnection()
+                                        .getInternalStatement(),
+                            0));
+                assertTrue(
+                    "Value count estimate: " + valueCount + " (actual 2)",
+                    statisticsProvider instanceof JdbcStatisticsProvider
+                        ? valueCount == -1
+                        : valueCount == 2);
+            }
+        } finally {
+            // should close when with fresh connection
+            testContext.close();
+>>>>>>> upstream/4.0
         }
     }
 
     public void testResultLimit() throws Exception {
+<<<<<<< HEAD
         propSaver.set(
             MondrianProperties.instance().ResultLimit,
             1000);
@@ -7718,6 +7525,13 @@ public class BasicQueryTest extends FoodMartTestCase {
         propSaver.set(
             MondrianProperties.instance().ResultLimit,
             5000);
+=======
+        propSaver.set(propSaver.props.ResultLimit, 1000);
+        assertAxisThrows(
+            "CrossJoin([Product].[Brand Name].Members, [Gender].[Gender].Members)",
+            "Mondrian Error:Number of cell results to be read exceeded limit of (1,000)");
+        propSaver.set(propSaver.props.ResultLimit, 5000);
+>>>>>>> upstream/4.0
         executeQuery(
             "select CrossJoin([Product].[Brand Name].Members, [Gender].[Gender].Members) on columns from [Sales]");
     }
@@ -7729,6 +7543,14 @@ public class BasicQueryTest extends FoodMartTestCase {
      * at the same time.
      */
     public void testConcurrentStatementRun_2() throws Exception {
+<<<<<<< HEAD
+=======
+        // skip this test for all classes inheriting basic query test,
+        // the count might get off otherwise.
+        if (!this.getClass().getName().equals("mondrian.test.BasicQueryTest")) {
+            return;
+        }
+>>>>>>> upstream/4.0
         // timeout is issued after 2 seconds so the test query needs to
         // run for at least that long; it will because the query references
         // a Udf that has a 1 ms sleep in it; and there are enough rows
@@ -7765,13 +7587,21 @@ public class BasicQueryTest extends FoodMartTestCase {
                 });
 
         // Submit a query twice.
+<<<<<<< HEAD
         Future<Result> task1 = es.submit(
+=======
+        es.submit(
+>>>>>>> upstream/4.0
             new Callable<Result>() {
                 public Result call() throws Exception {
                     return tc.executeQuery(query);
                 }
             });
+<<<<<<< HEAD
         Future<Result> task2 = es.submit(
+=======
+        es.submit(
+>>>>>>> upstream/4.0
             new Callable<Result>() {
                 public Result call() throws Exception {
                     return tc.executeQuery(query);
@@ -7782,6 +7612,7 @@ public class BasicQueryTest extends FoodMartTestCase {
         Thread.sleep(5000);
 
         // There should be 2 queries running.
+<<<<<<< HEAD
         try {
             assertEquals(2, CountConcurrentUdf.getCount());
         } finally {
@@ -7792,6 +7623,56 @@ public class BasicQueryTest extends FoodMartTestCase {
         }
     }
 
+=======
+        assertEquals(2, CountConcurrentUdf.getCount());
+
+        // cleanup and leave.
+        es.shutdownNow();
+    }
+
+    /**
+     * Test for MONDRIAN-1560
+     * Verifies that various references to a member resolve
+     * correctly when case.sensitive=false
+     */
+    public void testCaseInsensitiveResolution() {
+        propSaver.set(MondrianProperties.instance().CaseSensitive, false);
+        String [] equivalentMemberNames =
+            {
+                "gender.gender.F",
+                "gender.gender.f",
+                "gender.[All gender].F",
+                "gender.[All gender].f",
+                "Customer.gender.[All gender].F",
+                "Customer.gender.[gender].f"
+            };
+        for (String memberName : equivalentMemberNames) {
+            assertQueryReturns(
+                "select " + memberName + " on 0 from sales",
+                "Axis #0:\n"
+                + "{}\n"
+                + "Axis #1:\n"
+                + "{[Customer].[Gender].[F]}\n"
+                + "Row #0: 131,558\n");
+        }
+        // also verify case.sensitive=true is honored
+        propSaver.set(MondrianProperties.instance().CaseSensitive, true);
+        String [] wrongCase =
+            {
+                "gender.gender.f",
+                "gender.[All gender].f"
+            };
+        for (String memberName : wrongCase) {
+            assertExprThrows(
+                "select " + memberName + " on 0 from sales",
+                "Failed to parse query");
+        }
+        propSaver.set(MondrianProperties.instance().CaseSensitive, false);
+    }
+
+
+
+>>>>>>> upstream/4.0
     /**
      * Dummy statistics provider for
      * {@link mondrian.test.BasicQueryTest#testStatistics()}.
@@ -7928,18 +7809,28 @@ public class BasicQueryTest extends FoodMartTestCase {
             getTestContext().withSchema(
                 "<Schema name=\"Foo\">\n"
                 + "  <Cube name=\"Bar\">\n"
+<<<<<<< HEAD
                 + "    <Table name=\"warehouse\">\n"
                 + "      <SQL>sleep(0.1) = 0</SQL>\n"
                 + "    </Table>   \n"
+=======
+                + "    <View alias=\"warehouse\">\n"
+                + "      <SQL dialect=\"generic\">select *, 1 as one from warehouse where sleep(0.1) = 0</SQL>\n"
+                + "    </View>   \n"
+>>>>>>> upstream/4.0
                 + " <Dimension name=\"Dim\">\n"
                 + "   <Hierarchy hasAll=\"true\">\n"
                 + "     <Level name=\"Level\" column=\"warehouse_id\"/>\n"
                 + "      </Hierarchy>\n"
                 + " </Dimension>\n"
+<<<<<<< HEAD
                 + " <Measure name=\"Measure\" aggregator=\"sum\">\n"
                 + "   <MeasureExpression>\n"
                 + "     <SQL>1</SQL>\n"
                 + "   </MeasureExpression>\n"
+=======
+                + " <Measure name=\"Measure\" aggregator=\"sum\" column=\"one\" >\n"
+>>>>>>> upstream/4.0
                 + " </Measure>\n"
                 + "  </Cube>\n"
                 + "</Schema>\n");
@@ -8007,6 +7898,7 @@ public class BasicQueryTest extends FoodMartTestCase {
 
     /**
      * This is a test for
+<<<<<<< HEAD
      * <a href="http://jira.pentaho.com/browse/MONDRIAN-1630">MONDRIAN-1630</a>
      *
      * <p>The baseCube was taken out of the evaluator instead of being passed
@@ -8054,6 +7946,8 @@ public class BasicQueryTest extends FoodMartTestCase {
 
     /**
      * This is a test for
+=======
+>>>>>>> upstream/4.0
      * <a href="http://jira.pentaho.com/browse/MONDRIAN-1605">MONDRIAN-1605</a>
      *
      * <p>When a dense object has only null values, it threw a AIOOBE
@@ -8061,6 +7955,7 @@ public class BasicQueryTest extends FoodMartTestCase {
      * of the array.
      */
     public void testArrayIndexOutOfBoundsWithEmptySegment() {
+<<<<<<< HEAD
         TestContext testContext =
             getTestContext().createSubstitutingCube(
                 "Sales",
@@ -8091,14 +7986,117 @@ public class BasicQueryTest extends FoodMartTestCase {
             "select [Measures].[zero] ON COLUMNS,\n"
             + " {[Gender].[All Gender]} ON ROWS\n"
             + "from [Sales] "
+=======
+        final TestContext testContext =
+            getTestContext()
+                .insertCalculatedColumnDef(
+                    "inventory_fact_1997",
+                    "<CalculatedColumnDef name='zero' type='Numeric'>\n"
+                    + "    <ExpressionView>\n"
+                    + "        <SQL dialect='generic'>NULL</SQL>\n"
+                    + "    </ExpressionView>\n"
+                    + "</CalculatedColumnDef>\n")
+                .insertCube(
+                    "<Cube name='FooBar'>\n"
+                    + "  <Dimensions>"
+                    + "    <Dimension source='Time'/>\n"
+                    + "  </Dimensions>"
+                    + "  <MeasureGroups>"
+                    + "    <MeasureGroup table='inventory_fact_1997'>"
+                    + "      <Measures>"
+                    + "        <Measure name='zero' aggregator='sum' column='zero'>\n"
+                    + "        </Measure>\n"
+                    + "      </Measures>"
+                    + "      <DimensionLinks>\n"
+                    + "        <ForeignKeyLink dimension='Time' foreignKeyColumn='time_id'/>\n"
+                    + "      </DimensionLinks>\n"
+                    + "    </MeasureGroup>"
+                    + "  </MeasureGroups>"
+                    + "</Cube>");
+
+        testContext.executeQuery(
+            "select\n"
+            + "  Crossjoin([Time].[Time].[Year].Members, [Measures].[zero]) ON COLUMNS\n"
+            + "from [FooBar]\n");
+
+        testContext.assertQueryReturns(
+            "select [Measures].[zero] ON COLUMNS,\n"
+            + " {[Time].[Time].[1997]} ON ROWS\n"
+            + "from [FooBar] "
             + " ",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[zero]}\n"
             + "Axis #2:\n"
+            + "{[Time].[Time].[1997]}\n"
+            + "Row #0: \n");
+    }
+
+    public void testMondrian1432()
+    {
+        TestContext testContext = getTestContext()
+            .insertCalculatedColumnDef(
+                "sales_fact_1997",
+                "<CalculatedColumnDef name='zero' type='Numeric'>\n"
+                + "    <ExpressionView>\n"
+                + "        <SQL dialect='generic'>0</SQL>\n"
+                + "    </ExpressionView>\n"
+                + "</CalculatedColumnDef>\n")
+            .insertCube(
+                "<Cube name='FooBar'>\n"
+                + "  <Dimensions>"
+                + "    <Dimension name='Gender' table='customer' key='Name' >\n"
+                + "  <Attributes>    "
+                + " <Attribute name='Gender' keyColumn='gender'/>"
+                + "<Attribute name='Name' keyColumn='customer_id' nameColumn='full_name' orderByColumn='full_name' hasHierarchy='false'/>"
+                + " </Attributes>    "
+                + "    </Dimension>\n"
+                + "  </Dimensions>"
+                + "  <MeasureGroups>"
+                + "    <MeasureGroup table='sales_fact_1997'>"
+                + "      <Measures>"
+                + "        <Measure name='zero' aggregator='sum' column='zero'>\n"
+                + "        </Measure>\n"
+                + "      </Measures>"
+                + "      <DimensionLinks>\n"
+                + "        <ForeignKeyLink dimension='Gender' foreignKeyColumn='customer_id'/>\n"
+                + "      </DimensionLinks>\n"
+                + "    </MeasureGroup>"
+                + "  </MeasureGroups>"
+                + "</Cube>");
+
+
+        testContext.assertQueryReturns(
+            "select "
+            + "Crossjoin([Gender].[Gender].[Gender].Members, [Measures].[zero]) ON COLUMNS\n"
+            + "from [FooBar] "
+            + "  \n",
+            "Axis #0:\n"
+            + "{}\n"
+            + "Axis #1:\n"
+            + "{[Gender].[Gender].[F], [Measures].[zero]}\n"
+            + "{[Gender].[Gender].[M], [Measures].[zero]}\n"
+            + "Row #0: 0\n"
+            + "Row #0: 0\n");
+        testContext.assertQueryReturns(
+            "select [Measures].[zero] ON COLUMNS,\n"
+            + "  {[Gender].[All Gender]}  ON ROWS\n"
+            + "from [FooBar] "
+>>>>>>> upstream/4.0
+            + " ",
+            "Axis #0:\n"
+            + "{}\n"
+            + "Axis #1:\n"
+            + "{[Measures].[zero]}\n"
+            + "Axis #2:\n"
+<<<<<<< HEAD
             + "{[Gender].[All Gender]}\n"
             + "Row #0: " + returnedValue + "\n");
+=======
+            + "{[Gender].[Gender].[All Gender]}\n"
+            + "Row #0: 0\n");
+>>>>>>> upstream/4.0
     }
 }
 

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2003-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho
+// Copyright (C) 2005-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -42,8 +42,6 @@ class RestrictedMemberReader extends DelegatingMemberReader {
      * @param memberReader Underlying (presumably unrestricted) member reader
      * @param role Role whose access profile to obey. The role must have
      *   restrictions on this hierarchy
-     * @pre role.getAccessDetails(memberReader.getHierarchy()) != null ||
-     *   memberReader.getHierarchy().isRagged()
      */
     RestrictedMemberReader(MemberReader memberReader, Role role) {
         super(memberReader);
@@ -202,24 +200,27 @@ class RestrictedMemberReader extends DelegatingMemberReader {
     }
 
     public List<RolapMember> getRootMembers() {
-        int topLevelDepth = hierarchyAccess.getTopLevelDepth();
+        final List<RolapMember> memberList;
+        final int topLevelDepth = hierarchyAccess.getTopLevelDepth();
         if (topLevelDepth > 0) {
-            RolapLevel topLevel =
-                (RolapLevel) getHierarchy().getLevels()[topLevelDepth];
-            final List<RolapMember> memberList =
-                getMembersInLevel(topLevel);
-            if (memberList.isEmpty()) {
-                throw MondrianResource.instance()
-                    .HierarchyHasNoAccessibleMembers.ex(
-                        getHierarchy().getUniqueName());
-            }
-            return memberList;
+            RolapCubeLevel topLevel =
+                getHierarchy().getLevelList().get(topLevelDepth);
+            memberList = getMembersInLevel(topLevel);
+        } else {
+            List<RolapMember> unfilteredMemberList = super.getRootMembers();
+            memberList = new ArrayList<RolapMember>();
+            filterMembers(unfilteredMemberList, memberList);
         }
-        return super.getRootMembers();
+        if (memberList.isEmpty()) {
+            throw MondrianResource.instance()
+                .HierarchyHasNoAccessibleMembers.ex(
+                    getHierarchy().getUniqueName());
+        }
+        return memberList;
     }
 
     public List<RolapMember> getMembersInLevel(
-        RolapLevel level)
+        RolapCubeLevel level)
     {
         TupleConstraint constraint =
             sqlConstraintFactory.getLevelMembersConstraint(null);
@@ -227,7 +228,7 @@ class RestrictedMemberReader extends DelegatingMemberReader {
     }
 
     public List<RolapMember> getMembersInLevel(
-        RolapLevel level, TupleConstraint constraint)
+        RolapCubeLevel level, TupleConstraint constraint)
     {
         if (hierarchyAccess != null) {
             final int depth = level.getDepth();
@@ -247,8 +248,7 @@ class RestrictedMemberReader extends DelegatingMemberReader {
     }
 
     public RolapMember getDefaultMember() {
-        RolapMember defaultMember =
-            (RolapMember) getHierarchy().getDefaultMember();
+        RolapMember defaultMember = getHierarchy().getDefaultMember();
         if (defaultMember != null) {
             Access i = hierarchyAccess.getAccess(defaultMember);
             if (i != Access.NONE) {
@@ -256,20 +256,22 @@ class RestrictedMemberReader extends DelegatingMemberReader {
             }
         }
         final List<RolapMember> rootMembers = getRootMembers();
+        final RolapMember rootMember = rootMembers.get(0);
         if (rootMembers.size() == 1) {
             return rootMembers.get(0);
         } else {
-            return new MultiCardinalityDefaultMember(rootMembers.get(0));
+            return new MultiCardinalityDefaultMember(rootMember);
         }
     }
 
     /**
-     * This is a special subclass of {@link DelegatingRolapMember}.
-     * It is needed because {@link Evaluator} doesn't support multi cardinality
-     * default members. RolapHierarchy.LimitedRollupSubstitutingMemberReader
-     * .substitute() looks for this class and substitutes the
+     * Special subclass of {@link DelegatingRolapMember}, needed because
+     * {@link Evaluator} doesn't support multi-cardinality default members.
+     * {@link RolapHierarchy.LimitedRollupSubstitutingMemberReader}.substitute()
+     * looks for this class and substitutes.
+     *
      * <p>FIXME: If/when we refactor evaluator to support
-     * multi cardinality default members, we can remove this.
+     * multi-cardinality default members, we can remove this.
      */
     static class MultiCardinalityDefaultMember extends DelegatingRolapMember {
         protected MultiCardinalityDefaultMember(RolapMember member) {

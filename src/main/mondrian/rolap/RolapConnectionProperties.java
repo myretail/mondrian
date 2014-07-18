@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2003-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho
+=======
+// Copyright (C) 2005-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -32,14 +36,18 @@ public enum RolapConnectionProperties {
 
     /**
      * The "Jdbc" property is the URL of the JDBC database where the data is
+<<<<<<< HEAD
      * stored. You must specify either {@link #DataSource} or {@code #Jdbc}.
+=======
+     * stored. You must specify either {@link #DataSource} or {@code Jdbc}.
+>>>>>>> upstream/4.0
      */
     Jdbc,
 
     /**
      * The "JdbcDrivers" property is a comma-separated list of JDBC driver
-     * classes, for example,
-     * <code>"sun.jdbc.odbc.JdbcOdbcDriver,oracle.jdbc.OracleDriver"</code>.
+     * classes, for example, <code>"com.mysql.jdbc.Driver,
+     * sun.jdbc.odbc.JdbcOdbcDriver, oracle.jdbc.OracleDriver"</code>.
      */
     JdbcDrivers,
 
@@ -56,6 +64,22 @@ public enum RolapConnectionProperties {
      * specified in the JDBC URL.)
      */
     JdbcPassword,
+
+    /**
+     * The "Dialect" property specifies the SQL dialect to use for connections
+     * to this JDBC database.
+     *
+     * <p>The value of the property is the name of a class that implements the
+     * {@link mondrian.spi.Dialect} SPI. The class must be on the classpath. It
+     * is recommended, but not essential, that the class is in the
+     * <code>META-INF/services/mondrian.spi.Dialect</code> configuration
+     * file.</p>
+     *
+     * <p>If the property is not specified, Mondrian scans the registered
+     * dialects and uses the first that claims to be able to handle this kind
+     * of JDBC connection.</p>
+     */
+    Dialect,
 
     /**
      * The "Catalog" property is the URL of the catalog, an XML file which
@@ -100,7 +124,15 @@ public enum RolapConnectionProperties {
      * The "PoolNeeded" property tells Mondrian whether to add a layer of
      * connection pooling.
      *
-     * <p>If no value is specified, we assume that:<ul>
+     * <p>If the value is "true", Mondrian uses its own connection pool
+     * for all JDBC connections.</p>
+     *
+     * <p>If the value is "false", Mondrian does not use a connection pool
+     * for any JDBC connections.</p>
+     *
+     * <p>If no value is specified, Mondrian uses a connection pool for
+     * connections created via the JDBC driver manager (that is, using the
+     * {@link #Jdbc} property. In other words, it assumes that:<ul>
      * <li>connections created via the {@link #Jdbc} property are not pooled,
      *     and therefore need to be pooled,
      * <li>connections created via the {@link #DataSource} are already pooled.
@@ -147,14 +179,6 @@ public enum RolapConnectionProperties {
     Locale,
 
     /**
-     * The name of a class implementing the
-     * {@link mondrian.spi.DataSourceChangeListener} interface.
-     * A data source change listener is used to flush the cache of
-     * mondrian every time the datasource is changed.
-     */
-    DataSourceChangeListener,
-
-    /**
      * The "Ignore" property is a boolean value. If true, mondrian ignores
      * warnings and non-fatal errors while loading the schema. The resulting
      * errors can be obtained by calling
@@ -178,6 +202,7 @@ public enum RolapConnectionProperties {
     JdbcConnectionUuid,
 
     /**
+<<<<<<< HEAD
      * The "PinSchemaTimeout" defines how much time must Mondrian
      * keep a hard reference to schema objects within the pool of schemas.
      *
@@ -203,6 +228,13 @@ public enum RolapConnectionProperties {
      * <p>Defaults to "-1s".
      */
     PinSchemaTimeout;
+=======
+     * The "DataServicesProvider" property specifies the full class name for
+     * the {@link mondrian.spi.DataServicesProvider} implementation to be used
+     * for this connection
+     */
+    DataServicesProvider;
+>>>>>>> upstream/4.0
 
     /**
      * Any property beginning with this value will be added to the
@@ -211,6 +243,11 @@ public enum RolapConnectionProperties {
      */
     public static final String JdbcPropertyPrefix = "jdbc.";
 
+    /**
+     * Any property beginning with this value will be added to the
+     * map passed to a {@link mondrian.spi.RoleGenerator}.
+     */
+    public static final String RolePropertyPrefix = "session.";
 }
 
 // End RolapConnectionProperties.java

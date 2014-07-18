@@ -5,12 +5,14 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
 
 import mondrian.resource.MondrianResource;
+
+import java.util.List;
 
 /**
  * Skeleton implementation for {@link Hierarchy}.
@@ -22,91 +24,25 @@ public abstract class HierarchyBase
     extends OlapElementBase
     implements Hierarchy
 {
-
     protected final Dimension dimension;
-    /**
-     * <code>name</code> and <code>subName</code> are the name of the
-     * hierarchy, respectively containing and not containing dimension
-     * name. For example:
-     * <table>
-     * <tr> <th>uniqueName</th>    <th>name</th>        <th>subName</th></tr>
-     * <tr> <td>[Time.Weekly]</td> <td>Time.Weekly</td> <td>Weekly</td></tr>
-     * <tr> <td>[Customers]</td>   <td>Customers</td>   <td>null</td></tr>
-     * </table>
-     *
-     * <p>If {@link mondrian.olap.MondrianProperties#SsasCompatibleNaming} is
-     * true, name and subName have the same value.
-     */
-    protected final String subName;
     protected final String name;
     protected final String uniqueName;
-    protected String description;
-    protected Level[] levels;
     protected final boolean hasAll;
-    protected String allMemberName;
-    protected String allLevelName;
 
     protected HierarchyBase(
         Dimension dimension,
         String subName,
-        String caption,
+        String uniqueName,
         boolean visible,
-        String description,
         boolean hasAll)
     {
         this.dimension = dimension;
         this.hasAll = hasAll;
-        if (caption != null) {
-            this.caption = caption;
-        } else if (subName == null) {
-            this.caption = dimension.getCaption();
-        } else {
-            this.caption = subName;
-        }
-        this.description = description;
         this.visible = visible;
 
-        String name = dimension.getName();
-        if (MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            if (subName == null) {
-                // e.g. "Time"
-                subName = name;
-            }
-            this.subName = subName;
-            this.name = subName;
-            // e.g. "[Time].[Weekly]" for dimension "Time", hierarchy "Weekly";
-            // "[Time]" for dimension "Time", hierarchy "Time".
-            this.uniqueName =
-                subName.equals(name)
-                    ? dimension.getUniqueName()
-                    : Util.makeFqName(dimension, this.name);
-        } else {
-            this.subName = subName;
-            if (this.subName != null) {
-                // e.g. "Time.Weekly"
-                this.name = name + "." + subName;
-                if (this.subName.equals(name)) {
-                    this.uniqueName = dimension.getUniqueName();
-                } else {
-                    // e.g. "[Time.Weekly]"
-                    this.uniqueName = Util.makeFqName(this.name);
-                }
-            } else {
-                // e.g. "Time"
-                this.name = name;
-                // e.g. "[Time]"
-                this.uniqueName = dimension.getUniqueName();
-            }
-        }
-    }
-
-    /**
-     * Returns the name of the hierarchy sans dimension name.
-     *
-     * @return name of hierarchy sans dimension name
-     */
-    public String getSubName() {
-        return subName;
+        assert subName != null;
+        this.name = subName;
+        this.uniqueName = uniqueName;
     }
 
     // implement MdxElement
@@ -130,22 +66,24 @@ public abstract class HierarchyBase
     public abstract boolean isRagged();
 
     public String getDescription() {
-        return description;
+        return Larders.getDescription(getLarder());
     }
 
     public Dimension getDimension() {
         return dimension;
     }
 
+    @Deprecated
     public Level[] getLevels() {
-        return levels;
+        final List<? extends Level> levelList = getLevelList();
+        return levelList.toArray(new Level[levelList.size()]);
     }
 
     public Hierarchy getHierarchy() {
         return this;
     }
 
-    public boolean hasAll() {
+    public final boolean hasAll() {
         return hasAll;
     }
 
@@ -172,7 +110,8 @@ public abstract class HierarchyBase
             // Key segment searches bottom level by default. For example,
             // [Products].&[1] is shorthand for [Products].[Product Name].&[1].
             final Id.KeySegment keySegment = (Id.KeySegment) s;
-            oe = levels[levels.length - 1]
+            final List<? extends Level> levelList = getLevelList();
+            oe = Util.last(levelList)
                 .lookupChild(schemaReader, keySegment, matchType);
         }
 
@@ -191,19 +130,6 @@ public abstract class HierarchyBase
             getLogger().debug(buf.toString());
         }
         return oe;
-    }
-
-    public String getAllMemberName() {
-        return allMemberName;
-    }
-
-    /**
-     * Returns the name of the 'all' level in this hierarchy.
-     *
-     * @return name of the 'all' level
-     */
-    public String getAllLevelName() {
-        return allLevelName;
     }
 }
 

@@ -5,13 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.aggmatcher;
 
-import mondrian.olap.Hierarchy;
-import mondrian.olap.Level;
+import mondrian.olap.*;
 import mondrian.recorder.MessageRecorder;
 import mondrian.resource.MondrianResource;
 import mondrian.rolap.*;
@@ -189,14 +188,14 @@ class DefaultRecognizer extends Recognizer {
      */
     protected void matchLevels(
         final Hierarchy hierarchy,
-        final HierarchyUsage hierarchyUsage)
+        final Recognizer.HierarchyUsage hierarchyUsage)
     {
         msgRecorder.pushContextName("DefaultRecognizer.matchLevel");
         try {
             List<Pair<RolapLevel, JdbcSchema.Table.Column>> levelMatches =
                 new ArrayList<Pair<RolapLevel, JdbcSchema.Table.Column>>();
             level_loop:
-            for (Level level : hierarchy.getLevels()) {
+            for (Level level : hierarchy.getLevelList()) {
                 if (level.isAll()) {
                     continue;
                 }
@@ -205,7 +204,11 @@ class DefaultRecognizer extends Recognizer {
                 String usagePrefix = hierarchyUsage.getUsagePrefix();
                 String hierName = hierarchy.getName();
                 String levelName = rLevel.getName();
-                String levelColumnName = getColumnName(rLevel.getKeyExp());
+                assert rLevel.getAttribute().getKeyList().size() == 1
+                    : "TODO: handle composite keys";
+                final RolapSchema.PhysColumn column =
+                    rLevel.getAttribute().getKeyList().get(0);
+                String levelColumnName = getColumnName(column);
 
                 Recognizer.Matcher matcher = getRules().getLevelMatcher(
                     usagePrefix, hierName, levelName, levelColumnName);
@@ -233,9 +236,9 @@ class DefaultRecognizer extends Recognizer {
                         Pair<RolapLevel, Column> o1,
                         Pair<RolapLevel, Column> o2)
                     {
-                        return
-                            Integer.valueOf(o1.left.getDepth()).compareTo(
-                                Integer.valueOf(o2.left.getDepth()));
+                        return Util.compare(
+                            o1.left.getDepth(),
+                            o2.left.getDepth());
                     }
                 });
             // Validate by iterating.
@@ -297,7 +300,7 @@ class DefaultRecognizer extends Recognizer {
                     hierarchy,
                     hierarchyUsage,
                     pair.right.column.name,
-                    getColumnName(pair.left.getKeyExp()),
+                    getColumnName(pair.left.getAttribute().getKeyList().get(0)),
                     pair.left.getName(),
                     collapsed,
                     pair.left);

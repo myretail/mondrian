@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2011-2011 Pentaho
+// Copyright (C) 2011-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -78,11 +78,12 @@ public final class NameResolver {
         List<Namespace> namespaces)
     {
         OlapElement element = parent;
+        segmentLoop:
         for (final IdentifierSegment segment : segments) {
             assert element != null;
-            OlapElement child = null;
             for (Namespace namespace : namespaces) {
-                child = namespace.lookupChild(element, segment, matchType);
+                OlapElement child =
+                    namespace.lookupChild(element, segment, matchType);
                 if (child != null) {
                     switch (matchType) {
                     case EXACT:
@@ -99,13 +100,11 @@ public final class NameResolver {
                         }
                         break;
                     }
-                    break;
+                    element = child;
+                    continue segmentLoop;
                 }
             }
-            if (child == null) {
-                return null;
-            }
-            element = child;
+            return null;
         }
         return element;
     }
@@ -118,19 +117,17 @@ public final class NameResolver {
         List<Namespace> namespaces)
     {
         OlapElement element = parent;
+        segmentLoop:
         for (final IdentifierSegment segment : segments) {
             assert element != null;
-            OlapElement child = null;
             for (Namespace namespace : namespaces) {
-                child = namespace.lookupChild(element, segment);
+                OlapElement child = namespace.lookupChild(element, segment);
                 if (child != null) {
-                    break;
+                    element = child;
+                    continue segmentLoop;
                 }
             }
-            if (child == null) {
-                return null;
-            }
-            element = child;
+            return null;
         }
         return element;
     }
@@ -156,9 +153,8 @@ public final class NameResolver {
                 return element;
             } else if (element instanceof Dimension) {
                 final Dimension dimension = (Dimension) element;
-                final Hierarchy[] hierarchies = dimension.getHierarchies();
-                if (hierarchies.length == 1) {
-                    return hierarchies[0];
+                if (dimension.getHierarchyList().size() == 1) {
+                    return dimension.getHierarchyList().get(0);
                 }
                 return null;
             } else {
@@ -208,7 +204,9 @@ public final class NameResolver {
             } else {
                 // If parent is not a member, member must be a root member.
                 return parent.equals(formulaMember.getHierarchy())
-                    || parent.equals(formulaMember.getDimension());
+                    || parent.equals(formulaMember.getDimension())
+                    || parent instanceof Cube
+                    && !MondrianProperties.instance().NeedDimensionPrefix.get();
             }
         } else {
             return parent instanceof Cube;

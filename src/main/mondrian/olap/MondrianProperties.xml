@@ -4,7 +4,7 @@
   == http://www.eclipse.org/legal/epl-v10.html.
   == You must accept the terms of that agreement to use this software.
   ==
-  == Copyright (C) 2011-2012 Pentaho
+  == Copyright (C) 2011-2013 Pentaho
   == All Rights Reserved.
   ==
   == Definitions of configuration properties used by Mondrian. From this file,
@@ -56,17 +56,6 @@ maximum size of a result set.
 </Description>
         <Type>int</Type>
         <Default>0</Default>
-    </PropertyDefinition>
-    <PropertyDefinition>
-        <Name>HighCardChunkSize</Name>
-        <Path>mondrian.result.highCardChunkSize</Path>
-        <Description>
-Property that establishes the amount of chunks for querying cells
-involving high-cardinality dimensions.
-Should prime with {@link #ResultLimit mondrian.result.limit}.
-        </Description>
-        <Type>int</Type>
-        <Default>1</Default>
     </PropertyDefinition>
     <PropertyDefinition>
         <Name>TestName</Name>
@@ -203,6 +192,15 @@ mondrian.foodmart.jdbcUser=foodmart<br/>
 mondrian.foodmart.jdbcPassword=foodmart<br/>
 mondrian.jdbcDrivers=com.mysql.jdbc.Driver<br/>
 driver.classpath=D:/mysql-connector-3.1.12</code></blockquote>
+
+<h3> NuoDB</h3>
+<blockquote><code>
+mondrian.foodmart.jdbcURL=jdbc:com.nuodb://localhost/foodmart?schema=mondrian<br/>
+mondrian.foodmart.jdbcUser=foodmart<br/>
+mondrian.foodmart.jdbcPassword=foodmart<br/>
+mondrian.jdbcDrivers=com.nuodb.jdbc.Driver<br/>
+mondrian.foodmart.jdbcSchema=mondrian<br/>
+driver.classpath=/opt/nuodb/jar/nuodbjdbc.jar</code></blockquote>
 
 <h3>Infobright</h3>
 <p>As MySQL. (Infobright uses a MySQL driver, version 5.1 and later.)</p>
@@ -941,7 +939,11 @@ value of 0 (the default) indicates no timeout.</p>
         <Name>RolapConnectionShepherdThreadPollingInterval</Name>
         <Path>mondrian.rolap.shepherdThreadPollingInterval</Path>
         <Description>
+<<<<<<< HEAD
 <p>Property that defines the interval value between
+=======
+<p>Property that defines the interval value (in milliseconds) between
+>>>>>>> upstream/4.0
 polling operations performed by the RolapConnection shepherd thread.
 This controls query timeouts and cancellation, so a small value
 (a few milliseconds) is best. Setting this to a value higher than
@@ -958,10 +960,36 @@ as expected.</p>
         <Path>mondrian.rolap.maxQueryThreads</Path>
         <Description>
 <p>Maximum number of MDX query threads per Mondrian server instance.
+<<<<<<< HEAD
 Defaults to 10.</p>
+=======
+Defaults to 20.</p>
+>>>>>>> upstream/4.0
         </Description>
         <Type>int</Type>
-        <Default>10</Default>
+        <Default>20</Default>
+    </PropertyDefinition>
+    <PropertyDefinition>
+        <Name>SegmentCacheManagerNumberSqlThreads</Name>
+        <Path>mondrian.rolap.maxSqlThreads</Path>
+        <Description>
+<p>Maximum number of threads per Mondrian server instance that
+are used to run SQL queries when populating segments.
+Defaults to 100.</p>
+        </Description>
+        <Type>int</Type>
+        <Default>100</Default>
+    </PropertyDefinition>
+    <PropertyDefinition>
+        <Name>SegmentCacheManagerNumberCacheThreads</Name>
+        <Path>mondrian.rolap.maxCacheThreads</Path>
+        <Description>
+<p>Maximum number of threads per Mondrian server instance that
+are used to run perform operations on the external caches.
+Defaults to 100.</p>
+        </Description>
+        <Type>int</Type>
+        <Default>100</Default>
     </PropertyDefinition>
     <PropertyDefinition>
         <Name>SegmentCacheManagerNumberSqlThreads</Name>
@@ -1269,33 +1297,13 @@ desirable.</p>
         <Default>false</Default>
     </PropertyDefinition>
     <PropertyDefinition>
-        <Name>EnableRolapCubeMemberCache</Name>
-        <Path>mondrian.rolap.EnableRolapCubeMemberCache</Path>
-        <Category>Caching</Category>
-        <Description>
-<p>Property that determines whether to cache RolapCubeMember objects,
-each of which associates a member of a shared hierarchy with a
-particular cube in which it is being used.</p>
-
-<p>The default is {@code true}, that is, use a cache. If you wish to use
-the member cache control aspects of {@link mondrian.olap.CacheControl},
-you must set this property to {@code false}.</p>
-
-<p>RolapCubeMember has recently become more lightweight to
-construct, and we may obsolete this cache and this
-property.</p>
-        </Description>
-        <Type>boolean</Type>
-        <Default>true</Default>
-    </PropertyDefinition>
-    <PropertyDefinition>
         <Name>SolveOrderMode</Name>
         <Path>mondrian.rolap.SolveOrderMode</Path>
         <Description>
 Property that controls the behavior of
 {@link Property#SOLVE_ORDER solve order} of calculated members and sets.
 
-<p>Valid values are "absolute" and "scoped" (the default). See
+<p>Valid values are "ABSOLUTE" (the default) and "SCOPED". See
 {@link mondrian.olap.SolveOrderMode} for details.</p>
         </Description>
         <Type>String</Type>
@@ -1330,19 +1338,6 @@ value Mondrian throws a LimitExceededDuringCrossjoin error.</p>
         </Description>
         <Type>int</Type>
         <Default>150000</Default>
-    </PropertyDefinition>
-    <PropertyDefinition>
-        <Name>SsasCompatibleNaming</Name>
-        <Path>mondrian.olap.SsasCompatibleNaming</Path>
-        <Description>
-<p>Property that defines
-whether to enable new naming behavior.</p>
-
-<p>If true, hierarchies are named [Dimension].[Hierarchy]; if false,
-[Dimension.Hierarchy].</p>
-        </Description>
-        <Type>boolean</Type>
-        <Default>false</Default>
     </PropertyDefinition>
     <PropertyDefinition>
         <Name>XmlaSchemaRefreshInterval</Name>
@@ -1439,7 +1434,7 @@ manager'</code> to the connect string.</p>
         </Description>
         <Core>false</Core>
         <Type>String</Type>
-        <Default>Provider=mondrian;Jdbc=jdbc:odbc:MondrianFoodMart;Catalog=/WEB-INF/queries/FoodMart.xml;JdbcDrivers=sun.jdbc.odbc.JdbcOdbcDriver</Default>
+        <Default>Provider=mondrian;Jdbc=jdbc:mysql://localhost/foodmart;JdbcUser=foodmart;JdbcPassword=foodmart;Catalog=/WEB-INF/queries/FoodMart.mondrian.xml;JdbcDrivers=com.mysql.jdbc.Driver</Default>
     </PropertyDefinition>
     <PropertyDefinition>
         <Name>Log4jConfiguration</Name>
@@ -1456,4 +1451,32 @@ log4j.configuration=file:log4j.properties</code></blockquote>
         <Core>false</Core>
         <Type>String</Type>
     </PropertyDefinition>
+<<<<<<< HEAD
+=======
+    <PropertyDefinition>
+        <Name>VfsClass</Name>
+        <Path>mondrian.spi.virtualFileHandlerClass</Path>
+        <Category>Factories</Category>
+        <Description>
+            <p>Name of the class that allows Mondrian to read from files or
+                URLs. The class must implement the
+                "mondrian.spi.VirtualFileHandler" interface.
+                Implementations include
+                "mondrian.spi.impl.ApacheVfsVirtualFileHandler"
+                (uses Apache VFS version 1),
+                "mondrian.spi.impl.ApacheVfs2VirtualFileHandler"
+                (uses Apache VFS version 2),
+                "mondrian.spi.impl.JavaNetVirtualFileHandler"
+                (uses "java.net.URL.openStream").</p>
+
+            <p>If not specified, Mondrian tries to instantiate
+                ApacheVfs2VirtualFileHandler,
+                then ApacheVfsVirtualFileHandler,
+                and lastly JavaNetVirtualFileHandler as a fallback. The
+                effect is that the server will use Apache VFS2 if it is
+                available on the classpath.</p>
+        </Description>
+        <Type>String</Type>
+    </PropertyDefinition>
+>>>>>>> upstream/4.0
 </PropertyDefinitions>

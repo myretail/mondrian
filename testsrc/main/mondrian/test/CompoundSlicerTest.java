@@ -58,15 +58,15 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where ([Product].[Top], [Time].[1997].[Q3])",
             "Axis #0:\n"
-            + "{[Product].[Top], [Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Top], [Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Price per Unit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F], [Marital Status].[M]}\n"
-            + "{[Gender].[F], [Marital Status].[S]}\n"
-            + "{[Gender].[M], [Marital Status].[M]}\n"
-            + "{[Gender].[M], [Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[S]}\n"
             + "Row #0: 779\n"
             + "Row #0: 2.40\n"
             + "Row #1: 811\n"
@@ -93,17 +93,17 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where [Top Products] * [Time].[1997].[Q3]",
             "Axis #0:\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Hermanos], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Tell Tale], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Ebony], [Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Hermanos], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Tell Tale], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Ebony], [Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Price per Unit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F], [Marital Status].[M]}\n"
-            + "{[Gender].[F], [Marital Status].[S]}\n"
-            + "{[Gender].[M], [Marital Status].[M]}\n"
-            + "{[Gender].[M], [Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[S]}\n"
             + "Row #0: 779\n"
             + "Row #0: 2.40\n"
             + "Row #1: 811\n"
@@ -123,71 +123,72 @@ public class CompoundSlicerTest extends FoodMartTestCase {
     public void testCompoundSlicerExcept() {
         final String expected =
             "Axis #0:\n"
-            + "{[Promotion Media].[Bulk Mail]}\n"
-            + "{[Promotion Media].[Cash Register Handout]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[In-Store Coupon]}\n"
-            + "{[Promotion Media].[No Media]}\n"
-            + "{[Promotion Media].[Product Attachment]}\n"
-            + "{[Promotion Media].[Radio]}\n"
-            + "{[Promotion Media].[Street Handout]}\n"
-            + "{[Promotion Media].[Sunday Paper]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[TV]}\n"
+            + "{[Promotion].[Media Type].[Bulk Mail]}\n"
+            + "{[Promotion].[Media Type].[Cash Register Handout]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[In-Store Coupon]}\n"
+            + "{[Promotion].[Media Type].[No Media]}\n"
+            + "{[Promotion].[Media Type].[Product Attachment]}\n"
+            + "{[Promotion].[Media Type].[Radio]}\n"
+            + "{[Promotion].[Media Type].[Street Handout]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[TV]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 259,035\n"
             + "Row #1: 127,871\n"
             + "Row #2: 131,164\n";
 
-        // slicer expression that inherits [Promotion Media] member from context
+        // slicer expression that inherits [Promotion].[Media Type] member from
+        // context
         assertQueryReturns(
             "select [Measures].[Unit Sales] on 0,\n"
             + " [Gender].Members on 1\n"
             + "from [Sales]\n"
             + "where Except(\n"
-            + "  [Promotion Media].Children,\n"
-            + "  {[Promotion Media].[Daily Paper]})", expected);
+            + "  [Promotion].[Media Type].Children,\n"
+            + "  {[Promotion].[Media Type].[Daily Paper]})", expected);
 
-        // similar query, but don't assume that [Promotion Media].CurrentMember
-        // = [Promotion Media].[All Media]
+        // similar query, but don't assume that [Promotion].[Media
+        // Type].CurrentMember = [Promotion].[Media Type].[All Media]
         assertQueryReturns(
             "select [Measures].[Unit Sales] on 0,\n"
             + " [Gender].Members on 1\n"
             + "from [Sales]\n"
             + "where Except(\n"
-            + "  [Promotion Media].[All Media].Children,\n"
-            + "  {[Promotion Media].[Daily Paper]})", expected);
+            + "  [Promotion].[Media Type].[All Media].Children,\n"
+            + "  {[Promotion].[Media Type].[Daily Paper]})", expected);
 
         // reference query, computing the same numbers a different way
         assertQueryReturns(
-            "with member [Promotion Media].[Except Daily Paper] as\n"
+            "with member [Promotion].[Media Type].[Except Daily Paper] as\n"
             + "  Aggregate(\n"
             + "    Except(\n"
-            + "      [Promotion Media].Children,\n"
-            + "      {[Promotion Media].[Daily Paper]}))\n"
+            + "      [Promotion].[Media Type].Children,\n"
+            + "      {[Promotion].[Media Type].[Daily Paper]}))\n"
             + "select [Measures].[Unit Sales]\n"
-            + " * {[Promotion Media],\n"
-            + "    [Promotion Media].[Daily Paper],\n"
-            + "    [Promotion Media].[Except Daily Paper]} on 0,\n"
+            + " * {[Promotion].[Media Type],\n"
+            + "    [Promotion].[Media Type].[Daily Paper],\n"
+            + "    [Promotion].[Media Type].[Except Daily Paper]} on 0,\n"
             + " [Gender].Members on 1\n"
             + "from [Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[All Media]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Daily Paper]}\n"
-            + "{[Measures].[Unit Sales], [Promotion Media].[Except Daily Paper]}\n"
+            + "{[Measures].[Unit Sales], [Promotion].[Media Type].[All Media]}\n"
+            + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Daily Paper]}\n"
+            + "{[Measures].[Unit Sales], [Promotion].[Media Type].[Except Daily Paper]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 266,773\n"
             + "Row #0: 7,738\n"
             + "Row #0: 259,035\n"
@@ -198,6 +199,97 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "Row #2: 4,051\n"
             + "Row #2: 131,164\n");
     }
+    public void testCompoundSlicerWithCellFormatter() {
+        String xmlMeasure =
+            "<Measure name='Unit Sales Foo Bar' column='unit_sales'\n"
+            + "    aggregator='sum' formatString='Standard' formatter='"
+            + UdfTest.FooBarCellFormatter.class.getName()
+            + "'/>";
+        TestContext tc =
+            TestContext.instance().legacy().createSubstitutingCube(
+                "Sales", null, xmlMeasure, null, null);
+
+        // the cell formatter for the measure should still be used
+        tc.assertQueryReturns(
+            "select from sales where "
+            + " measures.[Unit Sales Foo Bar] * {[Gender].F, [Gender].M} ",
+            "Axis #0:\n"
+            + "{[Measures].[Unit Sales Foo Bar], [Gender].[Gender].[F]}\n"
+            + "{[Measures].[Unit Sales Foo Bar], [Gender].[Gender].[M]}\n"
+            + "foo266773.0bar");
+
+        tc.assertQueryReturns(
+            "select from sales where "
+            + " {[Gender].F, [Gender].M}  * measures.[Unit Sales Foo Bar]",
+            "Axis #0:\n"
+            + "{[Gender].[Gender].[F], [Measures].[Unit Sales Foo Bar]}\n"
+            + "{[Gender].[Gender].[M], [Measures].[Unit Sales Foo Bar]}\n"
+            + "foo266773.0bar");
+    }
+
+
+    public void testMondrian1226() {
+        assertQueryReturns(
+            "with \n"
+            +    "member Measures.x1 as ([Time].[1997].[Q1],"
+            + "[Measures].[Store Sales])\n"
+            +    "member Measures.x2 as ([Time].[1997].[Q2],"
+            + " [Measures].[Store Sales])\n"
+            +    "set products as TopCount("
+            + "Product.[Product Name].Members,1,Measures.[Store Sales])\n"
+            +    "SELECT\n"
+            +    "NON EMPTY products ON 1,\n"
+            +    "NON EMPTY {[Measures].[Store Sales], "
+            + "Measures.x1, Measures.x2} ON 0\n"
+            +    "FROM [Sales]\n"
+            +    "where ([Time].[1997].[Q1] : [Time].[1997].[Q2])",
+            "Axis #0:\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "Axis #1:\n"
+            + "{[Measures].[Store Sales]}\n"
+            + "{[Measures].[x1]}\n"
+            + "{[Measures].[x2]}\n"
+            + "Axis #2:\n"
+            + "{[Product].[Products].[Food].[Eggs].[Eggs].[Eggs]"
+            + ".[Urban].[Urban Small Eggs]}\n"
+            + "Row #0: 497.42\n"
+            + "Row #0: 235.62\n"
+            + "Row #0: 261.80\n");
+    }
+
+     public void _testMondrian1226Variation() {
+         // Currently broke.  Below are two queries with two dimensions
+         // in the compound slicer.
+         //  The first has a measure which overrides the Time context,
+         // and gives expected results (since the Time dimension is
+         // the "placeholder" dimension.
+         assertQueryReturns(
+             "with member measures.HalfTime as '[Time].[1997].[Q1]/2'"
+             + " select measures.HalfTime on 0 from sales where "
+             + "({[Time].[1997].[Q1] : [Time].[1997].[Q2]} * gender.[All Gender]) ",
+             "Axis #0:\n"
+             + "{[Time].[Time].[1997].[Q1], [Customer].[Gender].[All Gender]}\n"
+             + "{[Time].[Time].[1997].[Q2], [Customer].[Gender].[All Gender]}\n"
+             + "Axis #1:\n"
+             + "{[Measures].[HalfTime]}\n"
+             + "Row #0: 33,146\n");
+
+         // The second query has a measure overriding gender, which
+         // fails since context is not set appropriately for gender.
+         assertQueryReturns(
+             "with member measures.HalfMan as 'Gender.m/2'"
+             +    " select measures.HalfMan on 0 from sales where "
+             +    "({[Time].[1997].[Q1] : [Time].[1997].[Q2]} "
+             + "* gender.[All Gender]) ",
+             "Axis #0:\n"
+             + "{[Time].[Time].[1997].[Q1], [Customer].[Gender].[M]}\n"
+             + "{[Time].[Time].[1997].[Q2], [Customer].[Gender].[M]}\n"
+             + "Axis #1:\n"
+             + "{[Measures].[HalfMan]}\n"
+             + "Row #0: 32,500\n");
+     }
+
 
     public void testCompoundSlicerWithCellFormatter() {
         String xmlMeasure =
@@ -308,20 +400,20 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where [Time].[1997].[Q3]",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q3]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Burnaby]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Cliffside]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Haney]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Ladner]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Langford]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Langley]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Metchosin]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[N. Vancouver]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Newton]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customers].[Canada].[BC].[Oak Bay]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Burnaby]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Cliffside]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Haney]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Ladner]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Langford]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Langley]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Metchosin]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[N. Vancouver]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Newton]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine], [Customer].[Customers].[Canada].[BC].[Oak Bay]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n"
@@ -353,17 +445,17 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where [Top Product Cities] * [Time].[1997].[Q3]",
             "Axis #0:\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods], [Customers].[USA].[WA].[Spokane], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables], [Customers].[USA].[WA].[Spokane], [Time].[1997].[Q3]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods], [Customers].[USA].[WA].[Puyallup], [Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods], [Customer].[Customers].[USA].[WA].[Spokane], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables], [Customer].[Customers].[USA].[WA].[Spokane], [Time].[Time].[1997].[Q3]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods], [Customer].[Customers].[USA].[WA].[Puyallup], [Time].[Time].[1997].[Q3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Price per Unit]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F], [Marital Status].[M]}\n"
-            + "{[Gender].[F], [Marital Status].[S]}\n"
-            + "{[Gender].[M], [Marital Status].[M]}\n"
-            + "{[Gender].[M], [Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[S]}\n"
             + "Row #0: 483\n"
             + "Row #0: 2.21\n"
             + "Row #1: 419\n"
@@ -374,22 +466,36 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "Row #3: 2.20\n");
     }
 
+    public void testCompoundSlicerCrossjoinRange() {
+        assertQueryReturns(
+            "select\n"
+            + "from [Sales]\n"
+            + "where [Customer].[Gender].[M]\n"
+            + " * [Product].[Drink]\n"
+            + " * {[Time].[1997].[Q1] : [Time].[1997].[Q3]}",
+            "Axis #0:\n"
+            + "{[Customer].[Gender].[M], [Product].[Products].[Drink], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Customer].[Gender].[M], [Product].[Products].[Drink], [Time].[Time].[1997].[Q2]}\n"
+            + "{[Customer].[Gender].[M], [Product].[Products].[Drink], [Time].[Time].[1997].[Q3]}\n"
+            + "9,032");
+    }
+
     /**
      * Tests that if the slicer contains zero members, all cells are null.
      */
     public void testEmptySetSlicerReturnsNull() {
         assertQueryReturns(
             "select [Measures].[Unit Sales] on 0,\n"
-            + "[Product].Children on 1\n"
+            + "[Product].[Products].Children on 1\n"
             + "from [Sales]\n"
             + "where {}",
             "Axis #0:\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n");
@@ -402,16 +508,16 @@ public class CompoundSlicerTest extends FoodMartTestCase {
     public void testEmptySetSlicerViaExpressionReturnsNull() {
         assertQueryReturns(
             "select [Measures].[Unit Sales] on 0,\n"
-            + "[Product].Children on 1\n"
+            + "[Product].[Products].Children on 1\n"
             + "from [Sales]\n"
             + "where filter([Gender].members * [Marital Status].members, 1 = 0)",
             "Axis #0:\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n");
@@ -429,13 +535,13 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where {[Product].[Drink]}",
             "Axis #0:\n"
-            + "{[Product].[Drink]}\n"
+            + "{[Product].[Products].[Drink]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 24,597\n"
             + "Row #1: 12,202\n"
             + "Row #2: 12,395\n");
@@ -446,13 +552,13 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where {[Product].[Food]}",
             "Axis #0:\n"
-            + "{[Product].[Food]}\n"
+            + "{[Product].[Products].[Food]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 191,940\n"
             + "Row #1: 94,814\n"
             + "Row #2: 97,126\n");
@@ -465,14 +571,14 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where {[Product].[Drink], [Product].[Food]}",
             "Axis #0:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 216,537\n"
             + "Row #1: 107,016\n"
             + "Row #2: 109,521\n");
@@ -486,28 +592,28 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "where {[Product].[Drink], [Product].[Food], [Product].[Drink]}",
             Bug.BugMondrian555Fixed
                 ? "Axis #0:\n"
-                  + "{[Product].[Drink]}\n"
-                  + "{[Product].[Food]}\n"
-                  + "{[Product].[Drink]}\n"
+                  + "{[Product].[Products].[Drink]}\n"
+                  + "{[Product].[Products].[Food]}\n"
+                  + "{[Product].[Products].[Drink]}\n"
                   + "Axis #1:\n"
                   + "{[Measures].[Unit Sales]}\n"
                   + "Axis #2:\n"
-                  + "{[Gender].[All Gender]}\n"
-                  + "{[Gender].[F]}\n"
-                  + "{[Gender].[M]}\n"
+                  + "{[Customer].[Gender].[All Gender]}\n"
+                  + "{[Customer].[Gender].[F]}\n"
+                  + "{[Customer].[Gender].[M]}\n"
                   + "Row #0: 241,134, 241,134, 241,134\n"
                   + "Row #1: 119,218, 119,218, 119,218\n"
                   + "Row #2: 121,916, 121,916, 121,916\n"
                 : "Axis #0:\n"
-                  + "{[Product].[Drink]}\n"
-                  + "{[Product].[Food]}\n"
-                  + "{[Product].[Drink]}\n"
+                  + "{[Product].[Products].[Drink]}\n"
+                  + "{[Product].[Products].[Food]}\n"
+                  + "{[Product].[Products].[Drink]}\n"
                   + "Axis #1:\n"
                   + "{[Measures].[Unit Sales]}\n"
                   + "Axis #2:\n"
-                  + "{[Gender].[All Gender]}\n"
-                  + "{[Gender].[F]}\n"
-                  + "{[Gender].[M]}\n"
+                  + "{[Customer].[Gender].[All Gender]}\n"
+                  + "{[Customer].[Gender].[F]}\n"
+                  + "{[Customer].[Gender].[M]}\n"
                   + "Row #0: 241,134\n"
                   + "Row #1: 119,218\n"
                   + "Row #2: 121,916\n");
@@ -521,14 +627,14 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where {[Product].[All Products].Parent, [Product].[Food], [Product].[Drink]}",
             "Axis #0:\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Drink]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 216,537\n"
             + "Row #1: 107,016\n"
             + "Row #2: 109,521\n");
@@ -542,14 +648,14 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "  [Product].[Drink],\n"
             + "  [Product].[Food].[Dairy]}",
             "Axis #0:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food].[Dairy]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food].[Dairy]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 37,482\n"
             + "Row #1: 18,715\n"
             + "Row #2: 18,767\n");
@@ -568,28 +674,28 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "  [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]}",
             Bug.BugMondrian555Fixed
                 ? "Axis #0:\n"
-                  + "{[Product].[Drink]}\n"
-                  + "{[Product].[Food].[Dairy]}\n"
-                  + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]}\n"
+                  + "{[Product].[Products].[Drink]}\n"
+                  + "{[Product].[Products].[Food].[Dairy]}\n"
+                  + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]}\n"
                   + "Axis #1:\n"
                   + "{[Measures].[Unit Sales]}\n"
                   + "Axis #2:\n"
-                  + "{[Gender].[All Gender]}\n"
-                  + "{[Gender].[F]}\n"
-                  + "{[Gender].[M]}\n"
+                  + "{[Customer].[Gender].[All Gender]}\n"
+                  + "{[Customer].[Gender].[F]}\n"
+                  + "{[Customer].[Gender].[M]}\n"
                   + "Row #0: 37,482\n"
                   + "Row #1: 18,715\n"
                   + "Row #2: 18.767\n"
                 : "Axis #0:\n"
-                  + "{[Product].[Drink]}\n"
-                  + "{[Product].[Food].[Dairy]}\n"
-                  + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]}\n"
+                  + "{[Product].[Products].[Drink]}\n"
+                  + "{[Product].[Products].[Food].[Dairy]}\n"
+                  + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]}\n"
                   + "Axis #1:\n"
                   + "{[Measures].[Unit Sales]}\n"
                   + "Axis #2:\n"
-                  + "{[Gender].[All Gender]}\n"
-                  + "{[Gender].[F]}\n"
-                  + "{[Gender].[M]}\n"
+                  + "{[Customer].[Gender].[All Gender]}\n"
+                  + "{[Customer].[Gender].[F]}\n"
+                  + "{[Customer].[Gender].[M]}\n"
                   + "Row #0: 39,165\n"
                   + "Row #1: 19,532\n"
                   + "Row #2: 19,633\n");
@@ -607,13 +713,13 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where [Product].[Foo]\n",
             "Axis #0:\n"
-            + "{[Product].[Foo]}\n"
+            + "{[Product].[Products].[Foo]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 39,165\n"
             + "Row #1: 19,532\n"
             + "Row #2: 19,633\n");
@@ -633,9 +739,9 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n");
@@ -682,9 +788,9 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n");
@@ -706,14 +812,15 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA], [Product].[Food], [Time].[1997].[Q1]}\n"
-            + "{[Store].[USA].[CA], [Product].[Drink], [Time].[1997].[Q2].[4]}\n"
-            + "{[Store].[USA].[OR].[Portland], [Product].[Food], [Time].[1997].[Q1]}\n"
-            + "{[Store].[USA].[OR].[Portland], [Product].[Drink], [Time].[1997].[Q2].[4]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Product].[Products].[Food], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Product].[Products].[Drink], [Time].[Time].[1997].[Q2].[4]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland], [Product].[Products].[Food], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland], [Product].[Products].[Drink], [Time].[Time].[1997].[Q2].[4]}\n"
             + "Row #0: 1,069\n"
             + "Row #1: 155\n"
             + "Row #2: 332\n"
             + "Row #3: 48\n");
+
         // The figures look reasonable, because:
         //  332 + 48 = 380 > 352
         //  1069 + 155 = 1224 > 1175
@@ -725,13 +832,13 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "  ([Product].[Food], [Time].[1997].[Q1]),\n"
             + "  ([Product].[Drink], [Time].[1997].[Q2].[4])}",
             "Axis #0:\n"
-            + "{[Product].[Food], [Time].[1997].[Q1]}\n"
-            + "{[Product].[Drink], [Time].[1997].[Q2].[4]}\n"
+            + "{[Product].[Products].[Food], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Product].[Products].[Drink], [Time].[Time].[1997].[Q2].[4]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA]}\n"
-            + "{[Store].[USA].[OR].[Portland]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland]}\n"
             + "Row #0: 1,175\n"
             + "Row #1: 352\n");
     }
@@ -745,7 +852,7 @@ public class CompoundSlicerTest extends FoodMartTestCase {
      */
     public void testRollupAvg() {
         final TestContext testContext =
-            TestContext.instance().createSubstitutingCube(
+            TestContext.instance().legacy().createSubstitutingCube(
                 "Sales",
                 null,
                 "<Measure name='Avg Unit Sales' aggregator='avg' column='unit_sales'/>\n"
@@ -768,8 +875,8 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "where [Measures].[Avg Unit Sales]\n"
             + "   * {[Customers].[USA].[OR], [Customers].[USA].[CA]}",
             "Axis #0:\n"
-            + "{[Measures].[Avg Unit Sales], [Customers].[USA].[OR]}\n"
-            + "{[Measures].[Avg Unit Sales], [Customers].[USA].[CA]}\n"
+            + "{[Measures].[Avg Unit Sales], [Customers].[Customers].[USA].[OR]}\n"
+            + "{[Measures].[Avg Unit Sales], [Customers].[Customers].[USA].[CA]}\n"
             + "6.189");
 
         // roll up using a named set
@@ -779,8 +886,8 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "select from [Sales]\n"
             + "where ([Measures].[Avg Unit Sales], [Customers].[OR and CA])",
             "Axis #0:\n"
-            + "{[Measures].[Avg Unit Sales], [Customers].[OR and CA]}\n"
-            + "3.094");
+            + "{[Measures].[Avg Unit Sales], [Customers].[Customers].[OR and CA]}\n"
+            + "3.092");
     }
 
     /**
@@ -791,49 +898,49 @@ public class CompoundSlicerTest extends FoodMartTestCase {
     public void testBugMondrian899() {
         final String expected =
             "Axis #0:\n"
-            + "{[Time].[1997].[Q1].[2]}\n"
-            + "{[Time].[1997].[Q1].[3]}\n"
-            + "{[Time].[1997].[Q2].[4]}\n"
-            + "{[Time].[1997].[Q2].[5]}\n"
-            + "{[Time].[1997].[Q2].[6]}\n"
-            + "{[Time].[1997].[Q3].[7]}\n"
-            + "{[Time].[1997].[Q3].[8]}\n"
-            + "{[Time].[1997].[Q3].[9]}\n"
-            + "{[Time].[1997].[Q4].[10]}\n"
-            + "{[Time].[1997].[Q4].[11]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
+            + "{[Time].[Time].[1997].[Q2].[5]}\n"
+            + "{[Time].[Time].[1997].[Q2].[6]}\n"
+            + "{[Time].[Time].[1997].[Q3].[7]}\n"
+            + "{[Time].[Time].[1997].[Q3].[8]}\n"
+            + "{[Time].[Time].[1997].[Q3].[9]}\n"
+            + "{[Time].[Time].[1997].[Q4].[10]}\n"
+            + "{[Time].[Time].[1997].[Q4].[11]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Wildon Cameron]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Emily Barela]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Dauna Barton]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Mona Vigil]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Linda Combs]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Eric Winters]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Jack Zucconi]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Luann Crawford]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Suzanne Davis]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Lucy Flowers]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Donna Weisinger]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Stanley Marks]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[James Short]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Curtis Pollard]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Dawn Laner]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Patricia Towns]}\n"
-            + "{[Customers].[USA].[WA].[Puyallup].[William Wade]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Lorriene Weathers]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Grace McLaughlin]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Edna Woodson]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Harry Torphy]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Anne Allard]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Bonnie Staley]}\n"
-            + "{[Customers].[USA].[WA].[Olympia].[Patricia Gervasi]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Shirley Gottbehuet]}\n"
-            + "{[Customers].[USA].[WA].[Puyallup].[Jeremy Styers]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Beth Ohnheiser]}\n"
-            + "{[Customers].[USA].[WA].[Bremerton].[Harold Powers]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Daniel Thompson]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Fran McEvilly]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Wildon Cameron]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Emily Barela]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Dauna Barton]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Mona Vigil]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Linda Combs]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Eric Winters]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Jack Zucconi]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Luann Crawford]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Suzanne Davis]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Lucy Flowers]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Donna Weisinger]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Stanley Marks]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[James Short]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Curtis Pollard]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Dawn Laner]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Patricia Towns]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Puyallup].[William Wade]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Lorriene Weathers]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Grace McLaughlin]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Edna Woodson]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Harry Torphy]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Anne Allard]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Bonnie Staley]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Olympia].[Patricia Gervasi]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Shirley Gottbehuet]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Puyallup].[Jeremy Styers]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Beth Ohnheiser]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Bremerton].[Harold Powers]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Daniel Thompson]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Fran McEvilly]}\n"
             + "Row #0: 327\n"
             + "Row #1: 323\n"
             + "Row #2: 319\n"
@@ -890,21 +997,21 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales] \n"
             + "where ([Time].[1997].[Q1].[2] : [Time].[1997].[Q1].[3])",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q1].[2]}\n"
-            + "{[Time].[1997].[Q1].[3]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Grace McLaughlin]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[George Todero]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Matt Bellah]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Mary Francis Benigar]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Lucy Flowers]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[David Hassard]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Dauna Barton]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Dora Sims]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Joann Mramor]}\n"
-            + "{[Customers].[USA].[WA].[Spokane].[Mike Madrid]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Grace McLaughlin]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[George Todero]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Matt Bellah]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Mary Francis Benigar]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Lucy Flowers]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[David Hassard]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Dauna Barton]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Dora Sims]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Joann Mramor]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Mike Madrid]}\n"
             + "Row #0: 131\n"
             + "Row #1: 129\n"
             + "Row #2: 113\n"
@@ -966,29 +1073,33 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where ([Time].[1997].[Q1].[2] : [Time].[1997].[Q4].[10])",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q1].[2]}\n"
-            + "{[Time].[1997].[Q1].[3]}\n"
-            + "{[Time].[1997].[Q2].[4]}\n"
-            + "{[Time].[1997].[Q2].[5]}\n"
-            + "{[Time].[1997].[Q2].[6]}\n"
-            + "{[Time].[1997].[Q3].[7]}\n"
-            + "{[Time].[1997].[Q3].[8]}\n"
-            + "{[Time].[1997].[Q3].[9]}\n"
-            + "{[Time].[1997].[Q4].[10]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
+            + "{[Time].[Time].[1997].[Q2].[5]}\n"
+            + "{[Time].[Time].[1997].[Q2].[6]}\n"
+            + "{[Time].[Time].[1997].[Q3].[7]}\n"
+            + "{[Time].[Time].[1997].[Q3].[8]}\n"
+            + "{[Time].[Time].[1997].[Q3].[9]}\n"
+            + "{[Time].[Time].[1997].[Q4].[10]}\n"
             + "Axis #1:\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[WA].[Walla Walla].[Melanie Snow]}\n"
-            + "{[Customers].[USA].[WA].[Walla Walla].[Ramon Williams]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Louis Gomez]}\n");
+            + "{[Customer].[Customers].[USA].[WA].[Walla Walla].[Melanie Snow]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Walla Walla].[Ramon Williams]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Louis Gomez]}\n");
     }
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> upstream/4.0
     public void testSlicerWithCalcMembers() throws Exception {
         final TestContext testContext = TestContext.instance();
         //2 calc mems
         testContext.assertQueryReturns(
             "WITH "
+<<<<<<< HEAD
             + "MEMBER [Store].[aggCA] AS "
             + "'Aggregate({[Store].[USA].[CA].[Los Angeles], "
             + "[Store].[USA].[CA].[San Francisco]})'"
@@ -998,11 +1109,23 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{[Store].[aggCA]}\n"
             + "{[Store].[aggOR]}\n"
+=======
+            + "MEMBER [Store].[Stores].[aggCA] AS "
+            + "'Aggregate({[Store].[Stores].[USA].[CA].[Los Angeles], "
+            + "[Store].[Stores].[USA].[CA].[San Francisco]})'"
+            + " MEMBER [Store].[Stores].[aggOR] AS "
+            + "'Aggregate({[Store].[Stores].[USA].[OR].[Portland]})' "
+            + " SELECT FROM SALES WHERE { [Store].[Stores].[aggCA], [Store].[Stores].[aggOR] } ",
+            "Axis #0:\n"
+            + "{[Store].[Stores].[aggCA]}\n"
+            + "{[Store].[Stores].[aggOR]}\n"
+>>>>>>> upstream/4.0
             + "53,859");
 
         // mix calc and non-calc
         testContext.assertQueryReturns(
             "WITH "
+<<<<<<< HEAD
             + "MEMBER [Store].[aggCA] AS "
             + "'Aggregate({[Store].[USA].[CA].[Los Angeles], "
             + "[Store].[USA].[CA].[San Francisco]})'"
@@ -1010,11 +1133,21 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{[Store].[aggCA]}\n"
             + "{[Store].[USA].[OR].[Portland]}\n"
+=======
+            + "MEMBER [Store].[Stores].[aggCA] AS "
+            + "'Aggregate({[Store].[Stores].[USA].[CA].[Los Angeles], "
+            + "[Store].[Stores].[USA].[CA].[San Francisco]})'"
+            + " SELECT FROM SALES WHERE { [Store].[Stores].[aggCA], [Store].[Stores].[All Stores].[USA].[OR].[Portland] } ",
+            "Axis #0:\n"
+            + "{[Store].[Stores].[aggCA]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland]}\n"
+>>>>>>> upstream/4.0
             + "53,859");
 
         // multi-position slicer with mix of calc and non-calc
         testContext.assertQueryReturns(
             "WITH "
+<<<<<<< HEAD
             + "MEMBER [Store].[aggCA] AS "
             + "'Aggregate({[Store].[USA].[CA].[Los Angeles], "
             + "[Store].[USA].[CA].[San Francisco]})'"
@@ -1026,29 +1159,61 @@ public class CompoundSlicerTest extends FoodMartTestCase {
             + "{[Gender].[F], [Store].[USA].[OR].[Portland]}\n"
             + "{[Gender].[M], [Store].[aggCA]}\n"
             + "{[Gender].[M], [Store].[USA].[OR].[Portland]}\n"
+=======
+            + "MEMBER [Store].[Stores].[aggCA] AS "
+            + "'Aggregate({[Store].[Stores].[USA].[CA].[Los Angeles], "
+            + "[Store].[Stores].[USA].[CA].[San Francisco]})'"
+            + " SELECT FROM SALES WHERE "
+            +  "Gender.Gender.members * "
+            + "{ [Store].[Stores].[aggCA], [Store].[Stores].[All Stores].[USA].[OR].[Portland] } ",
+            "Axis #0:\n"
+            + "{[Customer].[Gender].[F], [Store].[Stores].[aggCA]}\n"
+            + "{[Customer].[Gender].[F], [Store].[Stores].[USA].[OR].[Portland]}\n"
+            + "{[Customer].[Gender].[M], [Store].[Stores].[aggCA]}\n"
+            + "{[Customer].[Gender].[M], [Store].[Stores].[USA].[OR].[Portland]}\n"
+>>>>>>> upstream/4.0
             + "53,859");
 
         // named set with calc mem and non-calc
         testContext.assertQueryReturns(
+<<<<<<< HEAD
             "with member Time.aggTime as "
+=======
+            "with member Time.Time.aggTime as "
+>>>>>>> upstream/4.0
             + "'aggregate({ [Time].[1997].[Q1], [Time].[1997].[Q2] })'"
             + "set [timeMembers] as "
             + "'{Time.aggTime, [Time].[1997].[Q3] }'"
             + "select from sales where [timeMembers]",
             "Axis #0:\n"
+<<<<<<< HEAD
             + "{[Time].[aggTime]}\n"
             + "{[Time].[1997].[Q3]}\n"
+=======
+            + "{[Time].[Time].[aggTime]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
+>>>>>>> upstream/4.0
             + "194,749");
 
         // calculated measure in slicer
         testContext.assertQueryReturns(
             " SELECT FROM SALES WHERE "
+<<<<<<< HEAD
             + "[Measures].[Profit] * { [Store].[USA].[CA], [Store].[USA].[OR]}",
             "Axis #0:\n"
             + "{[Measures].[Profit], [Store].[USA].[CA]}\n"
             + "{[Measures].[Profit], [Store].[USA].[OR]}\n"
             + "$181,141.98");
     }
+=======
+            + "[Measures].[Profit] * { [Store].[Stores].[USA].[CA], [Store].[Stores].[USA].[OR]}",
+            "Axis #0:\n"
+            + "{[Measures].[Profit], [Store].[Stores].[USA].[CA]}\n"
+            + "{[Measures].[Profit], [Store].[Stores].[USA].[OR]}\n"
+            + "$181,141.98");
+    }
+
+>>>>>>> upstream/4.0
 }
 
 // End CompoundSlicerTest.java

@@ -353,8 +353,10 @@ public class CellRequest {
             RolapStar.Column column = columns[i];
             final Object o = values[i];
             map.put(
-                column.getExpression().getGenericExpression(),
-                (Comparable) o);
+                column.getExpression().toSql(),
+                o == RolapUtil.sqlNullValue
+                    ? null
+                    : (Comparable<?>) o);
         }
         return map;
     }

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 1998-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -115,10 +115,9 @@ public class Query extends QueryPart {
     private boolean nativeCrossJoinVirtualCube;
 
     /**
-     * Used for virtual cubes.
-     * Comtains a list of base cubes related to a virtual cube
+     * Contains a list of measure groups.
      */
-    private List<RolapCube> baseCubes;
+    private List<RolapMeasureGroup> measureGroupList;
 
     /**
      * If true, enforce validation even when ignoreInvalidMembers is set.
@@ -475,7 +474,7 @@ public class Query extends QueryPart {
      *   ResultStyle.LIST
      *   ResultStyle.MUTABLE_LIST
      *
-     * @param resultStyle
+     * @param resultStyle Result style
      */
     public void setResultStyle(ResultStyle resultStyle) {
         switch (resultStyle) {
@@ -586,7 +585,7 @@ public class Query extends QueryPart {
         }
 
         // Make sure that no hierarchy is used on more than one axis.
-        for (Hierarchy hierarchy : ((RolapCube) getCube()).getHierarchies()) {
+        for (Hierarchy hierarchy : ((RolapCube) getCube()).getHierarchyList()) {
             int useCount = 0;
             for (QueryAxis axis : allAxes()) {
                 if (axis.getSet().getType().usesHierarchy(hierarchy, true)) {
@@ -914,24 +913,6 @@ public class Query extends QueryPart {
     }
 
     /**
-     * Swaps the x- and y- axes.
-     * Does nothing if the number of axes != 2.
-     */
-    public void swapAxes() {
-        if (axes.length == 2) {
-            Exp e0 = axes[0].getSet();
-            boolean nonEmpty0 = axes[0].isNonEmpty();
-            Exp e1 = axes[1].getSet();
-            boolean nonEmpty1 = axes[1].isNonEmpty();
-            axes[1].setSet(e0);
-            axes[1].setNonEmpty(nonEmpty0);
-            axes[0].setSet(e1);
-            axes[0].setNonEmpty(nonEmpty1);
-            // showSubtotals ???
-        }
-    }
-
-    /**
      * Returns the parameters defined in this query.
      */
     public Parameter[] getParameters() {
@@ -980,7 +961,7 @@ public class Query extends QueryPart {
         return null;
     }
 
-    private String getUniqueNameWithoutAll(Member member) {
+    private static String getUniqueNameWithoutAll(Member member) {
         // build unique string
         Member parentMember = member.getParentMember();
         if ((parentMember != null) && !parentMember.isAll()) {
@@ -1080,8 +1061,8 @@ public class Query extends QueryPart {
         Formula formula = findFormula(uniqueName);
         if (failIfUsedInQuery && formula != null) {
             OlapElement mdxElement = formula.getElement();
-            //search the query tree to see if this formula expression is used
-            //anywhere (on the axes or in another formula)
+            // search the query tree to see if this formula expression is used
+            // anywhere (on the axes or in another formula)
             Walker walker = new Walker(this);
             while (walker.hasMoreElements()) {
                 Object queryElement = walker.nextElement();
@@ -1208,7 +1189,10 @@ public class Query extends QueryPart {
         formula.rename(newName);
     }
 
-    List<Member> getDefinedMembers() {
+    // REVIEW: should we apply access control BEFORE resolving names?
+    // This method is used several times during name resolution and is
+    // inefficient.
+    private List<Member> getDefinedMembers() {
         List<Member> definedMembers = new ArrayList<Member>();
         for (final Formula formula : formulas) {
             if (formula.isMember()
@@ -1357,23 +1341,13 @@ public class Query extends QueryPart {
     }
 
     /**
-     * Saves away the base cubes related to the virtual cube
-     * referenced in this query
+     * Saves away the measure groups related to the cube
+     * referenced in this query.
      *
-     * @param baseCubes set of base cubes
+     * @param measureGroupList List of measure groups
      */
-    public void setBaseCubes(List<RolapCube> baseCubes) {
-        this.baseCubes = baseCubes;
-    }
-
-    /**
-     * return the set of base cubes associated with the virtual cube referenced
-     * in this query
-     *
-     * @return set of base cubes
-     */
-    public List<RolapCube> getBaseCubes() {
-        return baseCubes;
+    public void setMeasureGroups(List<RolapMeasureGroup> measureGroupList) {
+        this.measureGroupList = measureGroupList;
     }
 
     public Object accept(MdxVisitor visitor) {
@@ -1544,9 +1518,14 @@ public class Query extends QueryPart {
                 segment = nameParts.get(nameParts.size() - 1);
             }
             if (segment.matches(member.getName())) {
+                final String imploded =
+                    Util.implode(
+                        nameParts.subList(
+                            0,
+                            nameParts.size() - 1));
                 return Util.equalName(
                     member.getHierarchy().getUniqueName(),
-                    Util.implode(nameParts.subList(0, nameParts.size() - 1)));
+                    imploded);
             } else if (member.isAll()) {
                 return Util.equalName(
                     member.getHierarchy().getUniqueName(),
@@ -1667,8 +1646,8 @@ public class Query extends QueryPart {
                 parent, names, failIfNotFound, category, matchType);
             if (olapElement instanceof Member) {
                 Member member = (Member) olapElement;
-                final Formula formula = (Formula)
-                    member.getPropertyValue(Property.FORMULA.name);
+                final Formula formula =
+                    (Formula) member.getPropertyValue(Property.FORMULA);
                 if (formula != null) {
                     // This is a calculated member defined against the cube.
                     // Create a free-standing formula using the same
@@ -1950,7 +1929,11 @@ public class Query extends QueryPart {
         }
 
         public Map<String, Annotation> getAnnotationMap() {
-            return Collections.emptyMap();
+            return getLarder().getAnnotationMap();
+        }
+
+        public Larder getLarder() {
+            return Larders.EMPTY;
         }
 
         public NamedSet validate(Validator validator) {

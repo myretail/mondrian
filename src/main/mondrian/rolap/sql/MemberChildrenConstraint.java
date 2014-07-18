@@ -5,13 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2009 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.sql;
 
 import mondrian.rolap.*;
-import mondrian.rolap.aggmatcher.AggStar;
 
 import java.util.List;
 
@@ -29,15 +28,13 @@ public interface MemberChildrenConstraint extends SqlConstraint {
      * Modifies a <code>Member.Children</code> query so that only the children
      * of <code>parent</code> will be returned in the result set.
      *
-     * @param sqlQuery the query to modify
-     * @param baseCube base cube for virtual members
-     * @param aggStar Aggregate star, if we are reading from an aggregate table,
+     * @param queryBuilder Query builder
+     * @param starSet Star set
      * @param parent the parent member that restricts the returned children
      */
     public void addMemberConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar,
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet,
         RolapMember parent);
 
     /**
@@ -45,16 +42,13 @@ public interface MemberChildrenConstraint extends SqlConstraint {
      * children of <em>all</em> parent members contained in <code>parents</code>
      * will be returned in the result set.
      *
-     * @param sqlQuery Query to modify
-     * @param baseCube Base cube for virtual members
-     * @param aggStar Aggregate table, or null if query is against fact table
+     * @param queryBuilder Query to modify
+     * @param starSet Star set
      * @param parents List of parent members that restrict the returned
-     *        children
      */
     public void addMemberConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar,
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet,
         List<RolapMember> parents);
 
     /**
@@ -63,16 +57,15 @@ public interface MemberChildrenConstraint extends SqlConstraint {
      * it may join the levels table to the fact table.
      *
      * @param query the query to modify
-     * @param baseCube base cube for virtual members
-     * @param aggStar Aggregate table, or null if query is against fact table
+     * @param starSet Star set
      * @param level the level that contains the children
      */
     public void addLevelConstraint(
         SqlQuery query,
-        RolapCube baseCube,
-        AggStar aggStar,
-        RolapLevel level);
+        RolapStarSet starSet,
+        RolapCubeLevel level);
 
+    RolapStarSet createStarSet(RolapMeasureGroup aggMeasureGroup);
 }
 
 // End MemberChildrenConstraint.java

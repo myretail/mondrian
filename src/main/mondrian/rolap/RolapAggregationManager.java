@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2014 Pentaho and others
 // All Rights Reserved.
 //
 // jhyde, 30 August, 2001
@@ -16,6 +16,7 @@ import mondrian.olap.*;
 import mondrian.olap.fun.VisualTotalsFunDef.VisualTotalMember;
 import mondrian.resource.MondrianResource;
 import mondrian.rolap.agg.*;
+import mondrian.util.Pair;
 
 import java.util.*;
 
@@ -47,11 +48,11 @@ public abstract class RolapAggregationManager {
      * null.
      *
      * @param members Set of members which constrain the cell
-     * @return Cell request, or null if the requst is unsatisfiable
+     * @return Cell request, or null if the request is unsatisfiable
      */
     public static CellRequest makeRequest(final Member[] members)
     {
-        return makeCellRequest(members, false, false, null, null);
+        return makeCellRequest(members, false, false, null, null, null);
     }
 
     /**
@@ -69,17 +70,17 @@ public abstract class RolapAggregationManager {
      *                          queries easier for humans to understand.
      *
      * @param cube              Cube
-     * @return Cell request, or null if the requst is unsatisfiable
+     * @return Cell request, or null if the request is unsatisfiable
      */
     public static DrillThroughCellRequest makeDrillThroughRequest(
-        final Member[] members,
+        final List<RolapMember> members,
         final boolean extendedContext,
         RolapCube cube,
         List<Exp> fieldsList)
     {
         assert cube != null;
         return (DrillThroughCellRequest) makeCellRequest(
-            members, true, extendedContext, cube, fieldsList);
+            members, true, extendedContext, cube, fieldsList, null);
     }
 
     /**
@@ -91,49 +92,45 @@ public abstract class RolapAggregationManager {
      * null.
      *
      * @param evaluator the cell specified by the evaluator context
-     * @return Cell request, or null if the requst is unsatisfiable
+     * @return Cell request, or null if the request is unsatisfiable
      */
     public static CellRequest makeRequest(
         RolapEvaluator evaluator)
     {
-        final Member[] currentMembers = evaluator.getNonAllMembers();
+        final RolapMember[] currentMembers = evaluator.getNonAllMembers();
         final List<List<List<Member>>> aggregationLists =
             evaluator.getAggregationLists();
 
         final RolapStoredMeasure measure =
             (RolapStoredMeasure) currentMembers[0];
-        final RolapStar.Measure starMeasure =
-            (RolapStar.Measure) measure.getStarMeasure();
+        final RolapStar.Measure starMeasure = measure.getStarMeasure();
         assert starMeasure != null;
-        int starColumnCount = starMeasure.getStar().getColumnCount();
+        final RolapStar star = starMeasure.getStar();
+        int starColumnCount = star.getColumnCount();
 
         CellRequest request =
-            makeCellRequest(currentMembers, false, false, null, null);
+            makeCellRequest(
+                currentMembers,
+                false,
+                false,
+                null,
+                null,
+                evaluator);
 
-        /*
-         * Now setting the compound keys.
-         * First find out the columns referenced in the aggregateMemberList.
-         * Each list defines a compound member.
-         */
+        // Now setting the compound keys.
+        // First find out the columns referenced in the aggregateMemberList.
+        // Each list defines a compound member.
         if (aggregationLists == null) {
             return request;
         }
 
-        BitKey compoundBitKey;
-        StarPredicate compoundPredicate;
-        Map<BitKey, List<RolapCubeMember[]>> compoundGroupMap;
-        boolean unsatisfiable;
-
-        /*
-         * For each aggregationList, generate the optimal form of
-         * compoundPredicate.  These compoundPredicates are AND'ed together when
-         * sql is generated for them.
-         */
+        // For each aggregationList, generate the optimal form of
+        // compoundPredicate. These compoundPredicates are AND'ed together when
+        // sql is generated for them.
         for (List<List<Member>> aggregationList : aggregationLists) {
-            compoundBitKey = BitKey.Factory.makeBitKey(starColumnCount);
-            compoundBitKey.clear();
-            compoundGroupMap =
-                new LinkedHashMap<BitKey, List<RolapCubeMember[]>>();
+            BitKey compoundBitKey = BitKey.Factory.makeBitKey(starColumnCount);
+            Map<BitKey, List<RolapMember[]>> compoundGroupMap =
+                new LinkedHashMap<BitKey, List<RolapMember[]>>();
 
             // Go through the compound members/tuples once and separate them
             // into groups.
@@ -145,23 +142,23 @@ public abstract class RolapAggregationManager {
                 rolapAggregationList.add(rolapMembers);
             }
 
-            unsatisfiable =
+            final RolapMeasureGroup measureGroup = measure.getMeasureGroup();
+            boolean unsatisfiable =
                 makeCompoundGroup(
                     starColumnCount,
-                    measure.getCube(),
+                    measureGroup,
                     rolapAggregationList,
                     compoundGroupMap);
 
             if (unsatisfiable) {
                 return null;
             }
-            compoundPredicate =
-                makeCompoundPredicate(compoundGroupMap, measure.getCube());
+            StarPredicate compoundPredicate =
+                makeCompoundPredicate(
+                    compoundGroupMap, measureGroup);
 
             if (compoundPredicate != null) {
-                /*
-                 * Only add the compound constraint when it is not empty.
-                 */
+                // Only add the compound constraint when it is not empty.
                 for (BitKey bitKey : compoundGroupMap.keySet()) {
                     compoundBitKey = compoundBitKey.or(bitKey);
                 }
@@ -177,110 +174,179 @@ public abstract class RolapAggregationManager {
         boolean drillThrough,
         final boolean extendedContext,
         RolapCube cube,
-        List<Exp> fieldsList)
+        List<Exp> fieldsList,
+        Evaluator evaluator)
+    {
+        final List<RolapMember> rolapMembers =
+            new ArrayList<RolapMember>((List) Arrays.asList(members));
+        return makeCellRequest(
+            rolapMembers,
+            drillThrough,
+            extendedContext,
+            cube,
+            fieldsList,
+            evaluator);
+    }
+
+    private static CellRequest makeCellRequest(
+        final List<RolapMember> memberList,
+        boolean drillThrough,
+        final boolean extendedContext,
+        RolapCube cube,
+        List<Exp> fieldsList,
+        Evaluator evaluator)
     {
         // Need cube for drill-through requests
         assert drillThrough == (cube != null);
 
         if (extendedContext) {
-            assert (drillThrough);
+            assert drillThrough;
         }
 
         final RolapStoredMeasure measure;
         if (drillThrough) {
-            cube = RolapCell.chooseDrillThroughCube(members, cube);
+            cube = RolapCell.chooseDrillThroughCube(memberList, cube);
             if (cube == null) {
                 return null;
             }
-            if (members.length > 0
-                && members[0] instanceof RolapStoredMeasure)
+            if (memberList.size() > 0
+                && memberList.get(0) instanceof RolapStoredMeasure)
             {
-                measure = (RolapStoredMeasure) members[0];
+                measure = (RolapStoredMeasure) memberList.get(0);
             } else {
                 measure = (RolapStoredMeasure) cube.getMeasures().get(0);
             }
         } else {
-            if (members.length > 0
-                && members[0] instanceof RolapStoredMeasure)
+            if (memberList.size() > 0
+                && memberList.get(0) instanceof RolapStoredMeasure)
             {
-                measure = (RolapStoredMeasure) members[0];
+                measure = (RolapStoredMeasure) memberList.get(0);
             } else {
                 return null;
             }
         }
 
-        final RolapStar.Measure starMeasure =
-            (RolapStar.Measure) measure.getStarMeasure();
+        final RolapMeasureGroup measureGroup = measure.getMeasureGroup();
+        final RolapStar.Measure starMeasure = measure.getStarMeasure();
         assert starMeasure != null;
-        final CellRequest request;
-        if (drillThrough) {
-            request =
-                new DrillThroughCellRequest(starMeasure, extendedContext);
-        } else {
-            request =
-                new CellRequest(starMeasure, extendedContext, drillThrough);
-        }
 
-        // Since 'request.extendedContext == false' is a well-worn code path,
-        // we have moved the test outside the loop.
-        if (extendedContext) {
-            if (fieldsList != null) {
-                // If a field list was specified, there will be some columns
-                // to include in the result set, other that we don't. This
+        if (drillThrough) {
+            // This is a drillthrough request.
+            DrillThroughCellRequest request =
+                new DrillThroughCellRequest(starMeasure, extendedContext);
+            if (fieldsList != null
+                && fieldsList.size() > 0)
+            {
+                // Since a field list was specified, there will be some columns
+                // to include in the result set & others that we don't. This
                 // happens when the MDX is a DRILLTHROUGH operation and
-                // includes a RETURN clause.
+                // includes a RETURN clause which specified exactly which
+                // fields to return.
                 final SchemaReader reader = cube.getSchemaReader().withLocus();
                 for (Exp exp : fieldsList) {
                     final OlapElement member =
                         reader.lookupCompound(
                             cube,
                             Util.parseIdentifier(exp.toString()),
-                            true,
+                            false,
                             Category.Unknown);
-                    if (member.getHierarchy() instanceof RolapCubeHierarchy
-                        && ((RolapCubeHierarchy)member.getHierarchy())
-                            .getRolapHierarchy().closureFor != null)
-                    {
-                        continue;
+                    if (member == null) {
+                        throw MondrianResource.instance()
+                            .DrillthroughUnknownMemberInReturnClause
+                                .ex(exp.toString());
                     }
-                    addNonConstrainingColumns(member, cube, request);
+                    addDrillthroughColumn(member, measureGroup, request);
                 }
             }
-            for (int i = 1; i < members.length; i++) {
-                final RolapCubeMember member = (RolapCubeMember) members[i];
+
+            // Sort the members.  Columns will be added to
+            // DrillThroughCellRequest which will preserve the order
+            // they are added.
+            Collections.sort(
+                memberList,
+                new CubeOrderedMemberLevelComparator(cube.getDimensionList()));
+
+            // Iterate over members.
+            for (RolapMember member : memberList) {
                 if (member.getHierarchy().getRolapHierarchy().closureFor
                     != null)
                 {
+                    // If this gets called for an internal "closure" level,
+                    // we skip this level.
+                    // REVIEW: Why should this ever happen??
                     continue;
                 }
-
-                addNonConstrainingColumns(member, cube, request);
-
-                final RolapCubeLevel level = member.getLevel();
+                // Start by constraining the request on the current member.
+                // This will result in a SQL with a WHERE clause which will
+                // limit the rows to those covered by the current cell.
+                RolapCubeLevel level = member.getLevel();
                 final boolean needToReturnNull =
                     level.getLevelReader().constrainRequest(
-                        member, measure.getCube(), request);
+                        member, measureGroup, request);
                 if (needToReturnNull) {
                     return null;
                 }
+                if (fieldsList == null
+                    || fieldsList.size() == 0)
+                {
+                    // There was no RETURN clause in the query.
+                    // We add the key columns of the non-all members
+                    // which are part of the evaluator.
+                    // This is the default behavior.
+                    if (member.getDimension().isMeasures()) {
+                        // Measures are a bit different.
+                        if (!member.isCalculated()) {
+                            request.addDrillThroughMeasure(
+                                ((RolapStoredMeasure)member).getStarMeasure(),
+                                member.getName());
+                        }
+                    } else {
+                        // We can't add 'all' levels, since they don't
+                        // map to a DB column.
+                        if (!level.isAll()) {
+                            addNonConstrainingColumns(
+                                level, measureGroup, request);
+                            if (extendedContext) {
+                                while (level.getChildLevel() != null) {
+                                    level = level.getChildLevel();
+                                    addNonConstrainingColumns(
+                                        level, measureGroup, request);
+                                }
+                            }
+                        }
+                    }
+                }
             }
-
+            return request;
         } else {
-            for (int i = 1; i < members.length; i++) {
-                if (!(members[i] instanceof RolapCubeMember)) {
+            // This is the code path for regular cell requests.
+            // For each member in the evaluator, we constrain the request.
+            CellRequest request =
+                new CellRequest(starMeasure, extendedContext, drillThrough);
+            for (RolapMember member : Util.subList(memberList, 1)) {
+                if (
+                    member instanceof
+                        RestrictedMemberReader.MultiCardinalityDefaultMember)
+                {
                     continue;
                 }
-                RolapCubeMember member = (RolapCubeMember) members[i];
                 final RolapCubeLevel level = member.getLevel();
                 final boolean needToReturnNull =
                     level.getLevelReader().constrainRequest(
-                        member, measure.getCube(), request);
+                        member, measureGroup, request);
                 if (needToReturnNull) {
-                    return null;
+                    // check to see if the current member is part of an ignored
+                    // unrelated dimension
+                    if (evaluator == null
+                        || !evaluator.mightReturnNullForUnrelatedDimension()
+                        || evaluator.needToReturnNullForUnrelatedDimension(
+                            new Member[] {member})) {
+                        return null;
+                    }
                 }
             }
+            return request;
         }
-        return request;
     }
 
     /**
@@ -305,77 +371,109 @@ public abstract class RolapAggregationManager {
      *   and [State] = 'CA'
      *   </pre></blockquote>
      *
-     * @param member Member to constraint
-     * @param baseCube base cube if virtual
+     * @param level Level to constrain
+     * @param measureGroup Measure group
      * @param request Cell request
      */
     private static void addNonConstrainingColumns(
-        final RolapCubeMember member,
-        final RolapCube baseCube,
+        RolapCubeLevel level,
+        final RolapMeasureGroup measureGroup,
         final CellRequest request)
     {
-        final RolapCubeHierarchy hierarchy = member.getHierarchy();
-        final RolapCubeLevel[] levels = hierarchy.getLevels();
-        for (int j = levels.length - 1, depth = member.getLevel().getDepth();
-             j > depth; j--)
-        {
-            final RolapCubeLevel level = levels[j];
-            RolapStar.Column column = level.getBaseStarKeyColumn(baseCube);
-            if (column != null) {
-                request.addConstrainedColumn(column, null);
-                if (request.extendedContext
-                    && level.getNameExp() != null)
-                {
-                    final RolapStar.Column nameColumn = column.getNameColumn();
-                    Util.assertTrue(nameColumn != null);
-                    request.addConstrainedColumn(nameColumn, null);
+        List<RolapCubeLevel> levels = new ArrayList<RolapCubeLevel>();
+        if (request.extendedContext) {
+            // As per the API, if extendedContext is set to
+            // true, we must also add columns for the sub
+            // levels of the members which are part of the
+            // evaluator. This will ventilate the results
+            // and make it more human friendly.
+            do {
+                levels.add(level);
+                level = level.getChildLevel();
+            } while (level != null);
+        } else {
+            levels.add(level);
+        }
+        for (RolapCubeLevel currentLevel : levels) {
+            for (RolapSchema.PhysColumn column
+                : currentLevel.attribute.getKeyList())
+            {
+                RolapStar.Column starColumn =
+                    measureGroup.getRolapStarColumn(
+                        currentLevel.cubeDimension,
+                        column);
+                if (starColumn != null) {
+                    request.addConstrainedColumn(starColumn, null);
+                }
+                if (request instanceof DrillThroughCellRequest) {
+                    ((DrillThroughCellRequest) request)
+                        .addDrillThroughColumn(
+                            starColumn,
+                            currentLevel.getName());
                 }
             }
         }
     }
 
-    private static void addNonConstrainingColumns(
-        final OlapElement member,
-        final RolapCube baseCube,
-        final CellRequest request)
+    private static void addDrillthroughColumn(
+        final OlapElement element,
+        final RolapMeasureGroup measureGroup,
+        final DrillThroughCellRequest request)
     {
-        RolapCubeLevel level;
-        if (member instanceof RolapCubeLevel) {
-            level = (RolapCubeLevel) member;
-        } else if (member instanceof RolapCubeHierarchy
-            || member instanceof RolapCubeDimension)
-        {
-            level = (RolapCubeLevel) member.getHierarchy().getLevels()[0];
-            if (level.isAll()) {
-                level = level.getChildLevel();
-            }
-        } else if (member instanceof RolapStar.Measure) {
-            ((DrillThroughCellRequest)request)
-                .addDrillThroughMeasure((RolapStar.Measure)member);
+        final RolapCubeLevel level;
+        if (element.getDimension().isMeasures()) {
+            // Measures are a bit different.
+            request.addDrillThroughMeasure(
+                ((RolapStoredMeasure)element).getStarMeasure(),
+                element.getName());
             return;
-        } else if (member instanceof RolapBaseCubeMeasure) {
-            ((DrillThroughCellRequest)request)
-                .addDrillThroughMeasure(
-                    (RolapStar.Measure)
-                        ((RolapBaseCubeMeasure)member).getStarMeasure());
-            return;
+<<<<<<< HEAD
         } else if (member instanceof RolapHierarchy.RolapCalculatedMeasure) {
             throw MondrianResource.instance().DrillthroughCalculatedMember
                 .ex(member.getUniqueName());
         } else {
             throw new MondrianException(
                 "Unknown member type in DRILLTHROUGH operation.");
+=======
+        } else if (element instanceof RolapCubeLevel) {
+            level = (RolapCubeLevel) element;
+        } else if (element instanceof RolapCubeDimension) {
+            RolapCubeHierarchy hierarchy =
+                (RolapCubeHierarchy) element.getHierarchy();
+            if (hierarchy.getLevelList().get(0).isAll()) {
+                level = hierarchy.getLevelList().get(1);
+            } else {
+                level = hierarchy.getLevelList().get(0);
+            }
+        } else if (element instanceof RolapCubeHierarchy) {
+            RolapCubeHierarchy hierarchy = (RolapCubeHierarchy)element;
+            if (hierarchy.getLevelList().get(0).isAll()) {
+                level = hierarchy.getLevelList().get(1);
+            } else {
+                level = hierarchy.getLevelList().get(0);
+            }
+        } else if (element instanceof RolapMember) {
+            level = ((RolapMember)element).getLevel();
+        } else {
+            throw MondrianResource.instance()
+                .DrillthroughInvalidMemberInReturnClause
+                    .ex(element.getUniqueName(), element.getClass().getName());
+>>>>>>> upstream/4.0
         }
-        RolapStar.Column column = level.getBaseStarKeyColumn(baseCube);
-        if (column != null) {
-            request.addConstrainedColumn(column, null);
-            ((DrillThroughCellRequest)request).addDrillThroughColumn(column);
-            if (request.extendedContext
-                && level.getNameExp() != null)
-            {
-                final RolapStar.Column nameColumn = column.getNameColumn();
-                Util.assertTrue(nameColumn != null);
-                request.addConstrainedColumn(nameColumn, null);
+        if (level.getHierarchy().closureFor != null) {
+            return;
+        }
+
+        for (RolapSchema.PhysColumn column : level.attribute.getKeyList()) {
+            RolapStar.Column starColumn =
+                measureGroup.getRolapStarColumn(
+                    level.cubeDimension,
+                    column);
+            if (starColumn != null) {
+                request.addConstrainedColumn(starColumn, null);
+                request.addDrillThroughColumn(
+                    starColumn,
+                    level.getName());
             }
         }
     }
@@ -384,93 +482,97 @@ public abstract class RolapAggregationManager {
      * Groups members (or tuples) from the same compound (i.e. hierarchy) into
      * groups that are constrained by the same set of columns.
      *
-     * <p>E.g.
+     * <p>For example:</p>
      *
-     * <pre>Members
+     * <pre>
+     * Members
      *     [USA].[CA],
      *     [Canada].[BC],
      *     [USA].[CA].[San Francisco],
-     *     [USA].[OR].[Portland]</pre>
+     *     [USA].[OR].[Portland]
+     * </pre>
      *
      * will be grouped into
      *
-     * <pre>Group 1:
+     * <pre>
+     * Group 1:
      *     {[USA].[CA], [Canada].[BC]}
      * Group 2:
-     *     {[USA].[CA].[San Francisco], [USA].[OR].[Portland]}</pre>
+     *     {[USA].[CA].[San Francisco], [USA].[OR].[Portland]}
+     * </pre>
      *
      * <p>This helps with generating optimal form of sql.
      *
      * <p>In case of aggregating over a list of tuples, similar logic also
      * applies.
      *
-     * <p>For example:
+     * <p>For example:</p>
      *
-     * <pre>Tuples:
+     * <pre>
+     * Tuples:
      *     ([Gender].[M], [Store].[USA].[CA])
      *     ([Gender].[F], [Store].[USA].[CA])
      *     ([Gender].[M], [Store].[USA])
-     *     ([Gender].[F], [Store].[Canada])</pre>
+     *     ([Gender].[F], [Store].[Canada])
+     * </pre>
      *
-     * will be grouped into
+     * <p>will be grouped into</p>
      *
-     * <pre>Group 1:
+     * <pre>
+     * Group 1:
      *     {([Gender].[M], [Store].[USA].[CA]),
      *      ([Gender].[F], [Store].[USA].[CA])}
      * Group 2:
      *     {([Gender].[M], [Store].[USA]),
-     *      ([Gender].[F], [Store].[Canada])}</pre>
+     *      ([Gender].[F], [Store].[Canada])}
+     * </pre>
      *
      * <p>This function returns a boolean value indicating if any constraint
      * can be created from the aggregationList. It is possible that only part
      * of the aggregationList can be applied, which still leads to a (partial)
-     * constraint that is represented by the compoundGroupMap.
+     * constraint that is represented by the {@code compoundGroupMap}
+     * parameter.</p>
      */
     private static boolean makeCompoundGroup(
         int starColumnCount,
-        RolapCube baseCube,
+        RolapMeasureGroup measureGroup,
         List<List<RolapMember>> aggregationList,
-        Map<BitKey, List<RolapCubeMember[]>> compoundGroupMap)
+        Map<BitKey, List<RolapMember[]>> compoundGroupMap)
     {
         // The more generalized aggregation as aggregating over tuples.
         // The special case is a tuple defined by only one member.
         int unsatisfiableTupleCount = 0;
         for (List<RolapMember> aggregation : aggregationList) {
-            boolean isTuple;
-            if (aggregation.size() > 0
-                && (aggregation.get(0) instanceof RolapCubeMember
-                    || aggregation.get(0) instanceof VisualTotalMember))
-            {
-                isTuple = true;
-            } else {
+            if (aggregation.size() == 0) {
+                // not a tuple
                 ++unsatisfiableTupleCount;
                 continue;
             }
 
             BitKey bitKey = BitKey.Factory.makeBitKey(starColumnCount);
-            RolapCubeMember[] tuple;
-
-            tuple = new RolapCubeMember[aggregation.size()];
+            RolapMember[] tuple = new RolapMember[aggregation.size()];
             int i = 0;
-            for (Member member : aggregation) {
+            for (RolapMember member : aggregation) {
                 if (member instanceof VisualTotalMember) {
-                    tuple[i] = (RolapCubeMember)
-                        ((VisualTotalMember) member).getMember();
+                    tuple[i] = ((VisualTotalMember) member).getMember();
                 } else {
-                    tuple[i] = (RolapCubeMember)member;
+                    tuple[i] = member;
                 }
                 i++;
             }
 
             boolean tupleUnsatisfiable = false;
-            for (RolapCubeMember member : tuple) {
+            for (RolapMember member : tuple) {
                 // Tuple cannot be constrained if any of the member cannot be.
                 tupleUnsatisfiable =
-                    makeCompoundGroupForMember(member, baseCube, bitKey);
+                    makeCompoundGroupForMember(
+                        member,
+                        measureGroup,
+                        bitKey);
                 if (tupleUnsatisfiable) {
                     // If this tuple is unsatisfiable, skip it and try to
                     // constrain the next tuple.
-                    unsatisfiableTupleCount ++;
+                    ++unsatisfiableTupleCount;
                     break;
                 }
             }
@@ -482,47 +584,41 @@ public abstract class RolapAggregationManager {
             }
         }
 
-        return (unsatisfiableTupleCount == aggregationList.size());
+        return unsatisfiableTupleCount == aggregationList.size();
     }
 
     private static void addTupleToCompoundGroupMap(
-        RolapCubeMember[] tuple,
+        RolapMember[] tuple,
         BitKey bitKey,
-        Map<BitKey, List<RolapCubeMember[]>> compoundGroupMap)
+        Map<BitKey, List<RolapMember[]>> compoundGroupMap)
     {
-        List<RolapCubeMember[]> compoundGroup = compoundGroupMap.get(bitKey);
+        List<RolapMember[]> compoundGroup = compoundGroupMap.get(bitKey);
         if (compoundGroup == null) {
-            compoundGroup = new ArrayList<RolapCubeMember[]>();
+            compoundGroup = new ArrayList<RolapMember[]>();
             compoundGroupMap.put(bitKey, compoundGroup);
         }
         compoundGroup.add(tuple);
     }
 
     private static boolean makeCompoundGroupForMember(
-        RolapCubeMember member,
-        RolapCube baseCube,
+        RolapMember member,
+        RolapMeasureGroup measureGroup,
         BitKey bitKey)
     {
-        RolapCubeMember levelMember = member;
-        boolean memberUnsatisfiable = false;
-        while (levelMember != null) {
-            RolapCubeLevel level = levelMember.getLevel();
-            // Only need to constrain the nonAll levels
-            if (!level.isAll()) {
-                RolapStar.Column column = level.getBaseStarKeyColumn(baseCube);
-                if (column != null) {
-                    bitKey.set(column.getBitPosition());
-                } else {
-                    // One level in a member causes the member to be
-                    // unsatisfiable.
-                    memberUnsatisfiable = true;
-                    break;
-                }
+        assert measureGroup != null;
+        final RolapCubeLevel level = member.getLevel();
+        for (RolapSchema.PhysColumn key : level.getAttribute().getKeyList()) {
+            final RolapStar.Column column =
+                measureGroup.getRolapStarColumn(
+                    level.getDimension(),
+                    key);
+            if (column == null) {
+                // request is unsatisfiable
+                return true;
             }
-
-            levelMember = levelMember.getParentMember();
+            bitKey.set(column.getBitPosition());
         }
-        return memberUnsatisfiable;
+        return false;
     }
 
     /**
@@ -540,23 +636,25 @@ public abstract class RolapAggregationManager {
      * is translated into
      *
      * <blockquote>
-     * (Gender=M AND Store_State=CA AND Store_Country=USA)<br/>
+     * (Gender = 'M' AND Store_State = 'CA' AND Store_Country = 'USA')<br/>
      * OR<br/>
-     * (Gender=F AND Store_State=CA AND Store_Country=USA)
+     * (Gender = 'F' AND Store_State = 'CA' AND Store_Country = 'USA')
      * </blockquote>
      *
      * <p>The caller of this method will translate this representation into
      * appropriate SQL form as
+     *
      * <blockquote>
-     * where (gender = 'M'<br/>
-     *        and Store_State = 'CA'<br/>
+     * WHERE (gender = 'M'<br/>
+     *        AND Store_State = 'CA'<br/>
      *        AND Store_Country = 'USA')<br/>
      *     OR (Gender = 'F'<br/>
-     *         and Store_State = 'CA'<br/>
+     *         AND Store_State = 'CA'<br/>
      *         AND Store_Country = 'USA')
      * </blockquote>
      *
      * <p>2. The example below for a list of members
+     *
      * <blockquote>
      * group 1: [USA].[CA], [Canada].[BC]<br/>
      * group 2: [USA].[CA].[San Francisco], [USA].[OR].[Portland]
@@ -565,56 +663,63 @@ public abstract class RolapAggregationManager {
      * is translated into:
      *
      * <blockquote>
-     * (Country=USA AND State=CA)<br/>
-     * OR (Country=Canada AND State=BC)<br/>
-     * OR (Country=USA AND State=CA AND City=San Francisco)<br/>
-     * OR (Country=USA AND State=OR AND City=Portland)
-     * </blockquote>
-     *
+     * (Country = 'USA' AND State = 'CA')<br/>
+     * OR (Country = 'Canada' AND State = 'BC')<br/>
+     * OR (Country = 'USA' AND State = 'CA' AND City = 'San Francisco')<br/>
+     * OR (Country = 'USA' AND State = 'OR' AND City = 'Portland')
+     * </pre>
      * <p>The caller of this method will translate this representation into
      * appropriate SQL form. For exmaple, if the underlying DB supports multi
      * value IN-list, the second group will turn into this predicate:
-     *
-     * <blockquote>
-     * where (country, state, city) IN ((USA, CA, San Francisco),
-     *                                      (USA, OR, Portland))
+     * <pre>
+     * where (country, state, city) IN (('USA', 'CA', 'San Francisco'),
+     *                                      ('USA', 'OR', 'Portland'))
      * </blockquote>
      *
      * or, if the DB does not support multi-value IN list:
      *
      * <blockquote>
-     * where country=USA AND
-     *           ((state=CA AND city = San Francisco) OR
-     *            (state=OR AND city=Portland))
+     * WHERE country = 'USA' AND<br/>
+     *           ((state = 'CA' AND city = 'San Francisco') OR<br/>
+     *            (state = 'OR' AND city = 'Portland'))
      * </blockquote>
      *
      * @param compoundGroupMap Map from dimensionality to groups
-     * @param baseCube base cube if virtual
+     * @param measureGroup Measure group
      * @return compound predicate for a tuple or a member
      */
-    private static StarPredicate makeCompoundPredicate(
-        Map<BitKey, List<RolapCubeMember[]>> compoundGroupMap,
-        RolapCube baseCube)
+    static StarPredicate makeCompoundPredicate(
+        Map<BitKey, List<RolapMember[]>> compoundGroupMap,
+        RolapMeasureGroup measureGroup)
     {
         List<StarPredicate> compoundPredicateList =
-            new ArrayList<StarPredicate> ();
-        for (List<RolapCubeMember[]> group : compoundGroupMap.values()) {
-            /*
-             * e.g.
-             * {[USA].[CA], [Canada].[BC]}
-             * or
-             * {
-             */
+            new ArrayList<StarPredicate>();
+        final List<RolapSchema.PhysRouter> routers =
+            new ArrayList<RolapSchema.PhysRouter>();
+        int count = -1;
+        for (List<RolapMember[]> group : compoundGroupMap.values()) {
+            // e.g.
+            // {[USA].[CA], [Canada].[BC]}
+            // or
+            // {
+            ++count;
             StarPredicate compoundGroupPredicate = null;
-            for (RolapCubeMember[] tuple : group) {
-               /*
-                * [USA].[CA]
-                */
+            for (RolapMember[] tuple : group) {
+                // [USA].[CA]
                 StarPredicate tuplePredicate = null;
 
-                for (RolapCubeMember member : tuple) {
+                for (int i = 0; i < tuple.length; i++) {
+                    RolapMember member = tuple[i];
+                    final RolapSchema.PhysRouter router;
+                    if (count == 0) {
+                        router = new RolapSchema.CubeRouter(
+                            measureGroup, member.getDimension());
+                        routers.add(router);
+                    } else {
+                        router = routers.get(i);
+                    }
                     tuplePredicate = makeCompoundPredicateForMember(
-                        member, baseCube, tuplePredicate);
+                        router, member, tuplePredicate);
                 }
                 if (tuplePredicate != null) {
                     if (compoundGroupPredicate == null) {
@@ -627,48 +732,38 @@ public abstract class RolapAggregationManager {
             }
 
             if (compoundGroupPredicate != null) {
-                /*
-                 * Sometimes the compound member list does not constrain any
-                 * columns; for example, if only AllLevel is present.
-                 */
+                // Sometimes the compound member list does not constrain any
+                // columns; for example, if only AllLevel is present.
                 compoundPredicateList.add(compoundGroupPredicate);
             }
         }
 
-        StarPredicate compoundPredicate = null;
-
-        if (compoundPredicateList.size() > 1) {
-            compoundPredicate = new OrPredicate(compoundPredicateList);
-        } else if (compoundPredicateList.size() == 1) {
-            compoundPredicate = compoundPredicateList.get(0);
-        }
-
-        return compoundPredicate;
+        return Predicates.or(compoundPredicateList);
     }
 
     private static StarPredicate makeCompoundPredicateForMember(
-        RolapCubeMember member,
-        RolapCube baseCube,
+        RolapSchema.PhysRouter router,
+        RolapMember member,
         StarPredicate memberPredicate)
     {
-        while (member != null) {
-            RolapCubeLevel level = member.getLevel();
-            if (!level.isAll()) {
-                RolapStar.Column column = level.getBaseStarKeyColumn(baseCube);
-                if (memberPredicate == null) {
-                    memberPredicate =
-                        new ValueColumnPredicate(column, member.getKey());
-                } else {
-                    memberPredicate =
-                        memberPredicate.and(
-                            new ValueColumnPredicate(column, member.getKey()));
-                }
+        final RolapCubeLevel level = member.getLevel();
+        final List<RolapSchema.PhysColumn> keyList =
+            level.attribute.getKeyList();
+        final List<Comparable> valueList = member.getKeyAsList();
+        for (Pair<RolapSchema.PhysColumn, Comparable> pair
+            : Pair.iterate(keyList, valueList))
+        {
+            final ValueColumnPredicate predicate =
+                new ValueColumnPredicate(
+                    new PredicateColumn(
+                        router,
+                        pair.left),
+                    pair.right);
+            if (memberPredicate == null) {
+                memberPredicate = predicate;
+            } else {
+                memberPredicate = memberPredicate.and(predicate);
             }
-            // Don't need to constrain USA if CA is unique
-            if (member.getLevel().isUnique()) {
-                break;
-            }
-            member = member.getParentMember();
         }
         return memberPredicate;
     }
@@ -705,13 +800,14 @@ public abstract class RolapAggregationManager {
         boolean countOnly);
 
     public static RolapCacheRegion makeCacheRegion(
-        final RolapStar star,
+        final RolapMeasureGroup measureGroup,
         final CacheControl.CellRegion region)
     {
+        Util.deprecated("not used -- remove", true);
         final List<Member> measureList = CacheControlImpl.findMeasures(region);
         final List<RolapStar.Measure> starMeasureList =
             new ArrayList<RolapStar.Measure>();
-        RolapCube baseCube = null;
+        final RolapStar star = measureGroup.getStar();
         for (Member measure : measureList) {
             if (!(measure instanceof RolapStoredMeasure)) {
                 continue;
@@ -719,7 +815,7 @@ public abstract class RolapAggregationManager {
             final RolapStoredMeasure storedMeasure =
                 (RolapStoredMeasure) measure;
             final RolapStar.Measure starMeasure =
-                (RolapStar.Measure) storedMeasure.getStarMeasure();
+                storedMeasure.getStarMeasure();
             assert starMeasure != null;
             if (star != starMeasure.getStar()) {
                 continue;
@@ -728,7 +824,7 @@ public abstract class RolapAggregationManager {
             // Should there be a 'break' here? Are all of the
             // storedMeasure cubes the same cube? Is the measureList always
             // non-empty so that baseCube is always set?
-            baseCube = storedMeasure.getCube();
+            assert measureGroup == storedMeasure.getMeasureGroup();
             starMeasureList.add(starMeasure);
         }
         final RolapCacheRegion cacheRegion =
@@ -739,17 +835,17 @@ public abstract class RolapAggregationManager {
             for (CacheControl.CellRegion component
                 : crossjoin.getComponents())
             {
-                constrainCacheRegion(cacheRegion, baseCube, component);
+                constrainCacheRegion(cacheRegion, measureGroup, component);
             }
         } else {
-            constrainCacheRegion(cacheRegion, baseCube, region);
+            constrainCacheRegion(cacheRegion, measureGroup, region);
         }
         return cacheRegion;
     }
 
     private static void constrainCacheRegion(
         final RolapCacheRegion cacheRegion,
-        final RolapCube baseCube,
+        final RolapMeasureGroup measureGroup,
         final CacheControl.CellRegion region)
     {
         if (region instanceof CacheControlImpl.MemberCellRegion) {
@@ -760,44 +856,31 @@ public abstract class RolapAggregationManager {
                 if (member.isMeasure()) {
                     continue;
                 }
-                final RolapCubeMember rolapMember;
-                if (member instanceof RolapCubeMember) {
-                    rolapMember = (RolapCubeMember) member;
-                } else {
-                    rolapMember =
-                        (RolapCubeMember) baseCube.getSchemaReader()
-                            .getMemberByUniqueName(
-                                Util.parseIdentifier(member.getUniqueName()),
-                                true);
-                }
-                final RolapCubeLevel level = rolapMember.getLevel();
-                RolapStar.Column column = level.getBaseStarKeyColumn(baseCube);
-
-                level.getLevelReader().constrainRegion(
-                    new MemberColumnPredicate(column, rolapMember),
-                    baseCube,
+                final RolapMember rolapMember = (RolapMember) member;
+                rolapMember.getLevel().getLevelReader().constrainRegion(
+                    Predicates.memberPredicate(
+                        new RolapSchema.CubeRouter(
+                            measureGroup,
+                            rolapMember.getDimension()),
+                        rolapMember),
+                    measureGroup,
                     cacheRegion);
             }
         } else if (region instanceof CacheControlImpl.MemberRangeCellRegion) {
             final CacheControlImpl.MemberRangeCellRegion rangeRegion =
                 (CacheControlImpl.MemberRangeCellRegion) region;
             final RolapCubeLevel level = (RolapCubeLevel)rangeRegion.getLevel();
-            RolapStar.Column column = level.getBaseStarKeyColumn(baseCube);
 
             level.getLevelReader().constrainRegion(
-                new RangeColumnPredicate(
-                    column,
+                Predicates.rangePredicate(
+                    new RolapSchema.CubeRouter(
+                        measureGroup,
+                        level.cubeDimension),
                     rangeRegion.getLowerInclusive(),
-                    (rangeRegion.getLowerBound() == null
-                     ? null
-                     : new MemberColumnPredicate(
-                         column, rangeRegion.getLowerBound())),
+                    rangeRegion.getLowerBound(),
                     rangeRegion.getUpperInclusive(),
-                    (rangeRegion.getUpperBound() == null
-                     ? null
-                     : new MemberColumnPredicate(
-                         column, rangeRegion.getUpperBound()))),
-                baseCube,
+                    rangeRegion.getUpperBound()),
+                measureGroup,
                 cacheRegion);
         } else {
             throw new UnsupportedOperationException();
@@ -841,6 +924,32 @@ public abstract class RolapAggregationManager {
      * for a short duration as a result of a cache inquiry.
      */
     public interface PinSet {
+    }
+
+    /**
+     * Compares members based on the position of their respective
+     * levels wrt the list of RolapCubeDimension objects.
+     */
+    private static class CubeOrderedMemberLevelComparator
+        implements Comparator<Member>
+    {
+        private final List<RolapCubeLevel> orderedLevels =
+            new ArrayList<RolapCubeLevel>();
+
+        public CubeOrderedMemberLevelComparator(
+            List<? extends RolapCubeDimension> dimList)
+        {
+            for (RolapCubeDimension dim : dimList) {
+                for (RolapCubeHierarchy hier : dim.getHierarchyList()) {
+                    orderedLevels.addAll(hier.getLevelList());
+                }
+            }
+        }
+
+        public int compare(Member o1, Member o2) {
+            return orderedLevels.indexOf(o1.getLevel())
+                - orderedLevels.indexOf(o2.getLevel());
+        }
     }
 }
 

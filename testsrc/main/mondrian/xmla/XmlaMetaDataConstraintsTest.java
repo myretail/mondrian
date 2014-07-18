@@ -4,14 +4,22 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2012-2012 Pentaho and others
+=======
+// Copyright (C) 2002-2005 Julian Hyde
+// Copyright (C) 2005-2013 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.xmla;
 
 import mondrian.olap.*;
 import mondrian.olap.Util.PropertyList;
+<<<<<<< HEAD
 import mondrian.olap4j.MondrianOlap4jDriver;
+=======
+>>>>>>> upstream/4.0
 import mondrian.rolap.RolapConnectionProperties;
 import mondrian.test.DiffRepository;
 import mondrian.test.TestContext;
@@ -31,11 +39,14 @@ import java.util.*;
  */
 public class XmlaMetaDataConstraintsTest extends XmlaBaseTestCase {
 
+<<<<<<< HEAD
     protected void setUp() throws Exception {
         super.setUp();
         Class.forName(MondrianOlap4jDriver.class.getName());
     }
 
+=======
+>>>>>>> upstream/4.0
     protected Map<String, String> getCatalogNameUrls(TestContext testContext) {
         if (catalogNameUrls == null) {
             catalogNameUrls = new TreeMap<String, String>();
@@ -79,7 +90,10 @@ public class XmlaMetaDataConstraintsTest extends XmlaBaseTestCase {
                 bw1.close();
                 bw2.close();
             } catch (Exception e) {
+<<<<<<< HEAD
                 e.printStackTrace();
+=======
+>>>>>>> upstream/4.0
                 throw new RuntimeException(e);
             }
 
@@ -147,12 +161,16 @@ public class XmlaMetaDataConstraintsTest extends XmlaBaseTestCase {
         props.setProperty(DATA_SOURCE_INFO_PROP, DATA_SOURCE_INFO);
         props.setProperty(CATALOG_NAME_PROP, catalog);
 
+<<<<<<< HEAD
         try {
             doTest(requestType, props, TestContext.instance());
         } catch (Throwable t) {
             t.printStackTrace();
             throw new Exception(t);
         }
+=======
+        doTest(requestType, props, TestContext.instance());
+>>>>>>> upstream/4.0
     }
 
     protected DiffRepository getDiffRepos() {

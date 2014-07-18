@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2007-2012 Pentaho
+=======
+// Copyright (C) 2007-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.util;
@@ -52,11 +56,11 @@ public class Pair <L, R>
     }
 
     /**
-     * Creates a Pair.
+     * Creates a pair, inferring type parameters from the arguments.
      *
      * @param left Left value
      * @param right Right value
-     * @return a new Pair
+     * @return Pair
      */
     public static <L, R> Pair<L, R> of(L left, R right) {
         return new Pair<L, R>(left, right);
@@ -132,6 +136,57 @@ public class Pair <L, R>
     }
 
     /**
+     * Converts two lists into a list of {@link Pair}s.
+     *
+     * <p>The length of the combined list is the lesser of the lengths of the
+     * source lists. But typically the source lists will be the same length.</p>
+     *
+     * @param ks Left list
+     * @param vs Right list
+     * @return List of pairs
+     */
+    public static <K, V> List<Pair<K, V>> zip(
+        final List<K> ks,
+        final List<V> vs)
+    {
+        return new AbstractList<Pair<K, V>>() {
+            public Pair<K, V> get(int index) {
+                return Pair.of(ks.get(index), vs.get(index));
+            }
+
+            public int size() {
+                return Math.min(ks.size(), vs.size());
+            }
+        };
+    }
+
+    /**
+     * Converts two arrays into a list of {@link Pair}s.
+     *
+     * <p>The length of the combined list is the lesser of the lengths of the
+     * source arrays. But typically the source arrays will be the same
+     * length.</p>
+     *
+     * @param ks Left array
+     * @param vs Right array
+     * @return List of pairs
+     */
+    public static <K, V> List<Pair<K, V>> zip(
+        final K[] ks,
+        final V[] vs)
+    {
+        return new AbstractList<Pair<K, V>>() {
+            public Pair<K, V> get(int index) {
+                return Pair.of(ks[index], vs[index]);
+            }
+
+            public int size() {
+                return Math.min(ks.length, vs.length);
+            }
+        };
+    }
+
+    /**
      * Returns an iterable over the left slice of an iterable.
      *
      * @param iterable Iterable over pairs
@@ -194,6 +249,59 @@ public class Pair <L, R>
     }
 
     /**
+<<<<<<< HEAD
+=======
+     * Creates an iterable that iterates in parallel over a pair of iterables.
+     *
+     * @param i0 First iterable
+     * @param i1 Second iterable
+     * @param <K> Key type (element type of first iterable)
+     * @param <V> Value type (element type of second iterable)
+     * @return Iterable in over both iterables in parallel
+     */
+    public static <K, V> java.lang.Iterable<Pair<K, V>> iterate(
+        final Iterable<K> i0,
+        final Iterable<V> i1)
+    {
+        return new Iterable<Pair<K, V>>()
+        {
+            public Iterator<Pair<K, V>> iterator()
+            {
+                assert !(i0 instanceof Collection
+                         && i1 instanceof Collection
+                         && ((Collection) i0).size()
+                            != ((Collection) i1).size())
+                    : "size mismatch: i0=" + i0 + ", i1=" + i1;
+                final Iterator<K> iterator0 = i0.iterator();
+                final Iterator<V> iterator1 = i1.iterator();
+
+                return new Iterator<Pair<K, V>>()
+                {
+                    public boolean hasNext()
+                    {
+                        final boolean hasNext0 = iterator0.hasNext();
+                        final boolean hasNext1 = iterator1.hasNext();
+                        assert hasNext0 == hasNext1;
+                        return hasNext0 && hasNext1;
+                    }
+
+                    public Pair<K, V> next()
+                    {
+                        return Pair.of(iterator0.next(), iterator1.next());
+                    }
+
+                    public void remove()
+                    {
+                        iterator0.remove();
+                        iterator1.remove();
+                    }
+                };
+            }
+        };
+    }
+
+    /**
+>>>>>>> upstream/4.0
      * Returns a list of the left elements of a list of pairs.
      */
     public static <L, R> List<L> left(final List<Pair<L, R>> list) {

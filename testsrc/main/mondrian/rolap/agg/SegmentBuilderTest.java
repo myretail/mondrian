@@ -4,7 +4,13 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (c) 2002-2013 Pentaho Corporation..  All rights reserved.
+=======
+// Copyright (C) 2002-2005 Julian Hyde
+// Copyright (C) 2005-2014 Pentaho and others
+// All Rights Reserved.
+>>>>>>> upstream/4.0
 */
 package mondrian.rolap.agg;
 
@@ -24,6 +30,11 @@ import java.util.*;
  */
 public class SegmentBuilderTest extends BatchTestCase {
 
+<<<<<<< HEAD
+=======
+    public static final double MOCK_CELL_VALUE = 123.123;
+
+>>>>>>> upstream/4.0
     protected void setUp() throws Exception {
         super.setUp();
         propSaver.set(
@@ -36,6 +47,290 @@ public class SegmentBuilderTest extends BatchTestCase {
             MondrianProperties.instance().SparseSegmentCountThreshold, 1000);
     }
 
+<<<<<<< HEAD
+=======
+    @Override
+    protected void tearDown() throws Exception {
+        super.tearDown();
+        RolapUtil.setHook(null);
+    }
+
+    public void testRollupWithNullAxisVals() {
+        // Perform two rollups.  One with two columns each containing 3 values.
+        // The second with two columns containing 2 values + null.
+        // The rolled up values should be equal in the two cases.
+        Pair<SegmentHeader, SegmentBody> rollupNoNulls = SegmentBuilder.rollup(
+            makeSegmentMap(
+                new String[] {"col1", "col2"}, null, 3, 9, true,
+                new boolean[] {false, false}),// each axis sets null axis flag=F
+            new HashSet<String>(Arrays.asList("col2")),
+            null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
+        Pair<SegmentHeader, SegmentBody> rollupWithNullMembers =
+            SegmentBuilder.rollup(
+                makeSegmentMap(
+                    new String[] {"col1", "col2"}, null, 2, 9, true,
+                    // each axis sets null axis flag=T
+                    new boolean[] {true, true}),
+                new HashSet<String>(Arrays.asList("col2")),
+                null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
+        assertArraysAreEqual(
+            (double[]) rollupNoNulls.getValue().getValueArray(),
+            (double[]) rollupWithNullMembers.getValue().getValueArray());
+        assertTrue(
+            "Rolled up column should have nullAxisFlag set.",
+            rollupWithNullMembers.getValue().getNullAxisFlags().length == 1
+                && rollupWithNullMembers.getValue().getNullAxisFlags()[0]);
+        assertEquals(
+            "col2",
+            rollupWithNullMembers.getKey().getConstrainedColumns()
+                .get(0).columnExpression);
+    }
+
+    public void testRollupWithMixOfNullAxisValues() {
+        // constructed segment has 3 columns:
+        //    2 values in the first
+        //    2 values + null in the second and third
+        //  = 18 values
+        Pair<SegmentHeader, SegmentBody> rollup = SegmentBuilder.rollup(
+            makeSegmentMap(
+                new String[] {"col1", "col2", "col3"}, null, 2, 18, true,
+                // col2 & col3 have nullAxisFlag=T
+                new boolean[] {false, true, true}),
+            new HashSet<String>(Arrays.asList("col2")),
+            null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
+
+        // expected value is 6 * MOCK_CELL_VALUE for each of 3 column values,
+        // since each of the 18 cells are being rolled up to 3 buckets
+        double expectedVal = 6 * MOCK_CELL_VALUE;
+        assertArraysAreEqual(
+            new double[] { expectedVal, expectedVal, expectedVal },
+            (double[]) rollup.getValue().getValueArray());
+        assertTrue(
+            "Rolled up column should have nullAxisFlag set.",
+            rollup.getValue().getNullAxisFlags().length == 1
+                && rollup.getValue().getNullAxisFlags()[0]);
+        assertEquals(
+            "col2",
+            rollup.getKey().getConstrainedColumns()
+                .get(0).columnExpression);
+    }
+
+    public void testRollup2ColumnsWithMixOfNullAxisValues() {
+        // constructed segment has 3 columns:
+        //    2 values in the first
+        //    2 values + null in the second and third
+        //  = 18 values
+        Pair<SegmentHeader, SegmentBody> rollup = SegmentBuilder.rollup(
+            makeSegmentMap(
+                new String[] {"col1", "col2", "col3"}, null, 2, 12, true,
+                // col2 & col3 have nullAxisFlag=T
+                new boolean[] {false, true, false}),
+            new HashSet<String>(Arrays.asList("col1", "col2")),
+            null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
+
+        // expected value is 2 * MOCK_CELL_VALUE for each of 3 column values,
+        // since each of the 12 cells are being rolled up to 3 * 2 buckets
+        double expectedVal = 2 * MOCK_CELL_VALUE;
+        assertArraysAreEqual(
+            new double[] {expectedVal, expectedVal, expectedVal,
+                expectedVal, expectedVal, expectedVal},
+            (double[]) rollup.getValue().getValueArray());
+        assertTrue(
+            "Rolled up column should have nullAxisFlag set to false for "
+            + "the first column, true for second column.",
+            rollup.getValue().getNullAxisFlags().length == 2
+                && !rollup.getValue().getNullAxisFlags()[0]
+                && rollup.getValue().getNullAxisFlags()[1]);
+        assertEquals(
+            "col1",
+            rollup.getKey().getConstrainedColumns()
+                .get(0).columnExpression);
+        assertEquals(
+            "col2",
+            rollup.getKey().getConstrainedColumns()
+                .get(1).columnExpression);
+    }
+
+    public void testMultiSegRollupWithMixOfNullAxisValues() {
+        // rolls up 2 segments.
+        // Segment 1 has 3 columns:
+        //    2 values in the first
+        //    1 values + null in the second
+        //    2 vals + null in the third
+        //  = 12 values
+        //  Segment 2 has the same 3 columns, difft values for 3rd column.
+        //
+        //  none of the columns are wildcarded.
+        final Map<SegmentHeader, SegmentBody> map = makeSegmentMap(
+            new String[]{"col1", "col2", "col3"},
+            new String[][]{{"col1A", "col1B"}, {"col2A"}, {"col3A", "col3B"}},
+            -1, 12, false,
+            // col2 & col3 have nullAxisFlag=T
+            new boolean[]{false, true, true});
+        map.putAll(
+            makeSegmentMap(
+                new String[]{"col1", "col2", "col3"},
+                new String[][]{{"col1A", "col1B"}, {"col2A"}, {"col3C",
+                    "col3D"}},
+                -1, 8, false,
+                // col3 has nullAxisFlag=T
+                new boolean[]{false, true, false}));
+        Pair<SegmentHeader, SegmentBody> rollup = SegmentBuilder.rollup(
+            map,
+            new HashSet<String>(Arrays.asList("col2")),
+            null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
+        // expected value is 10 * MOCK_CELL_VALUE for each of 2 column values,
+        // since the 20 cells across 2 segments are being rolled up to 2 buckets
+        double expectedVal = 10 * MOCK_CELL_VALUE;
+        assertArraysAreEqual(
+            new double[]{ expectedVal, expectedVal},
+            (double[]) rollup.getValue().getValueArray());
+        assertTrue(
+            "Rolled up column should have nullAxisFlag set to true for "
+            + "a single column.",
+            rollup.getValue().getNullAxisFlags().length == 1
+                && rollup.getValue().getNullAxisFlags()[0]);
+        assertEquals(
+            "col2",
+            rollup.getKey().getConstrainedColumns()
+                .get(0).columnExpression);
+    }
+
+    private void assertArraysAreEqual(double[] expected, double[] actual) {
+        assertTrue(
+            "Expected double array:  "
+            + Arrays.toString(expected)
+            + ", but got "
+            + Arrays.toString(actual),
+            doubleArraysEqual(actual, expected));
+    }
+
+    private boolean doubleArraysEqual(
+        double[] valueArray, double[] expectedVal)
+    {
+        if (valueArray.length != expectedVal.length) {
+            return false;
+        }
+        double within = 0.00000001;
+        for (int i = 0; i < valueArray.length; i++) {
+            if (Math.abs(valueArray[i] - expectedVal[i]) > within) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void testNullMemberOffset() {
+        // verifies that presence of a null member does not cause
+        // offsets to be incorrect for a Segment rollup.
+        // First query loads the cache with a segment that can fulfill the
+        // second query.
+        executeQuery(
+            "select [Store Size in SQFT].[Store Sqft].members * "
+            + "gender.gender.members  on 0 from sales");
+        assertQueryReturns(
+            "select non empty [Store Size in SQFT].[Store Sqft].members on 0"
+            + "from sales",
+            "Axis #0:\n"
+            + "{}\n"
+            + "Axis #1:\n"
+            + "{[Store].[Store Size in SQFT].[#null]}\n"
+            + "{[Store].[Store Size in SQFT].[20319]}\n"
+            + "{[Store].[Store Size in SQFT].[21215]}\n"
+            + "{[Store].[Store Size in SQFT].[22478]}\n"
+            + "{[Store].[Store Size in SQFT].[23598]}\n"
+            + "{[Store].[Store Size in SQFT].[23688]}\n"
+            + "{[Store].[Store Size in SQFT].[27694]}\n"
+            + "{[Store].[Store Size in SQFT].[28206]}\n"
+            + "{[Store].[Store Size in SQFT].[30268]}\n"
+            + "{[Store].[Store Size in SQFT].[33858]}\n"
+            + "{[Store].[Store Size in SQFT].[39696]}\n"
+            + "Row #0: 39,329\n"
+            + "Row #0: 26,079\n"
+            + "Row #0: 25,011\n"
+            + "Row #0: 2,117\n"
+            + "Row #0: 25,663\n"
+            + "Row #0: 21,333\n"
+            + "Row #0: 41,580\n"
+            + "Row #0: 2,237\n"
+            + "Row #0: 23,591\n"
+            + "Row #0: 35,257\n"
+            + "Row #0: 24,576\n");
+    }
+
+    public void testNullMemberOffset2ColRollup() {
+        // verifies that presence of a null member does not cause
+        // offsets to be incorrect for a Segment rollup involving 2
+        // columns.  This tests a case where
+        // SegmentBuilder.computeAxisMultipliers needs to factor in
+        // the null axis flag.
+        executeQuery(
+            "select [Store Size in SQFT].[Store Sqft].members * "
+            + "[store].[store state].members * time.[quarter].members on 0"
+            + " from sales where [Product].[Food].[Produce].[Vegetables].[Fresh Vegetables]");
+        assertQueryReturns(
+            "select non empty [Store Size in SQFT].[Store Sqft].members "
+            + " * [store].[store state].members  on 0"
+            + "from sales where [Product].[Food].[Produce].[Vegetables].[Fresh Vegetables]",
+            "Axis #0:\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables]}\n"
+            + "Axis #1:\n"
+            + "{[Store].[Store Size in SQFT].[#null], [Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Store Size in SQFT].[#null], [Store].[Stores].[USA].[WA]}\n"
+            + "{[Store].[Store Size in SQFT].[20319], [Store].[Stores].[USA].[OR]}\n"
+            + "{[Store].[Store Size in SQFT].[21215], [Store].[Stores].[USA].[WA]}\n"
+            + "{[Store].[Store Size in SQFT].[22478], [Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Store Size in SQFT].[23598], [Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Store Size in SQFT].[23688], [Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Store Size in SQFT].[27694], [Store].[Stores].[USA].[OR]}\n"
+            + "{[Store].[Store Size in SQFT].[28206], [Store].[Stores].[USA].[WA]}\n"
+            + "{[Store].[Store Size in SQFT].[30268], [Store].[Stores].[USA].[WA]}\n"
+            + "{[Store].[Store Size in SQFT].[33858], [Store].[Stores].[USA].[WA]}\n"
+            + "{[Store].[Store Size in SQFT].[39696], [Store].[Stores].[USA].[WA]}\n"
+            + "Row #0: 1,967\n"
+            + "Row #0: 947\n"
+            + "Row #0: 2,065\n"
+            + "Row #0: 1,827\n"
+            + "Row #0: 165\n"
+            + "Row #0: 2,109\n"
+            + "Row #0: 1,665\n"
+            + "Row #0: 3,382\n"
+            + "Row #0: 162\n"
+            + "Row #0: 1,875\n"
+            + "Row #0: 2,668\n"
+            + "Row #0: 1,907\n");
+    }
+
+    public void testSegmentBodyIterator() {
+        // checks that cell key coordinates are generated correctly
+        // when a null member is present.
+        List<Pair<SortedSet<Comparable>, Boolean>> axes =
+            new ArrayList<Pair<SortedSet<Comparable>, Boolean>>();
+        axes.add(new Pair<SortedSet<Comparable>, Boolean>(
+            new TreeSet<Comparable>(
+                Arrays.asList(
+                    new String[] { "foo1", "bar1"})), true)); // nullAxisFlag=T
+        axes.add(new Pair<SortedSet<Comparable>, Boolean>(
+            new TreeSet<Comparable>(
+                Arrays.asList(new String[] { "foo2", "bar2", "baz3"})), false));
+        SegmentBody testBody = new DenseIntSegmentBody(
+            new BitSet(), new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9},
+            axes);
+        Map<CellKey, Object> valueMap = testBody.getValueMap();
+        assertEquals(
+            "{(0, 0)=1, "
+            + "(0, 1)=2, "
+            + "(0, 2)=3, "
+            + "(1, 0)=4, "
+            + "(1, 1)=5, "
+            + "(1, 2)=6, "
+            + "(2, 0)=7, "
+            + "(2, 1)=8, "
+            + "(2, 2)=9}",
+            valueMap.toString());
+    }
+
+>>>>>>> upstream/4.0
     public void testSparseRollup() {
         // functional test for a case that causes OOM if rollup creates
         // a dense segment.
@@ -44,6 +339,7 @@ public class SegmentBuilderTest extends BatchTestCase {
         if (PerformanceTest.LOGGER.isDebugEnabled()) {
             // load the cache with a segment for the subsequent rollup
             executeQuery(
+<<<<<<< HEAD
                 "select NON EMPTY Crossjoin([Store Type].[Store Type].members, "
                 + "CrossJoin([Promotion Media].[Media Type].members, "
                 + " Crossjoin([Promotions].[Promotion Name].members, "
@@ -60,6 +356,24 @@ public class SegmentBuilderTest extends BatchTestCase {
                 + "Crossjoin([Store].[Store Name].Members, "
                 + "Crossjoin( [product].[product name].members, "
                 + "[Customers].[Name].members))))) on 1, "
+=======
+                "select NON EMPTY Crossjoin([Store].[Store Type].[Store Type].members, "
+                + "CrossJoin([Promotion].[Media Type].[Media Type].members, "
+                + " Crossjoin([Promotion].[Promotions].[Promotion Name].members, "
+                + "Crossjoin([Store].[Stores].[Store Name].Members, "
+                + "Crossjoin( [product].[products].[product name].members, "
+                + "Crossjoin( [Customer].[Customers].[Name].members,  "
+                + "[Customer].[Gender].[Gender].members)))))) on 1, "
+                + "{ measures.[unit sales] } on 0 from [Sales]");
+
+            executeQuery(
+                "select NON EMPTY Crossjoin([Store].[Store Type].[Store Type].members, "
+                + "CrossJoin([Promotion].[Media Type].[Media Type].members, "
+                + " Crossjoin([Promotion].[Promotions].[Promotion Name].members, "
+                + "Crossjoin([Store].[Stores].[Store Name].Members, "
+                + "Crossjoin( [product].[products].[product name].members, "
+                + " [Customer].[Customers].[Name].members))))) on 1, "
+>>>>>>> upstream/4.0
                 + "{ measures.[unit sales] } on 0 from [Sales]");
             // second query will throw OOM if .rollup() attempts
             // to create a dense segment
@@ -77,7 +391,12 @@ public class SegmentBuilderTest extends BatchTestCase {
         Pair<SegmentHeader, SegmentBody> rollup =
             SegmentBuilder.rollup(
                 makeSegmentMap(
+<<<<<<< HEAD
                     new String[] {"col1", "col2", "col3"}, 47000, 4),
+=======
+                    new String[] {"col1", "col2", "col3"},
+                    null, 47000, 4, false, null),
+>>>>>>> upstream/4.0
                 new HashSet<String>(Arrays.asList("col1", "col2")),
                 null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
         assertTrue(rollup.right instanceof SparseSegmentBody);
@@ -93,7 +412,12 @@ public class SegmentBuilderTest extends BatchTestCase {
         Pair<SegmentHeader, SegmentBody> rollup =
             SegmentBuilder.rollup(
                 makeSegmentMap(
+<<<<<<< HEAD
                     new String[] {"col1", "col2", "col3"}, 44000, 4),
+=======
+                    new String[] {"col1", "col2", "col3"},
+                    null, 44000, 4, false, null),
+>>>>>>> upstream/4.0
                 new HashSet<String>(Arrays.asList("col1", "col2")),
                 null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
         assertTrue(rollup.right instanceof SparseSegmentBody);
@@ -104,7 +428,12 @@ public class SegmentBuilderTest extends BatchTestCase {
         Pair<SegmentHeader, SegmentBody> rollup =
             SegmentBuilder.rollup(
                 makeSegmentMap(
+<<<<<<< HEAD
                     new String[] {"col1", "col2", "col3"}, 10, 15),
+=======
+                    new String[] {"col1", "col2", "col3"},
+                    null, 10, 15, false, null),
+>>>>>>> upstream/4.0
                 new HashSet<String>(Arrays.asList("col1", "col2")),
                 null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
         assertTrue(rollup.right instanceof DenseDoubleSegmentBody);
@@ -114,12 +443,154 @@ public class SegmentBuilderTest extends BatchTestCase {
             SegmentBuilder.rollup(
                 makeSegmentMap(
                     new String[] {"col1", "col2", "col3", "col4"},
+<<<<<<< HEAD
                     11, 10000),   // 1331 possible intersections (11*3)
+=======
+                    null, 11, 10000, false, null),
+                    // 1331 possible intersections (11*3)
+>>>>>>> upstream/4.0
                 new HashSet<String>(Arrays.asList("col1", "col2", "col3")),
                 null, RolapAggregator.Sum, Dialect.Datatype.Numeric);
         assertTrue(rollup.right instanceof DenseDoubleSegmentBody);
     }
 
+<<<<<<< HEAD
+=======
+    public void testOverlappingSegments() {
+        // MONDRIAN-2107
+        // The segments created by the first 2 queries below overlap on
+        //  [1997].[Q1].[1].  The rollup of these two segments should not
+        // doubly-add that cell.
+        // Also, these two segments have predicates optimized for 'quarter'
+        // since 3 out of 4 quarters are present.  This means the
+        //  header.getValues() will be null.  This has the potential
+        // to cause issues with rollup since one segment body will have
+        // 3 values for quarter, the other segment body will have a different
+        // set of values.
+        getTestContext().flushSchemaCache();
+        // uses legacy schema so that both year and quarter will be
+        // in the month key
+        TestContext context = getTestContext().legacy().withFreshConnection();
+
+        context.executeQuery(
+            "select "
+            + "{[Time].[1997].[Q1].[1], [Time].[1997].[Q1].[2], [Time].[1997].[Q1].[3], "
+            + "[Time].[1997].[Q2].[4], [Time].[1997].[Q2].[5], [Time].[1997].[Q2].[6],"
+            + "[Time].[1997].[Q3].[7]} on 0 from sales");
+        context.executeQuery(
+            "select "
+            + "{[Time].[1997].[Q1].[1], [Time].[1997].[Q3].[8], [Time].[1997].[Q3].[9], "
+            + "[Time].[1997].[Q4].[10], [Time].[1997].[Q4].[11], [Time].[1997].[Q4].[12],"
+            + "[Time].[1998].[Q1].[1], [Time].[1998].[Q3].[8], [Time].[1998].[Q3].[9], "
+            + "[Time].[1998].[Q4].[10], [Time].[1998].[Q4].[11], [Time].[1998].[Q4].[12]}"
+            + "on 0 from sales");
+
+        RolapUtil.setHook(
+            new RolapUtil.ExecuteQueryHook()
+        {
+            public void onExecuteQuery(String sql) {
+                //  We shouldn't see a sum of unit_sales in SQL if using rollup.
+                assertFalse(
+                    "Expected cells to be pulled from cache",
+                    sql.matches(".*sum\\([^ ]+unit_sales.*"));
+            }
+        });
+        context.assertQueryReturns(
+            "select [Time].[1997].children on 0 from sales",
+            "Axis #0:\n"
+            + "{}\n"
+            + "Axis #1:\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q3]}\n"
+            + "{[Time].[Time].[1997].[Q4]}\n"
+            + "Row #0: 66,291\n"
+            + "Row #0: 62,610\n"
+            + "Row #0: 65,848\n"
+            + "Row #0: 72,024\n");
+    }
+
+    public void testNonOverlappingRollupWithUnconstrainedColumn() {
+        // MONDRIAN-2107
+        // The two segments loaded by the 1st 2 queries will have predicates
+        // wildcarded for Name.  Prior to the fix for 2107 this would
+        // result in roughly half of the customers having empty results
+        // for the 3rd query, since the values of only one of the two
+        // segments would be loaded into the AxisInfo.
+        getTestContext().flushSchemaCache();
+        TestContext context = getTestContext().withFreshConnection();
+        final String query = "select customers.[name].members on 0 from sales";
+        propSaver.set(propSaver.props.EnableInMemoryRollup, false);
+        Result result = context.executeQuery(query);
+
+        getTestContext().flushSchemaCache();
+        context = getTestContext().withFreshConnection();
+        propSaver.set(propSaver.props.EnableInMemoryRollup, true);
+        context.executeQuery(
+            "select "
+            + "{[customers].[name].members} on 0 from sales where gender.f");
+        context.executeQuery(
+            "select "
+            + "{[customers].[name].members} on 0 from sales where gender.m");
+
+        RolapUtil.setHook(
+            new RolapUtil.ExecuteQueryHook()
+        {
+            public void onExecuteQuery(String sql) {
+                //  We shouldn't see a sum of unit_sales in SQL if using rollup.
+                assertFalse(
+                    "Expected cells to be pulled from cache",
+                    sql.matches(".*sum\\([^ ]+unit_sales.*"));
+            }
+        });
+
+        context.assertQueryReturns(
+            query,
+            TestContext.toString(result));
+    }
+
+    public void testNonOverlappingRollupWithUnconstrainedColumnAndHasNull() {
+        // MONDRIAN-2107
+        // Creates 10 segments, one for each city, with various sets
+        // of [Store Sqft].  Some contain NULL, some do not.
+        // Results from rollup should match results from a query not pulling
+        // from cache.
+        String[] states = {"[Canada].BC", "[USA].CA", "[Mexico].DF",
+            "[Mexico].Guerrero", "[Mexico].Jalisco", "[USA].[OR]",
+            "[Mexico].Veracruz", "[USA].WA", "[Mexico].Yucatan",
+            "[Mexico].Zacatecas"};
+        getTestContext().flushSchemaCache();
+        TestContext context = getTestContext().withFreshConnection();
+        final String query =
+            "select [Store Size in SQFT].[Store Sqft].members on 0 from sales";
+
+        Result result = context.executeQuery(query);
+        getTestContext().flushSchemaCache();
+        context = getTestContext().withFreshConnection();
+        for (String state : states) {
+            context.executeQuery(
+                String.format(
+                    "select "
+                    + "{[Store Size in SQFT].[Store Sqft].members} on 0 "
+                    + "from sales where store.%s", state));
+        }
+        RolapUtil.setHook(
+            new RolapUtil.ExecuteQueryHook()
+        {
+            public void onExecuteQuery(String sql) {
+                //  We shouldn't see a sum of unit_sales in SQL if using rollup.
+                assertFalse(
+                    "Expected cell to be pulled from cache",
+                    sql.matches(".*sum\\([^ ]+unit_sales.*"));
+            }
+        });
+
+        context.assertQueryReturns(
+            query,
+            TestContext.toString(result));
+    }
+
+>>>>>>> upstream/4.0
     public void testBadRollupCausesGreaterThan12Iterations() {
         // http://jira.pentaho.com/browse/MONDRIAN-1729
         // The first two queries populate the cache with segments
@@ -172,6 +643,7 @@ public class SegmentBuilderTest extends BatchTestCase {
                 + "[Time].[1998].[Q4].[10], [Time].[1998].[Q4].[11], [Time].[1998].[Q4].[12]}"
                 + "on 0 from sales"},
             new String[] {
+<<<<<<< HEAD
                 "26f2dc1bd8a454424158c348d0e3c64e3c20e00fa807d56442b8a580728e9953",
                 "b76369e0fb17e67bc777aa1e5d2d2d81627992488eb70bb45432ecb6ff6752c9"
             },
@@ -179,10 +651,27 @@ public class SegmentBuilderTest extends BatchTestCase {
                 // rollup columns
                 "time_by_day.quarter",
                 "time_by_day.the_year"
+=======
+                "6806cee8561ece016f1acee39e2481c933aae4de7d4bd8bf28aee0b15dc894ce",
+                    // ^^^
+                    //    {time_by_day.the_year=('1998')}
+                    //    {time_by_day.quarter=('Q1','Q2','Q3')}
+                    //    {time_by_day.month_of_year=('2','3','4','5','6','7')}]
+                "ce2f10efe351f9c3b01fe54665bde120b5e7df7474b2363f3f7f3b3a3a93a733"
+                    // ^^^
+                    // {time_by_day.the_year=(*)}
+                    // {time_by_day.quarter=('Q1','Q3','Q4')}
+                    // {time_by_day.month_of_year=('1','8','9','10','11','12')}]
+            },
+            new String[]{
+                // rollup columns
+                "`time_by_day`.`the_year`"
+>>>>>>> upstream/4.0
             },
             // expected header of the rolled up segment
             "*Segment Header\n"
             + "Schema:[FoodMart]\n"
+<<<<<<< HEAD
             + "Checksum:[9cca66327439577753dd5c3144ab59b5]\n"
             + "Cube:[Sales]\n"
             + "Measure:[Unit Sales]\n"
@@ -192,6 +681,16 @@ public class SegmentBuilderTest extends BatchTestCase {
             + "Excluded Regions:[]\n"
             + "Compound Predicates:[]\n"
             + "ID:[3be3399cef4616f7718611775b3409c88a931b4f4642a8bcaa81740c884c3d3b]\n");
+=======
+            + "Checksum:[06389f41d543e685b98dc75f54237772]\n"
+            + "Cube:[Sales]\n"
+            + "Measure:[Unit Sales]\n"
+            + "Axes:[\n"
+            + "    {`time_by_day`.`the_year`=('1998')}]\n"
+            + "Excluded Regions:[]\n"
+            + "Compound Predicates:[]\n"
+            + "ID:[51a45f2e2a5e2c71f8479cd7806c9afd765be3c80a4881d7516d5576a0973b34]\n");
+>>>>>>> upstream/4.0
     }
 
     public void testSameRollupRegardlessOfSegmentOrderWithData() {
@@ -209,6 +708,7 @@ public class SegmentBuilderTest extends BatchTestCase {
                 + "{[Product].[Drink].[Dairy]}"
                 + "on 0 from sales"},
             new String[] {
+<<<<<<< HEAD
               "464a73cb907ccee680acd79a3b03181ddc6b8c2d9cf8b75ea81fcc6d634d8d57",
               "38fec44b20434448aa8c6191ac34ca96157e6db5bb50586d4dc4a55d7385a0f0"
             },
@@ -226,6 +726,34 @@ public class SegmentBuilderTest extends BatchTestCase {
             + "Compound Predicates:[]\n"
             + "ID:[0c3fbbc2a97f4183b7761326ceb76a"
             + "760ebc20550b4f686d129ece11e0dc1e49]\n");
+=======
+              "8f8f28faa78d9688b5f2bf0419302b858039544690ed71fd270e2f1c2697fb0a",
+                // ^^^
+                //    {time_by_day.the_year=('1997')}
+                //    {product_class.product_family=(*)}
+                //    {product_class.product_department=('Alcoholic Beverages',
+                //     'Baked Goods','Beverages','Periodicals')}]
+              "e0800d8f9d3fff381152fa2b5d2b5499d5a3a9993cc3aec0ab28995debefbeca"
+                // ^^^
+                //    {time_by_day.the_year=('1997')}
+                //    {product_class.product_family=('Drink')}
+                //    {product_class.product_department=('Dairy')}]
+            },
+            new String[]{
+                "`product_class`.`product_family`"
+            },
+            "*Segment Header\n"
+            + "Schema:[FoodMart]\n"
+            + "Checksum:[06389f41d543e685b98dc75f54237772]\n"
+            + "Cube:[Sales]\n"
+            + "Measure:[Unit Sales]\n"
+            + "Axes:[\n"
+            + "    {`product_class`.`product_family`=('Drink')}]\n"
+            + "Excluded Regions:[]\n"
+            + "Compound Predicates:[]\n"
+            + "ID:[244bbda98dbfee5000205fdcfee"
+            + "f1b4076e3d50f6ad2cd70d1ec7667031a51f0]\n");
+>>>>>>> upstream/4.0
     }
 
     public void testSameRollupRegardlessOfSegmentOrderNoWildcards() {
@@ -241,6 +769,7 @@ public class SegmentBuilderTest extends BatchTestCase {
                 + "{[Product].[Drink].[Dairy]}"
                 + "on 0 from sales"},
             new String[] {
+<<<<<<< HEAD
                 "464a73cb907ccee680acd79a3b03181ddc6b8c2d9cf8b75ea81fcc6d634d8d57",
                 "4b7d7b408d42891e03b496368c619e5385a743c72b6e07caa48eacf4adeb9f93"
             },
@@ -258,6 +787,34 @@ public class SegmentBuilderTest extends BatchTestCase {
             + "Compound Predicates:[]\n"
             + "ID:[0c3fbbc2a97f4183b7761326ceb76a"
             + "760ebc20550b4f686d129ece11e0dc1e49]\n");
+=======
+                "b9cd57a8b7b3db1021a72c540da1f64382cce469742095b04d023a0d3c8f0096",
+                    // ^^^
+                    //    {time_by_day.the_year=('1997')}
+                    // {product_class.product_family=('Drink','Non-Consumable')}
+                    // {product_class.product_department=('Alcoholic Beverages',
+                    //  'Beverages','Periodicals')}]
+                "8f8f28faa78d9688b5f2bf0419302b858039544690ed71fd270e2f1c2697fb0a"
+                    // ^^^
+                    //    {time_by_day.the_year=('1997')}
+                    //    {product_class.product_family=('Drink')}
+                    //    {product_class.product_department=('Dairy')}]
+            },
+            new String[]{
+                "`product_class`.`product_family`"
+            },
+            "*Segment Header\n"
+            + "Schema:[FoodMart]\n"
+            + "Checksum:[06389f41d543e685b98dc75f54237772]\n"
+            + "Cube:[Sales]\n"
+            + "Measure:[Unit Sales]\n"
+            + "Axes:[\n"
+            + "    {`product_class`.`product_family`=('Drink')}]\n"
+            + "Excluded Regions:[]\n"
+            + "Compound Predicates:[]\n"
+            + "ID:[244bbda98dbfee5000205fdcfeef1b"
+            + "4076e3d50f6ad2cd70d1ec7667031a51f0]\n");
+>>>>>>> upstream/4.0
     }
 
     public void testSameRollupRegardlessOfSegmentOrderThreeSegs() {
@@ -274,6 +831,7 @@ public class SegmentBuilderTest extends BatchTestCase {
                 " select "
                 + "{[Product].[Drink].[Beverages]} on 0 from sales"},
             new String[] {
+<<<<<<< HEAD
                 "464a73cb907ccee680acd79a3b03181ddc6b8c2d9cf8b75ea81fcc6d634d8d57",
                 "9f15599949884e63cf5167e8f857d7da133bb0781602b538f3c0eb00106e5bf4",
                 "2e68abec3aa76aad4d6cd742cfc19e448b48fabf33b3c1cdf1a34062428a71e3"
@@ -292,6 +850,40 @@ public class SegmentBuilderTest extends BatchTestCase {
             + "Compound Predicates:[]\n"
             + "ID:[0c3fbbc2a97f4183b7761326ceb76a"
             + "760ebc20550b4f686d129ece11e0dc1e49]\n");
+=======
+                "4472479a34c350cd2c208d369fae0968f860f61e8a893575f310144b87c7ceb5",
+                    // ^^^
+                    //    {time_by_day.the_year=('1997')}
+                    //    {product_class.product_family=('Drink')}
+                    //    {product_class.product_department=('Dairy')}]
+                "b19558359f411085f94692daefb46806e8bd0c3f95ff491eac0f8274bc655198",
+                    // ^^^
+                    //    {time_by_day.the_year=('1997')}
+                    //    {product_class.product_family=('Drink')}
+                    //    {product_class.product_department=('Beverages')}]
+                "8f8f28faa78d9688b5f2bf0419302b858039544690ed71fd270e2f1c2697fb0a"
+                    // ^^^
+                    //    {time_by_day.the_year=('1997')}
+                    //    {product_class.product_family=
+                    //                              ('Drink','Non-Consumable')}
+                    //    {product_class.product_department=
+                    //                  ('Alcoholic Beverages','Periodicals')}]
+            },
+            new String[]{
+                "`product_class`.`product_family`"
+            },
+            "*Segment Header\n"
+            + "Schema:[FoodMart]\n"
+            + "Checksum:[06389f41d543e685b98dc75f54237772]\n"
+            + "Cube:[Sales]\n"
+            + "Measure:[Unit Sales]\n"
+            + "Axes:[\n"
+            + "    {`product_class`.`product_family`=('Drink')}]\n"
+            + "Excluded Regions:[]\n"
+            + "Compound Predicates:[]\n"
+            + "ID:[244bbda98dbfee5000205fdc"
+            + "feef1b4076e3d50f6ad2cd70d1ec7667031a51f0]\n");
+>>>>>>> upstream/4.0
     }
 
 
@@ -431,6 +1023,12 @@ public class SegmentBuilderTest extends BatchTestCase {
                 }
             }
         }
+<<<<<<< HEAD
+=======
+        assertFalse(String.format(
+            "SegmentMap is empty. No segmentIds matched test parameters. "
+            + "Full segment cache: %s", headers), testMap.isEmpty());
+>>>>>>> upstream/4.0
         return testMap;
     }
 
@@ -443,12 +1041,27 @@ public class SegmentBuilderTest extends BatchTestCase {
      * values array.
      */
     private Map<SegmentHeader, SegmentBody> makeSegmentMap(
+<<<<<<< HEAD
         String[] colNames, int numValsPerCol, int numPopulatedCells)
     {
         Pair<SegmentHeader, SegmentBody> headerBody = makeDummyHeaderBodyPair(
             colNames,
             dummyColumnValues(colNames.length, numValsPerCol),
             numPopulatedCells);
+=======
+        String[] colNames, String[][] colVals,
+        int numValsPerCol, int numPopulatedCells,
+        boolean wildcardCols, boolean[] nullAxisFlags)
+    {
+        if (colVals == null) {
+            colVals = dummyColumnValues(colNames.length, numValsPerCol);
+        }
+
+        Pair<SegmentHeader, SegmentBody> headerBody = makeDummyHeaderBodyPair(
+            colNames,
+            colVals,
+            numPopulatedCells, wildcardCols, nullAxisFlags);
+>>>>>>> upstream/4.0
         Map<SegmentHeader, SegmentBody> map =
             new HashMap<SegmentHeader, SegmentBody>();
         map.put(headerBody.left, headerBody.right);
@@ -457,7 +1070,12 @@ public class SegmentBuilderTest extends BatchTestCase {
     }
 
     private Pair<SegmentHeader, SegmentBody> makeDummyHeaderBodyPair(
+<<<<<<< HEAD
         String[] colExps, String[][] colVals, int numCellVals)
+=======
+        String[] colExps, String[][] colVals, int numCellVals,
+        boolean wildcardCols, boolean[] nullAxisFlags)
+>>>>>>> upstream/4.0
     {
         final List<SegmentColumn> constrainedColumns =
             new ArrayList<SegmentColumn>();
@@ -466,19 +1084,38 @@ public class SegmentBuilderTest extends BatchTestCase {
             new ArrayList<Pair<SortedSet<Comparable>, Boolean>>();
         for (int i = 0; i < colVals.length; i++) {
             String colExp = colExps[i];
+<<<<<<< HEAD
             SortedSet<Comparable> vals =
                 new TreeSet<Comparable>(Arrays.<Comparable>asList(colVals[i]));
+=======
+            SortedSet<Comparable> headerVals = null;
+            SortedSet<Comparable> vals =
+                new TreeSet<Comparable>(Arrays.<Comparable>asList(colVals[i]));
+            if (!wildcardCols) {
+                headerVals = vals;
+            }
+            boolean nullAxisFlag = nullAxisFlags != null && nullAxisFlags[i];
+>>>>>>> upstream/4.0
             constrainedColumns.add(
                 new SegmentColumn(
                     colExp,
                     colVals[i].length,
+<<<<<<< HEAD
                     vals));
             axes.add(Pair.of(vals, Boolean.FALSE));
+=======
+                    headerVals));
+            axes.add(Pair.of(vals, nullAxisFlag));
+>>>>>>> upstream/4.0
         }
 
         Object [] cells = new Object[numCellVals];
         for (int i = 0; i < numCellVals; i++) {
+<<<<<<< HEAD
             cells[i] = 123.123; // assign a non-null val
+=======
+            cells[i] = MOCK_CELL_VALUE; // assign a non-null val
+>>>>>>> upstream/4.0
         }
         return Pair.<SegmentHeader, SegmentBody>of(
             new SegmentHeader(

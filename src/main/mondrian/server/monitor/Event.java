@@ -4,16 +4,24 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2011-2011 Pentaho
+// Copyright (C) 2011-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.server.monitor;
 
+<<<<<<< HEAD
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import mondrian.rolap.RolapUtil;
 
+=======
+import mondrian.rolap.RolapUtil;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
+>>>>>>> upstream/4.0
 /**
  * Base class for an event of interest.
  *

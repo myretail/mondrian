@@ -4,13 +4,13 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2011 Pentaho
+// Copyright (C) 2006-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
 
 import mondrian.rolap.*;
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.spi.Dialect;
 
 import java.util.Collection;
 
@@ -24,21 +24,21 @@ public class ValueColumnPredicate
     extends AbstractColumnPredicate
     implements Comparable
 {
-    private final Object value;
+    private final Comparable value;
 
     /**
      * Creates a column constraint.
      *
+     * @param constrainedColumn Constrained column
      * @param value Value to constraint the column to. (We require that it is
      *   {@link Comparable} because we will sort the values in order to
      *   generate deterministic SQL.)
      */
     public ValueColumnPredicate(
-        RolapStar.Column constrainedColumn,
-        Object value)
+        PredicateColumn constrainedColumn,
+        Comparable value)
     {
         super(constrainedColumn);
-//        assert constrainedColumn != null;
         assert value != null;
         assert ! (value instanceof StarColumnPredicate);
         this.value = value;
@@ -46,8 +46,10 @@ public class ValueColumnPredicate
 
     /**
      * Returns the value which the column is compared to.
+     *
+     * @return Value to compare column to
      */
-    public Object getValue() {
+    public Comparable getValue() {
         return value;
     }
 
@@ -73,11 +75,11 @@ public class ValueColumnPredicate
             return columnBitKeyComp;
         }
 
-        if (this.value instanceof Comparable
-            && that.value instanceof Comparable
+        if (this.value != null
+            && that.value != null
             && this.value.getClass() == that.value.getClass())
         {
-            return ((Comparable) this.value).compareTo(that.value);
+            return this.value.compareTo(that.value);
         } else {
             String thisComp = String.valueOf(this.value);
             String thatComp = String.valueOf(that.value);
@@ -138,26 +140,29 @@ public class ValueColumnPredicate
     public StarColumnPredicate minus(StarPredicate predicate) {
         assert predicate != null;
         if (((StarColumnPredicate) predicate).evaluate(value)) {
-            return LiteralStarPredicate.FALSE;
+            return Predicates.wildcard(constrainedColumn, false);
         } else {
             return this;
         }
     }
 
-    public StarColumnPredicate cloneWithColumn(RolapStar.Column column) {
-        return new ValueColumnPredicate(column, value);
-    }
-
-    public void toSql(SqlQuery sqlQuery, StringBuilder buf) {
-        final RolapStar.Column column = getConstrainedColumn();
-        String expr = column.generateExprString(sqlQuery);
+    public void toSql(Dialect dialect, StringBuilder buf) {
+        int length = buf.length();
+        final RolapSchema.PhysColumn column = getColumn().physColumn;
+        String expr = column.toSql();
         buf.append(expr);
         Object key = getValue();
         if (key == RolapUtil.sqlNullValue) {
             buf.append(" is null");
         } else {
             buf.append(" = ");
-            sqlQuery.getDialect().quote(buf, key, column.getDatatype());
+            try {
+                dialect.quote(buf, key, column.getDatatype());
+            } catch (NumberFormatException e) {
+                // Illegal value cannot be matched.
+                buf.setLength(length);
+                dialect.quoteBooleanLiteral(buf, false);
+            }
         }
     }
 
@@ -178,9 +183,8 @@ public class ValueColumnPredicate
         return inListRHSBitKey;
     }
 
-    public void toInListSql(SqlQuery sqlQuery, StringBuilder buf) {
-        sqlQuery.getDialect().quote(
-            buf, value, getConstrainedColumn().getDatatype());
+    public void toInListSql(Dialect dialect, StringBuilder buf) {
+        dialect.quote(buf, value, getColumn().physColumn.getDatatype());
     }
 }
 

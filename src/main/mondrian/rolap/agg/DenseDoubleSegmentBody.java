@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2010-2012 Pentaho and others
+// Copyright (C) 2010-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -79,7 +79,11 @@ class DenseDoubleSegmentBody extends AbstractSegmentBody {
         sb.append(values.length);
         sb.append(", data=");
         sb.append(Arrays.toString(values));
+<<<<<<< HEAD
         sb.append(", notNullZeroValues=").append(nullValues);
+=======
+        sb.append(", nullValues=").append(nullValues);
+>>>>>>> upstream/4.0
         sb.append(", axisValueSets=");
         sb.append(Arrays.toString(getAxisValueSets()));
         sb.append(", nullAxisFlags=");

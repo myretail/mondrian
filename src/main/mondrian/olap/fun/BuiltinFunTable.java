@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -140,13 +140,11 @@ public class BuiltinFunTable extends FunTableImpl {
             }
 
             Level nthLevel(Hierarchy hierarchy, int n) {
-                Level[] levels = hierarchy.getLevels();
-
-                if (n >= levels.length || n < 0) {
+                if (n >= hierarchy.getLevelList().size() || n < 0) {
                     throw newEvalException(
                         this, "Index '" + n + "' out of bounds");
                 }
-                return levels[n];
+                return hierarchy.getLevelList().get(n);
             }
         });
 
@@ -175,7 +173,7 @@ public class BuiltinFunTable extends FunTableImpl {
                         Hierarchy hierarchy =
                             hierarchyCalc.evaluateHierarchy(evaluator);
                         String name = nameCalc.evaluateString(evaluator);
-                        for (Level level : hierarchy.getLevels()) {
+                        for (Level level : hierarchy.getLevelList()) {
                             if (level.getName().equals(name)) {
                                 return level;
                             }
@@ -183,7 +181,7 @@ public class BuiltinFunTable extends FunTableImpl {
                         throw newEvalException(
                             call.getFunDef(),
                             "Level '" + name + "' not found in hierarchy '"
-                                + hierarchy + "'");
+                            + hierarchy + "'");
                     }
                 };
             }
@@ -242,7 +240,7 @@ public class BuiltinFunTable extends FunTableImpl {
         builder.define(IsEmptyFunDef.FunctionResolver);
         builder.define(IsEmptyFunDef.PostfixResolver);
         builder.define(IsNullFunDef.Resolver);
-        builder.define(IsFunDef.Resolver);
+        IsFunDef.define(builder);
         builder.define(AsFunDef.RESOLVER);
 
         //
@@ -616,7 +614,7 @@ public class BuiltinFunTable extends FunTableImpl {
                                 members);
                         Aggregator aggregator =
                             (Aggregator) evaluator.getProperty(
-                                Property.AGGREGATION_TYPE.name, null);
+                                Property.AGGREGATION_TYPE, null);
                         if (aggregator == null) {
                             throw FunUtil.newEvalException(
                                 null,

@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2012 Pentaho
+// Copyright (C) 2007-2014 Pentaho
 // All Rights Reserved.
 */
 package mondrian.olap4j;
@@ -158,9 +158,22 @@ abstract class MondrianOlap4jCellSet
     }
 
     public Cell getCell(Position... positions) {
+        if (positions.length != axisList.size()) {
+            throw new IllegalArgumentException(
+                "Coordinates have different dimension (" + positions.length
+                + ") than axes (" + axisList.size() + ")");
+        }
         int[] coords = new int[positions.length];
-        for (int i = 0; i < coords.length; i++) {
-            coords[i] = positions[i].getOrdinal();
+        Arrays.fill(coords, -1);
+        for (Position position : positions) {
+            final int ordinal =
+                ((MondrianOlap4jCellSetAxis.MondrianOlap4jPosition) position)
+                    .getAxisOrdinal();
+            if (coords[ordinal] != -1) {
+                throw new IllegalArgumentException(
+                    "Coordinates contain axis " + ordinal + " more than once");
+            }
+            coords[ordinal] = position.getOrdinal();
         }
         return getCellInternal(coords);
     }
@@ -177,14 +190,14 @@ abstract class MondrianOlap4jCellSet
                 }
                 throw new IndexOutOfBoundsException(
                     "Cell coordinates (" + getCoordsAsString(pos)
-                        + ") fall outside CellSet bounds ("
-                        + getCoordsAsString(dimensions) + ")");
+                    + ") fall outside CellSet bounds ("
+                    + getCoordsAsString(dimensions) + ")");
             } else if (e.getMessage().indexOf(
                     "coordinates should have dimension") >= 0)
             {
                 throw new IllegalArgumentException(
                     "Cell coordinates should have dimension "
-                        + axisList.size());
+                    + axisList.size());
             } else {
                 throw e;
             }
@@ -229,8 +242,8 @@ abstract class MondrianOlap4jCellSet
         List<CellSetAxis> axes = getAxes();
         if (coordinates.size() != axes.size()) {
             throw new IllegalArgumentException(
-                "Coordinates have different dimension " + coordinates.size()
-                    + " than axes " + axes.size());
+                "Coordinates have different dimension (" + coordinates.size()
+                + ") than axes (" + axes.size() + ")");
         }
         int modulo = 1;
         int ordinal = 0;

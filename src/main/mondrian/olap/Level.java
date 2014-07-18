@@ -38,7 +38,7 @@ public interface Level extends OlapElement, Annotated {
     Level getParentLevel();
     boolean isAll();
     boolean areMembersUnique();
-    LevelType getLevelType();
+    org.olap4j.metadata.Level.Type getLevelType();
 
     /** Returns properties defined against this level. */
     Property[] getProperties();

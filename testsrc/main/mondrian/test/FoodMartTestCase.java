@@ -5,10 +5,8 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
-//
-// jhyde, 29 March, 2002
 */
 package mondrian.test;
 
@@ -122,7 +120,7 @@ public class FoodMartTestCase extends TestCase {
     /**
      * Runs a query with a given expression on an axis, and asserts that it
      * throws an error which matches a particular pattern. The expression
-     * is evaulated against the Sales cube.
+     * is evaluated against the Sales cube.
      */
     public void assertAxisThrows(String expression, String pattern) {
         getTestContext().assertAxisThrows(expression, pattern);
@@ -320,36 +318,37 @@ public class FoodMartTestCase extends TestCase {
         Member [] members;
         if (includeAllMember) {
             members = new Member[] {
-                allMember("Gender", salesCube),
+                allMember("Customer", "Gender", salesCube),
                 maleMember,
-                femaleMember};
+                femaleMember
+            };
         } else {
             members = new Member[] {maleMember, femaleMember};
         }
         return new UnaryTupleList(Arrays.asList(members));
     }
 
-    protected Member allMember(String dimensionName, Cube salesCube) {
-        Dimension genderDimension = getDimension(dimensionName, salesCube);
-        return genderDimension.getHierarchy().getAllMember();
-    }
-
-    private Dimension getDimension(String dimensionName, Cube salesCube) {
-        return getDimensionWithName(dimensionName, salesCube.getDimensions());
-    }
-
-    protected Dimension getDimensionWithName(
-        String name,
-        Dimension[] dimensions)
+    protected Member allMember(
+        String dimensionName, String hierarchyName, Cube cube)
     {
-        Dimension resultDimension = null;
-        for (Dimension dimension : dimensions) {
-            if (dimension.getName().equals(name)) {
-                resultDimension = dimension;
-                break;
+        return getHierarchy(cube, dimensionName, hierarchyName).getAllMember();
+    }
+
+    protected Hierarchy getHierarchy(
+        Cube cube,
+        String dimensionName,
+        String hierarchyName)
+    {
+        for (Dimension dimension : cube.getDimensionList()) {
+            if (dimension.getName().equals(dimensionName)) {
+                for (Hierarchy hierarchy : dimension.getHierarchyList()) {
+                    if (hierarchy.getName().equals(hierarchyName)) {
+                        return hierarchy;
+                    }
+                }
             }
         }
-        return resultDimension;
+        return null;
     }
 
     protected List<Member> warehouseMembersCanadaMexicoUsa(SchemaReader reader)
@@ -396,8 +395,11 @@ public class FoodMartTestCase extends TestCase {
                 salesCubeSchemaReader);
         Member [] members;
         if (includeAllMember) {
-            members = new Member[]{
-                allMember("Store", salesCube), usaMember, canadaMember};
+            members = new Member[] {
+                allMember("Store", "Stores", salesCube),
+                usaMember,
+                canadaMember
+            };
         } else {
             members = new Member[] {usaMember, canadaMember};
         }
@@ -412,6 +414,38 @@ public class FoodMartTestCase extends TestCase {
             this.query = query;
             this.result = result;
         }
+    }
+
+    /**
+     * Checks whether query produces the same results with the native.* props
+     * enabled as it does with the props disabled
+     * @param query query to run
+     * @param message Message to output on test failure
+     * @param context test context to use
+     */
+    public void verifySameNativeAndNot(
+        String query, String message, TestContext context)
+    {
+        propSaver.set(propSaver.props.EnableNativeCrossJoin, true);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
+        propSaver.set(propSaver.props.EnableNativeNonEmpty, true);
+        propSaver.set(propSaver.props.EnableNativeTopCount, true);
+
+        Result resultNative = context.executeQuery(query);
+
+        propSaver.set(propSaver.props.EnableNativeCrossJoin, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, false);
+        propSaver.set(propSaver.props.EnableNativeNonEmpty, false);
+        propSaver.set(propSaver.props.EnableNativeTopCount, true);
+
+        Result resultNonNative = context.executeQuery(query);
+
+        assertEquals(
+            message,
+            TestContext.toString(resultNative),
+            TestContext.toString(resultNonNative));
+
+        propSaver.reset();
     }
 }
 

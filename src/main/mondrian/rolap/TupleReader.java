@@ -5,12 +5,13 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2011 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.calc.TupleList;
+import mondrian.spi.Dialect;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -54,24 +55,25 @@ public interface TupleReader {
          *
          * @param parentMember Parent member
          * @param childLevel Child level
-         * @param value Member value
+         * @param key Member key, per {@link mondrian.rolap.RolapMember.Key}
          * @param captionValue Caption
+         * @param orderKey Order key
          * @param parentChild Whether a parent-child hierarchy
          * @param stmt SQL statement
-         * @param key Member key
-         * @param column Column ordinal (0-based)
+         * @param layout Where to find the columns of this level
          * @return new member
          * @throws java.sql.SQLException on error
          */
         RolapMember makeMember(
             RolapMember parentMember,
-            RolapLevel childLevel,
-            Object value,
+            RolapCubeLevel childLevel,
+            Comparable key,
             Object captionValue,
+            String nameValue,
+            Comparable orderKey,
             boolean parentChild,
-            SqlStatement stmt,
-            Object key,
-            int column)
+            DBStatement stmt,
+            LevelColumnLayout layout)
             throws SQLException;
 
         /**
@@ -88,16 +90,16 @@ public interface TupleReader {
      * @param level level that the members correspond to
      * @param memberBuilder used to build new members for this level
      * @param srcMembers if set, array of enumerated members that make up
-     *     this level
      */
     void addLevelMembers(
-        RolapLevel level,
+        RolapCubeLevel level,
         MemberBuilder memberBuilder,
         List<RolapMember> srcMembers);
 
     /**
      * Performs the read.
      *
+     * @param dialect Dialect
      * @param dataSource Data source
      * @param partialResult List of rows from previous pass
      * @param newPartialResult Populated with a new list of rows
@@ -105,6 +107,7 @@ public interface TupleReader {
      * @return a list of tuples
      */
     TupleList readTuples(
+        Dialect dialect,
         DataSource dataSource,
         TupleList partialResult,
         List<List<RolapMember>> newPartialResult);
@@ -112,15 +115,17 @@ public interface TupleReader {
     /**
      * Performs the read.
      *
+     * @param dialect Dialect
      * @param dataSource source for reading tuples
      * @param partialResult partially cached result that should be used
      * instead of executing sql query
      * @param newPartialResult if non-null, return the result of the read;
      * note that this is a subset of the full return list
-
+     *
      * @return a list of RolapMember
      */
     TupleList readMembers(
+        Dialect dialect,
         DataSource dataSource,
         TupleList partialResult,
         List<List<RolapMember>> newPartialResult);
@@ -134,6 +139,14 @@ public interface TupleReader {
      */
     Object getCacheKey();
 
+    /**
+     * Indicates that there was an empty argument somewhere in the tuple.
+     */
+    void incrementEmptySets();
+
+    void setMaxRows(int maxRows);
+
+    int getEnumTargetCount();
 }
 
 // End TupleReader.java

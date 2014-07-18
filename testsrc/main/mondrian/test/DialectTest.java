@@ -4,11 +4,22 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (c) 2002-2014 Pentaho Corporation..  All rights reserved.
 */
 package mondrian.test;
 
 import mondrian.olap.*;
+=======
+// Copyright (C) 2007-2014 Pentaho
+// All Rights Reserved.
+*/
+package mondrian.test;
+
+import mondrian.olap.Result;
+import mondrian.olap.Util;
+import mondrian.rolap.RolapMember;
+>>>>>>> upstream/4.0
 import mondrian.rolap.SqlStatement;
 import mondrian.spi.Dialect;
 import mondrian.spi.DialectManager;
@@ -147,6 +158,13 @@ public class DialectTest extends TestCase {
                 databaseMetaData.getDatabaseProductName()
                     .indexOf("Netezza") >= 0);
             break;
+        case NUODB:
+            // Dialect has identified that it is NUODB.
+            assertTrue(dialect instanceof NuoDbDialect);
+            assertTrue(
+                databaseMetaData.getDatabaseProductName()
+                    .contains("NuoDB"));
+            break;
         default:
             // Neither MySQL nor Infobright.
             assertFalse(dialect instanceof MySqlDialect);
@@ -192,7 +210,13 @@ public class DialectTest extends TestCase {
                 // monetdb
                 "syntax error, unexpected ',', expecting '\\)' in: \"select count\\(distinct \"customer_id\",\"",
                 // SQL server 2008
+<<<<<<< HEAD
                 "Incorrect syntax near ','."
+=======
+                "Incorrect syntax near ','.",
+                // NuoDB
+                "(?s).*expected closing parenthesis got ,.*"
+>>>>>>> upstream/4.0
             };
             assertQueryFails(sql, errs);
         }
@@ -543,7 +567,13 @@ public class DialectTest extends TestCase {
                 // monetdb
                 "syntax error, unexpected IDENT, expecting SCOLON in: \"select \"customer_id\",",
                 // impala
+<<<<<<< HEAD
                 "(?s).*Encountered: IDENTIFIER.*Expected: DIV, HAVING, LIMIT, ORDER, UNION, COMMA.*"
+=======
+                "(?s).*Encountered: IDENTIFIER.*Expected: DIV, HAVING, LIMIT, ORDER, UNION, COMMA.*",
+                // NuoDB
+                "(?s).*expected end of statement got SETS.*"
+>>>>>>> upstream/4.0
             };
             assertQueryFails(sql, errs);
         }
@@ -581,7 +611,13 @@ public class DialectTest extends TestCase {
                 // SQL server 2008
                 "An expression of non-boolean type specified in a context where a condition is expected, near ','.",
                 // impala
+<<<<<<< HEAD
                 "(?s).*Encountered: COMMA.*Expected: BETWEEN, DIV, IS, IN, LIKE, NOT, REGEXP, RLIKE.*"
+=======
+                "(?s).*Encountered: COMMA.*Expected: BETWEEN, DIV, IS, IN, LIKE, NOT, REGEXP, RLIKE.*",
+                // NuoDB
+                "(?s).*Operator in list does not support multi-column operands.*"
+>>>>>>> upstream/4.0
             };
             assertQueryFails(sql, errs);
         }
@@ -594,6 +630,7 @@ public class DialectTest extends TestCase {
         // We need to construct a valid date literal in either case.
         // See http://jira.pentaho.com/browse/MONDRIAN-1819 and
         // http://jira.pentaho.com/browse/MONDRIAN-626
+<<<<<<< HEAD
         Dialect oracleDialect = new OracleDialect();
         StringBuilder buf = new StringBuilder();
         oracleDialect.quoteDateLiteral(buf, "2003-12-12");
@@ -602,6 +639,8 @@ public class DialectTest extends TestCase {
         oracleDialect.quoteDateLiteral(buf, "2007-01-15 00:00:00.0");
         assertEquals("DATE '2007-01-15'", buf.toString());
 
+=======
+>>>>>>> upstream/4.0
         if (getDialect().getDatabaseProduct()
             != Dialect.DatabaseProduct.ORACLE)
         {
@@ -610,6 +649,7 @@ public class DialectTest extends TestCase {
         }
         final TestContext context = TestContext.instance().withSchema(
             "<?xml version=\"1.0\"?>\n"
+<<<<<<< HEAD
             + "<Schema name=\"FoodMart\">\n"
             + "  <Dimension  name=\"Time\" type=\"TimeDimension\">\n"
             + "    <Hierarchy hasAll='true' primaryKey=\"time_id\">\n"
@@ -629,12 +669,56 @@ public class DialectTest extends TestCase {
             + "    <DimensionUsage name=\"Time\" source=\"Time\" foreignKey=\"time_id\"/>\n"
             + "    <Measure name=\"Unit Sales\" column=\"unit_sales\"  aggregator=\"sum\"\n"
             + "    formatString=\"Standard\" />\n"
+=======
+            + "<Schema name=\"FoodMart\" metamodelVersion=\"4.00\">\n"
+            + "  <PhysicalSchema>\n"
+            + "    <Table name='time_by_day'>\n"
+            + "      <Key>\n"
+            + "        <Column name='time_id'/>\n"
+            + "      </Key>\n"
+            + "      <ColumnDefs>\n"
+            + "        <CalculatedColumnDef name='date_datatype' type='Date'>\n"
+            + "          <ExpressionView>\n"
+            + "            <SQL dialect='oracle'>\n"
+            + "              CAST(\"the_date\" as DATE)\n"
+            + "            </SQL>\n"
+            + "          </ExpressionView>\n"
+            + "        </CalculatedColumnDef>\n"
+            + "      </ColumnDefs>\n"
+            + "    </Table>\n"
+            + "    <Table name=\"sales_fact_1997\" alias=\"sales_fact_1997\"/>\n"
+            + "  </PhysicalSchema>\n"
+            + "  <Cube name=\"Sales\" >\n"
+            + "    <Dimensions>\n"
+            + "      <Dimension name=\"Time\" table='time_by_day'  key=\"Time Id\">\n"
+            + "        <Attributes>\n"
+            + "          <Attribute name='Time Id' keyColumn='time_id' hasHierarchy='false'/>\n"
+            + "          <Attribute name=\"Day\" keyColumn='date_datatype' hasHierarchy=\"true\">\n"
+            + "          </Attribute>\n"
+            + "        </Attributes>\n"
+            + "      </Dimension>\n"
+            + "    </Dimensions>\n"
+            + "    <MeasureGroups>\n"
+            + "      <MeasureGroup name=\"Sales\" type=\"fact\"  table=\"sales_fact_1997\">\n"
+            + "        <Measures>\n"
+            + "          <Measure name='Unit Sales' column='unit_sales' aggregator='sum' formatString='Standard'/>\n"
+            + "        </Measures>\n"
+            + "        <DimensionLinks>\n"
+            + "          <ForeignKeyLink dimension=\"Time\" foreignKeyColumn='time_id' />\n"
+            + "        </DimensionLinks>\n"
+            + "      </MeasureGroup>\n"
+            + "    </MeasureGroups>\n"
+>>>>>>> upstream/4.0
             + "  </Cube>\n"
             + "</Schema>\n");
         // if date literal is incorrect the following query will give the error
         // ORA-01861: literal does not match format string
         Result result = context.executeQuery(
+<<<<<<< HEAD
             "select Time.[All Times].FirstChild on 0 from DateLiteralTest");
+=======
+            "select [Time].[Day].[All Day].FirstChild on 0 from Sales");
+>>>>>>> upstream/4.0
         String firstChild =
             result.getAxes()[0].getPositions().get(0).get(0)
                 .getName().toString();
@@ -643,6 +727,133 @@ public class DialectTest extends TestCase {
         assertTrue(firstChild.startsWith("1997-01-01"));
     }
 
+<<<<<<< HEAD
+=======
+    public void testBigInt() {
+        if (getDialect().getDatabaseProduct()
+            != Dialect.DatabaseProduct.VERTICA)
+        {
+            // currently only checks VERTICA
+            // Once MONDRIAN-1890 is fixed this test should minimally cover
+            // Oracle and MySQL as well.
+            return;
+        }
+        final TestContext context = TestContext.instance().withSchema(
+            "<?xml version=\"1.0\"?>\n"
+            + "<Schema name=\"FoodMart\" metamodelVersion=\"4.00\">\n"
+            + "  <PhysicalSchema>\n"
+            + "    <Table name='store'>\n"
+            + "      <Key>\n"
+            + "        <Column name='store_id'/>\n"
+            + "      </Key>\n"
+            + "      <ColumnDefs>\n"
+            + "        <CalculatedColumnDef name='long_sqft' >\n"
+            + "          <ExpressionView>\n"
+            + "            <SQL dialect='vertica'>\n"
+            + "            coalesce(cast(\"store_sqft\" as BIGINT) + "
+            + Integer.MAX_VALUE + ", 0)"
+            + "            </SQL>\n"
+            + "          </ExpressionView>\n"
+            + "        </CalculatedColumnDef>\n"
+            + "      </ColumnDefs>\n"
+            + "    </Table>\n"
+            + "    <Table name=\"sales_fact_1997\" alias=\"sales_fact_1997\">\n"
+            + "      <ColumnDefs>\n"
+            + "        <CalculatedColumnDef name='big_unit_sales' >\n"
+            + "          <ExpressionView>\n"
+            + "            <SQL dialect='vertica'>\n"
+            + "   CAST(\"unit_sales\" + 2147483647 AS NUMBER(22)) \n"
+            + "            </SQL>\n"
+            + "          </ExpressionView>\n"
+            + "        </CalculatedColumnDef>\n"
+            + "      </ColumnDefs>\n"
+            + "    </Table>\n"
+            + "  </PhysicalSchema>\n"
+            + "  <Cube name=\"BigIntTest\" >\n"
+            + "    <Dimensions>\n"
+            + "  <Dimension name=\"StoreSqft\" table='store' key='Store Id'>\n"
+            + "        <Attributes>\n"
+            + "          <Attribute name='Store Id'  keyColumn='store_id' hasHierarchy='false'/>\n"
+            + "          <Attribute name=\"StoreSqft\" keyColumn='long_sqft' hasHierarchy=\"true\">\n"
+            + "          </Attribute>\n"
+            + "        </Attributes>\n"
+            + "      </Dimension>\n"
+            + "    </Dimensions>\n"
+            + "    <MeasureGroups>\n"
+            + "      <MeasureGroup name=\"Sales\" type=\"fact\"  table=\"sales_fact_1997\">\n"
+            + "        <Measures>\n"
+            + "          <Measure name='Big Unit Sales' column='big_unit_sales' aggregator='sum' formatString='Standard'/>\n"
+            + "        </Measures>\n"
+            + "        <DimensionLinks>\n"
+            + "          <ForeignKeyLink dimension=\"StoreSqft\" foreignKeyColumn='store_id' />\n"
+            + "        </DimensionLinks>\n"
+            + "      </MeasureGroup>\n"
+            + "    </MeasureGroups>\n"
+            + "  </Cube>\n"
+            + "</Schema>\n");
+        Result result = context.executeQuery(
+            "select [StoreSqft].[StoreSqft].[All StoreSqft].children on 0 from BigIntTest");
+        RolapMember secondChild =
+            (RolapMember) result.getAxes()[0].getPositions().get(1).get(0);
+
+        assertTrue(secondChild.getKey() instanceof Long);
+        assertEquals(2147503966L, ((Long) secondChild.getKey()).longValue());
+
+        context.assertQueryReturns(
+            "select [StoreSqft].[StoreSqft].[All StoreSqft].children on 0, "
+            + "{measures.[Big Unit Sales]} on 1 from BigIntTest",
+            "Axis #0:\n"
+            + "{}\n"
+            + "Axis #1:\n"
+            + "{[StoreSqft].[StoreSqft].[0]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147503966]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147504862]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147506125]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147506759]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147507240]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147507245]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147507335]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147507406]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147508244]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147511341]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147511853]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147513915]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147514231]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147514444]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147517505]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147518099]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147518438]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147520156]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147522029]}\n"
+            + "{[StoreSqft].[StoreSqft].[2147523343]}\n"
+            + "Axis #2:\n"
+            + "{[Measures].[Big Unit Sales]}\n"
+            + "Row #0: 28,101,971,043,971\n"
+            + "Row #0: 17,746,804,884,887\n"
+            + "Row #0: 17,085,379,920,543\n"
+            + "Row #0: 2,845,415,834,392\n"
+            + "Row #0: \n"
+            + "Row #0: \n"
+            + "Row #0: 17,624,398,316,592\n"
+            + "Row #0: 14,635,101,075,638\n"
+            + "Row #0: \n"
+            + "Row #0: \n"
+            + "Row #0: 28,662,464,278,089\n"
+            + "Row #0: 2,963,527,435,097\n"
+            + "Row #0: 15,884,936,560,450\n"
+            + "Row #0: \n"
+            + "Row #0: \n"
+            + "Row #0: 24,017,457,143,305\n"
+            + "Row #0: \n"
+            + "Row #0: \n"
+            + "Row #0: \n"
+            + "Row #0: \n"
+            + "Row #0: 16,913,581,228,348\n");
+    }
+
+
+
+>>>>>>> upstream/4.0
     public void testResultSetConcurrency() {
         int[] Types = {
             ResultSet.TYPE_FORWARD_ONLY,
@@ -724,6 +935,12 @@ public class DialectTest extends TestCase {
         assertInline(
             nameList, typeList2,
             new String[]{"a", "2008-04-29"}, new String[]{"b", "2007-01-02"});
+
+        // empty list
+        final List<String> typeList3 =
+            Arrays.asList("String", "Date", "Numeric");
+        final List<String> nameList3 = Arrays.asList("x", "y", "z");
+        assertInline(nameList3, typeList3);
     }
 
     /**
@@ -886,6 +1103,11 @@ public class DialectTest extends TestCase {
             s = s.replace("]", "");
             s = s.replaceAll(" as ", " ");
             break;
+        case IMPALA:
+            s = s.replace("[", "");
+            s = s.replace("]", "");
+            s = s.replaceAll(" as ", " ");
+            break;
         case MYSQL:
         case INFOBRIGHT:
             s = s.replace('[', '`');
@@ -895,6 +1117,10 @@ public class DialectTest extends TestCase {
             s = s.replace('[', '"');
             s = s.replace(']', '"');
             s = s.replaceAll(" as ", " ");
+            break;
+        case INFORMIX:
+            s = s.replace("[", "");
+            s = s.replace("]", "");
             break;
         default:
             s = s.replace('[', '"');
@@ -1030,7 +1256,13 @@ public class DialectTest extends TestCase {
                 // SQL Server 2008
                 "Column 'time_by_day.the_month' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.",
                 // impala
+<<<<<<< HEAD
                 "(?s).*select list expression not produced by aggregation output.*missing from GROUP BY clause.*"
+=======
+                "(?s).*select list expression not produced by aggregation output.*missing from GROUP BY clause.*",
+                // NuoDB
+                "(?s).*scolumn mondrian.time_by_day.the_month must appear in the GROUP BY clause or be used in an aggregate function.*"
+>>>>>>> upstream/4.0
             };
             assertQueryFails(sql, errs);
         }
@@ -1175,6 +1407,7 @@ public class DialectTest extends TestCase {
                     "Got error 'repetition-operator operand invalid' from "
                     + "regexp"));
             break;
+<<<<<<< HEAD
         case IMPALA:
             assertNotNull(throwable);
             assertTrue(couldTranslate);
@@ -1182,6 +1415,8 @@ public class DialectTest extends TestCase {
                 throwable.getMessage().contains(
                     "Invalid regular expression:"));
             break;
+=======
+>>>>>>> upstream/4.0
         case POSTGRESQL:
             assertNotNull(throwable);
             assertTrue(couldTranslate);
@@ -1230,6 +1465,256 @@ public class DialectTest extends TestCase {
             return true;
         } else {
             return false;
+        }
+    }
+
+    public void testRectifyCase() {
+        Dialect dialect = getDialect();
+        Dialect dialectSans = getDialect().withQuoting(false);
+        switch (dialect.getDatabaseProduct()) {
+        case ORACLE:
+        case MYSQL:
+        case POSTGRESQL:
+            assertEquals("EMP", dialectSans.rectifyCase("Emp"));
+            assertEquals("EMP", dialectSans.rectifyCase("emp"));
+            assertEquals("EMP", dialectSans.rectifyCase("EMP"));
+            assertEquals(
+                "Emp with Space", dialectSans.rectifyCase("Emp with Space"));
+            break;
+        }
+        Dialect dialectWith = getDialect().withQuoting(true);
+        assertEquals("Emp", dialectWith.rectifyCase("Emp"));
+        assertEquals("emp", dialectWith.rectifyCase("emp"));
+        assertEquals("EMP", dialectWith.rectifyCase("EMP"));
+        assertEquals(
+            "Emp with Space", dialectWith.rectifyCase("Emp with Space"));
+    }
+
+    public void testOracleTypeMapQuirks() throws SQLException {
+        MockResultSetMetadata mockResultSetMeta = new MockResultSetMetadata();
+        Dialect oracleDialect = new OracleDialect();
+
+        assertTrue(
+            "Oracle dialect NUMERIC type with 0 precision, 0 scale should map "
+            + "to INT, unless column starts with 'm'",
+            oracleDialect.getType(
+                mockResultSetMeta.withColumnName("c0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(0)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.INT);
+
+        assertTrue(
+            "Oracle dialect NUMERIC type with non-zero precision, -127 scale "
+            + " should map to DOUBLE.  MONDRIAN-1044",
+            oracleDialect.getType(
+                mockResultSetMeta.withColumnName("c0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(5)
+                    .withScale(-127)
+                    .build(),
+                0) == SqlStatement.Type.DOUBLE);
+        assertTrue(
+            "Oracle dialect NUMERIC type with precision less than 10, 0 scale "
+            + " should map to INT. ",
+            oracleDialect.getType(
+                mockResultSetMeta.withColumnName("c0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(9)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.INT);
+        assertTrue(
+            "Oracle dialect NUMERIC type with precision = 38, scale = 0"
+            + " should map to INT.  38 is a magic number in Oracle "
+            + " for integers of unspecified precision.",
+            oracleDialect.getType(
+                mockResultSetMeta.withColumnName("c0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(38)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.INT);
+        assertTrue(
+            "Oracle dialect DECIMAL type with precision > 9, scale = 0"
+            + " should map to DOUBLE (unless magic #38)",
+            oracleDialect.getType(
+                mockResultSetMeta.withColumnName("c0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(20)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.DOUBLE);
+
+        assertTrue(
+            "Oracle dialect NUMBER type with precision =0 , scale = -127"
+            + " should map to INT.  GROUPING SETS queries can shift"
+            + " scale for columns to -127, whether INT or other NUMERIC."
+            + " Assume INT unless the column name indicates it is a measure.",
+            oracleDialect.getType(
+                mockResultSetMeta.withColumnName("c0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(0)
+                    .withScale(-127)
+                    .build(),
+                0) == SqlStatement.Type.INT);
+        assertTrue(
+            "Oracle dialect NUMBER type with precision =0 , scale = -127"
+            + " should map to OBJECT if measure name starts with 'm'",
+            oracleDialect.getType(
+                mockResultSetMeta.withColumnName("m0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(0)
+                    .withScale(-127)
+                    .build(),
+                0) == SqlStatement.Type.OBJECT);
+    }
+
+    public void testPostgresGreenplumTypeMapQuirks() throws SQLException {
+        MockResultSetMetadata mockResultSetMeta = new MockResultSetMetadata();
+        Dialect greenplumDialect =
+            MockDialect.of(Dialect.DatabaseProduct.GREENPLUM);
+        assertTrue(
+            "Postgres/Greenplum dialect NUMBER with precision =0, scale = 0"
+            + ", measure name starts with 'm' maps to OBJECT",
+            greenplumDialect.getType(
+                mockResultSetMeta.withColumnName("m0")
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(0)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.OBJECT);
+    }
+
+    public void testNetezzaTypeMapQuirks() throws SQLException {
+        MockResultSetMetadata mockResultSetMeta = new MockResultSetMetadata();
+        Dialect netezzaDialect =
+            MockDialect.of(Dialect.DatabaseProduct.NETEZZA);
+        assertTrue(
+            "Netezza dialect NUMERIC/DECIMAL with precision =38, scale = 0"
+            + " means long.  Should be mapped to DOUBLE",
+            netezzaDialect.getType(
+                mockResultSetMeta
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(38)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.DOUBLE);
+        assertTrue(
+            "Netezza dialect NUMERIC/DECIMAL with precision =38, scale = 0"
+            + " means long.  Should be mapped to DOUBLE",
+            netezzaDialect.getType(
+                mockResultSetMeta
+                    .withColumnType(Types.DECIMAL)
+                    .withPrecision(38)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.DOUBLE);
+    }
+
+    public void testMonetDBTypeMapQuirks() throws SQLException {
+        MockResultSetMetadata mockResultSetMeta = new MockResultSetMetadata();
+        Dialect monetDbDialect =
+            MockDialect.of(Dialect.DatabaseProduct.MONETDB);
+        assertTrue(
+            "MonetDB dialect NUMERIC with precision =0, scale = 0"
+            + " may be an aggregated decimal, should assume DOUBLE",
+            monetDbDialect.getType(
+                mockResultSetMeta
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(0)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.DOUBLE);
+    }
+
+    public void testJdbcDialectTypeMap() throws SQLException {
+        MockResultSetMetadata mockResultSetMeta = new MockResultSetMetadata();
+        Dialect postgresDialect = new JdbcDialectImpl();
+        assertTrue(
+            "JdbcDialectImpl NUMERIC/DECIMAL types w/ precision 0-9"
+            + " and scale=0 should return INT",
+            postgresDialect.getType(
+                mockResultSetMeta
+                    .withColumnType(Types.NUMERIC)
+                    .withPrecision(5)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.INT);
+        assertTrue(
+            "JdbcDialectImpl NUMERIC/DECIMAL types w/ precision 0-9"
+            + " and scale=0 should return INT",
+            postgresDialect.getType(
+                mockResultSetMeta
+                    .withColumnType(Types.DECIMAL)
+                    .withPrecision(5)
+                    .withScale(0)
+                    .build(),
+                0) == SqlStatement.Type.INT);
+    }
+
+    public void testMonetBooleanColumn() throws SQLException {
+        ResultSetMetaData resultSet = new MockResultSetMetadata()
+            .withColumnType(Types.BOOLEAN).build();
+        MonetDbDialect monetDbDialect = new MonetDbDialect();
+        SqlStatement.Type type = monetDbDialect.getType(resultSet, 0);
+        assertEquals(SqlStatement.Type.OBJECT, type);
+    }
+
+    public static class MockResultSetMetadata
+        extends DelegatingInvocationHandler
+    {
+        private int precision;
+        private int scale;
+        private int columnType;
+        private String columnName;
+
+        public MockResultSetMetadata withPrecision(int setPrecision) {
+            precision = setPrecision;
+            return this;
+        }
+
+        public MockResultSetMetadata withScale(int setScale) {
+            scale = setScale;
+            return this;
+        }
+
+        public MockResultSetMetadata withColumnType(int setColumnType) {
+            columnType = setColumnType;
+            return this;
+        }
+
+        public MockResultSetMetadata withColumnName(String setColumnName) {
+            columnName = setColumnName;
+            return this;
+        }
+
+        public ResultSetMetaData build() {
+            return (ResultSetMetaData) Proxy.newProxyInstance(
+                null,
+                new Class[] {ResultSetMetaData.class},
+                this);
+        }
+
+        /** Proxy for {@link ResultSetMetaData#getPrecision(int)}. */
+        public int getPrecision(int column) throws SQLException {
+            return precision;
+        }
+
+        /** Proxy for {@link ResultSetMetaData#getPrecision(int)}. */
+        public String getColumnName(int column) throws SQLException {
+            return columnName;
+        }
+
+        /** Proxy for {@link ResultSetMetaData#getPrecision(int)}. */
+        public int getColumnType(int column) throws SQLException {
+            return columnType;
+        }
+
+        /** Proxy for {@link ResultSetMetaData#getPrecision(int)}. */
+        public int getScale(int column) throws SQLException {
+            return scale;
         }
     }
 }

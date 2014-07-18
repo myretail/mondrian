@@ -247,7 +247,7 @@ class ExplicitRecognizer extends Recognizer {
             List<ExplicitRules.TableDef.Level> aggLevels =
                 new ArrayList<ExplicitRules.TableDef.Level>();
             level_loop:
-            for (Level hLevel : hierarchy.getLevels()) {
+            for (Level hLevel : hierarchy.getLevelList()) {
                 if (hLevel.isAll()) {
                     continue;
                 }
@@ -273,6 +273,25 @@ class ExplicitRecognizer extends Recognizer {
                                 aggLevels.add(level);
                                 continue level_loop;
                             }
+
+                            final List<RolapSchema.PhysColumn> keyList =
+                                rLevel.getAttribute().getKeyList();
+                            if (keyList.size() > 0) {
+                                // TODO: support composite keys
+                                continue;
+                            }
+                            final RolapSchema.PhysColumn key = keyList.get(0);
+                            if (aggColumn.getName().equals(columnName)) {
+                                makeLevel(
+                                    aggColumn,
+                                    hierarchy,
+                                    hierarchyUsage,
+                                    getColumnName(key),
+                                    columnName,
+                                    rLevel.getName(),
+                                    true,
+                                    rLevel);
+                            }
                         }
                     }
                 }
@@ -288,7 +307,7 @@ class ExplicitRecognizer extends Recognizer {
                         Pair<RolapLevel, Column> o1,
                         Pair<RolapLevel, Column> o2)
                     {
-                        return Util.compareIntegers(
+                        return Util.compare(
                             o1.left.getDepth(),
                             o2.left.getDepth());
                     }
@@ -297,12 +316,10 @@ class ExplicitRecognizer extends Recognizer {
                 aggLevels,
                 new Comparator<ExplicitRules.TableDef.Level>() {
                     public int compare(
-                        mondrian.rolap.aggmatcher
-                            .ExplicitRules.TableDef.Level o1,
-                        mondrian.rolap.aggmatcher
-                            .ExplicitRules.TableDef.Level o2)
+                        ExplicitRules.TableDef.Level o1,
+                        ExplicitRules.TableDef.Level o2)
                     {
-                        return Util.compareIntegers(
+                        return Util.compare(
                             o1.getRolapLevel().getDepth(),
                             o2.getRolapLevel().getDepth());
                     }
@@ -383,7 +400,7 @@ class ExplicitRecognizer extends Recognizer {
                     pair.right,
                     hierarchy,
                     hierarchyUsage,
-                    getColumnName(pair.left.getKeyExp()),
+                    getColumnName(pair.left.getAttribute().getKeyList().get(0)),
                     aggLevels.get(levelMatches.indexOf(pair)).getColumnName(),
                     pair.left.getName(),
                     forceCollapse

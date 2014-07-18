@@ -20,9 +20,13 @@ import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.lang.ref.*;
+<<<<<<< HEAD
 import java.lang.reflect.Constructor;
 import java.util.*;
 
+=======
+import java.util.*;
+>>>>>>> upstream/4.0
 import javax.sql.DataSource;
 
 /**
@@ -37,17 +41,27 @@ class RolapSchemaPool {
 
     private static final RolapSchemaPool INSTANCE = new RolapSchemaPool();
 
+<<<<<<< HEAD
     private final Map<SchemaKey, ExpiringReference<RolapSchema>>
         mapKeyToSchema =
             new HashMap<SchemaKey, ExpiringReference<RolapSchema>>();
+=======
+    private final Map<SchemaKey, SoftReference<RolapSchema>> mapKeyToSchema =
+        new HashMap<SchemaKey, SoftReference<RolapSchema>>();
+>>>>>>> upstream/4.0
 
     // REVIEW: This map is now considered unsafe. If two schemas have identical
     // metadata but a different underlying database connection, we should not
     // share a cache. Since SchemaContentKey is now a hash of the schema
     // definition, this field can probably be removed.
+<<<<<<< HEAD
     private final Map<ByteString, ExpiringReference<RolapSchema>>
         mapMd5ToSchema =
             new HashMap<ByteString, ExpiringReference<RolapSchema>>();
+=======
+    private final Map<ByteString, SoftReference<RolapSchema>> mapMd5ToSchema =
+        new HashMap<ByteString, SoftReference<RolapSchema>>();
+>>>>>>> upstream/4.0
 
     private RolapSchemaPool() {
     }
@@ -94,6 +108,11 @@ class RolapSchemaPool {
         final DataSource dataSource,
         final Util.PropertyList connectInfo)
     {
+<<<<<<< HEAD
+=======
+        final String dialectClassName =
+            connectInfo.get(RolapConnectionProperties.Dialect.name());
+>>>>>>> upstream/4.0
         final String connectionUuidStr = connectInfo.get(
             RolapConnectionProperties.JdbcConnectionUuid.name());
         final boolean useSchemaPool =
@@ -101,10 +120,13 @@ class RolapSchemaPool {
                 connectInfo.get(
                     RolapConnectionProperties.UseSchemaPool.name(),
                     "true"));
+<<<<<<< HEAD
         final String pinSchemaTimeout =
             connectInfo.get(
                 RolapConnectionProperties.PinSchemaTimeout.name(),
                 "-1s");
+=======
+>>>>>>> upstream/4.0
         final boolean useContentChecksum =
             Boolean.parseBoolean(
                 connectInfo.get(
@@ -116,6 +138,10 @@ class RolapSchemaPool {
                 + ", jdbcUser=" + jdbcUser
                 + ", dataSourceStr=" + dataSourceStr
                 + ", dataSource=" + dataSource
+<<<<<<< HEAD
+=======
+                + ", dialect=" + dialectClassName
+>>>>>>> upstream/4.0
                 + ", jdbcConnectionUuid=" + connectionUuidStr
                 + ", useSchemaPool=" + useSchemaPool
                 + ", useContentChecksum=" + useContentChecksum
@@ -127,6 +153,10 @@ class RolapSchemaPool {
                 connectionUuidStr,
                 dataSource,
                 catalogUrl,
+<<<<<<< HEAD
+=======
+                dialectClassName,
+>>>>>>> upstream/4.0
                 connectionKey,
                 jdbcUser,
                 dataSourceStr);
@@ -143,7 +173,11 @@ class RolapSchemaPool {
         RolapSchema schema = null;
         if (!useSchemaPool) {
             schema =
+<<<<<<< HEAD
                 new RolapSchema(
+=======
+                RolapSchemaLoader.createSchema(
+>>>>>>> upstream/4.0
                     key,
                     null,
                     catalogUrl,
@@ -152,7 +186,11 @@ class RolapSchemaPool {
                     dataSource);
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug(
+<<<<<<< HEAD
                     "create (no pool): schema-name=" + schema.getName()
+=======
+                    "create (no pool): schema-name=" + schema.name
+>>>>>>> upstream/4.0
                     + ", schema-id="
                     + Integer.toHexString(System.identityHashCode(schema)));
             }
@@ -162,7 +200,11 @@ class RolapSchemaPool {
         if (useContentChecksum) {
             final ByteString md5Bytes =
                 new ByteString(Util.digestMd5(catalogStr));
+<<<<<<< HEAD
             final ExpiringReference<RolapSchema> ref =
+=======
+            final SoftReference<RolapSchema> ref =
+>>>>>>> upstream/4.0
                 mapMd5ToSchema.get(md5Bytes);
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug(
@@ -171,7 +213,11 @@ class RolapSchemaPool {
             }
 
             if (ref != null) {
+<<<<<<< HEAD
                 schema = ref.get(pinSchemaTimeout);
+=======
+                schema = ref.get();
+>>>>>>> upstream/4.0
                 if (schema == null) {
                     // clear out the reference since schema is null
                     mapKeyToSchema.remove(key);
@@ -180,7 +226,11 @@ class RolapSchemaPool {
             }
 
             if (schema == null) {
+<<<<<<< HEAD
                 schema = new RolapSchema(
+=======
+                schema = RolapSchemaLoader.createSchema(
+>>>>>>> upstream/4.0
                     key,
                     md5Bytes,
                     catalogUrl,
@@ -189,29 +239,48 @@ class RolapSchemaPool {
                     dataSource);
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug(
+<<<<<<< HEAD
                         "create: schema-name=" + schema.getName()
                         + ", schema-id=" + System.identityHashCode(schema));
                 }
                 putSchema(schema, md5Bytes, pinSchemaTimeout);
+=======
+                        "create: schema-name=" + schema.name
+                        + ", schema-id=" + System.identityHashCode(schema));
+                }
+                putSchema(schema, md5Bytes);
+>>>>>>> upstream/4.0
             }
             return schema;
         }
 
+<<<<<<< HEAD
         ExpiringReference<RolapSchema> ref = mapKeyToSchema.get(key);
+=======
+        SoftReference<RolapSchema> ref = mapKeyToSchema.get(key);
+>>>>>>> upstream/4.0
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
                 "get(key=" + key
                 + ") returned " + toString(ref));
         }
         if (ref != null) {
+<<<<<<< HEAD
             schema = ref.get(pinSchemaTimeout);
+=======
+            schema = ref.get();
+>>>>>>> upstream/4.0
             if (schema == null) {
                 mapKeyToSchema.remove(key);
             }
         }
 
         if (schema == null) {
+<<<<<<< HEAD
             schema = new RolapSchema(
+=======
+            schema = RolapSchemaLoader.createSchema(
+>>>>>>> upstream/4.0
                 key,
                 null,
                 catalogUrl,
@@ -221,7 +290,11 @@ class RolapSchemaPool {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("create: " + schema);
             }
+<<<<<<< HEAD
             putSchema(schema, null, pinSchemaTimeout);
+=======
+            putSchema(schema, null);
+>>>>>>> upstream/4.0
         }
 
         return schema;
@@ -229,6 +302,7 @@ class RolapSchemaPool {
 
     private void putSchema(
         final RolapSchema schema,
+<<<<<<< HEAD
         final ByteString md5Bytes,
         final String pinTimeout)
     {
@@ -239,6 +313,16 @@ class RolapSchemaPool {
             mapMd5ToSchema.put(md5Bytes, reference);
         }
         mapKeyToSchema.put(schema.key, reference);
+=======
+        final ByteString md5Bytes)
+    {
+        SoftReference<RolapSchema> ref =
+            new SoftReference<RolapSchema>(schema);
+        if (md5Bytes != null) {
+            mapMd5ToSchema.put(md5Bytes, ref);
+        }
+        mapKeyToSchema.put(schema.key, ref);
+>>>>>>> upstream/4.0
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
@@ -304,6 +388,7 @@ class RolapSchemaPool {
                 + "\" using dynamic processor");
         }
         try {
+<<<<<<< HEAD
             @SuppressWarnings("unchecked")
             final Class<DynamicSchemaProcessor> clazz =
                 (Class<DynamicSchemaProcessor>)
@@ -311,6 +396,10 @@ class RolapSchemaPool {
             final Constructor<DynamicSchemaProcessor> ctor =
                 clazz.getConstructor();
             final DynamicSchemaProcessor dynProc = ctor.newInstance();
+=======
+            final DynamicSchemaProcessor dynProc =
+                ClassResolver.INSTANCE.instantiateSafe(dynProcName);
+>>>>>>> upstream/4.0
             return dynProc.processSchema(catalogUrl, connectInfo);
         } catch (Exception e) {
             throw Util.newError(
@@ -321,6 +410,10 @@ class RolapSchemaPool {
 
     synchronized void remove(
         final String catalogUrl,
+<<<<<<< HEAD
+=======
+        final String dialectClassName,
+>>>>>>> upstream/4.0
         final String connectionKey,
         final String jdbcUser,
         final String dataSourceStr)
@@ -335,6 +428,10 @@ class RolapSchemaPool {
                 null,
                 null,
                 catalogUrl,
+<<<<<<< HEAD
+=======
+                dialectClassName,
+>>>>>>> upstream/4.0
                 connectionKey,
                 jdbcUser,
                 dataSourceStr);
@@ -350,6 +447,10 @@ class RolapSchemaPool {
 
     synchronized void remove(
         final String catalogUrl,
+<<<<<<< HEAD
+=======
+        final String dialectClassName,
+>>>>>>> upstream/4.0
         final DataSource dataSource)
     {
         final SchemaContentKey schemaContentKey =
@@ -362,6 +463,10 @@ class RolapSchemaPool {
                 null,
                 dataSource,
                 catalogUrl,
+<<<<<<< HEAD
+=======
+                dialectClassName,
+>>>>>>> upstream/4.0
                 null,
                 null,
                 null);
@@ -387,7 +492,11 @@ class RolapSchemaPool {
     }
 
     private void remove(SchemaKey key) {
+<<<<<<< HEAD
         Reference<RolapSchema> ref = mapKeyToSchema.get(key);
+=======
+        SoftReference<RolapSchema> ref = mapKeyToSchema.get(key);
+>>>>>>> upstream/4.0
         if (ref != null) {
             RolapSchema schema = ref.get();
             if (schema != null) {
@@ -403,7 +512,11 @@ class RolapSchemaPool {
             RolapSchema.LOGGER.debug("Pool.clear: clearing all RolapSchemas");
         }
 
+<<<<<<< HEAD
         for (Reference<RolapSchema> ref : mapKeyToSchema.values()) {
+=======
+        for (SoftReference<RolapSchema> ref : mapKeyToSchema.values()) {
+>>>>>>> upstream/4.0
             if (ref != null) {
                 RolapSchema schema = ref.get();
                 if (schema != null) {

@@ -5,14 +5,14 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2010 Pentaho and others
+// Copyright (C) 2006-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
 
 import mondrian.olap.Util;
 import mondrian.rolap.*;
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.spi.Dialect;
 
 import java.util.*;
 
@@ -21,7 +21,7 @@ import java.util.*;
  * {@link mondrian.rolap.StarColumnPredicate}.
  */
 public abstract class AbstractColumnPredicate implements StarColumnPredicate {
-    protected final RolapStar.Column constrainedColumn;
+    protected final PredicateColumn constrainedColumn;
     private BitKey constrainedColumnBitKey;
 
     /**
@@ -29,36 +29,35 @@ public abstract class AbstractColumnPredicate implements StarColumnPredicate {
      *
      * @param constrainedColumn Constrained column
      */
-    protected AbstractColumnPredicate(RolapStar.Column constrainedColumn) {
+    protected AbstractColumnPredicate(
+        PredicateColumn constrainedColumn)
+    {
         this.constrainedColumn = constrainedColumn;
+        assert constrainedColumn != null;
     }
 
     public String toString() {
         final StringBuilder buf = new StringBuilder();
-        buf.append(constrainedColumn.getExpression().getGenericExpression());
+        buf.append(constrainedColumn.physColumn.toSql());
         describe(buf);
         return buf.toString();
     }
 
-    public RolapStar.Column getConstrainedColumn() {
+    public final PredicateColumn getColumn() {
         return constrainedColumn;
     }
 
-    public List<RolapStar.Column> getConstrainedColumnList() {
+    public List<PredicateColumn> getColumnList() {
         return Collections.singletonList(constrainedColumn);
     }
 
     public BitKey getConstrainedColumnBitKey() {
-        // Check whether constrainedColumn are null.
-        // Example: FastBatchingCellReaderTest.testAggregateDistinctCount5().
-        if (constrainedColumnBitKey == null
-            && constrainedColumn != null
-            && constrainedColumn.getTable() != null)
-        {
+        if (constrainedColumnBitKey == null) {
             constrainedColumnBitKey =
                 BitKey.Factory.makeBitKey(
-                    constrainedColumn.getStar().getColumnCount());
-            constrainedColumnBitKey.set(constrainedColumn.getBitPosition());
+                    constrainedColumn.physColumn.relation.getSchema()
+                        .getColumnCount());
+            constrainedColumnBitKey.set(constrainedColumn.physColumn.ordinal());
         }
         return constrainedColumnBitKey;
     }
@@ -76,20 +75,17 @@ public abstract class AbstractColumnPredicate implements StarColumnPredicate {
         if (predicate instanceof StarColumnPredicate) {
             StarColumnPredicate starColumnPredicate =
                 (StarColumnPredicate) predicate;
-            if (starColumnPredicate.getConstrainedColumn()
-                == getConstrainedColumn())
+            if (starColumnPredicate.getColumn()
+                == getColumn())
             {
                 return orColumn(starColumnPredicate);
             }
         }
-        final List<StarPredicate> list = new ArrayList<StarPredicate>(2);
-        list.add(this);
-        list.add(predicate);
-        return new OrPredicate(list);
+        return Predicates.or(Arrays.asList(this, predicate));
     }
 
     public StarColumnPredicate orColumn(StarColumnPredicate predicate) {
-        assert predicate.getConstrainedColumn() == getConstrainedColumn();
+        assert predicate.getColumn() == getColumn();
         if (predicate instanceof ListColumnPredicate) {
             ListColumnPredicate that = (ListColumnPredicate) predicate;
             final List<StarColumnPredicate> list =
@@ -97,7 +93,7 @@ public abstract class AbstractColumnPredicate implements StarColumnPredicate {
             list.add(this);
             list.addAll(that.getPredicates());
             return new ListColumnPredicate(
-                getConstrainedColumn(),
+                getColumn(),
                 list);
         } else {
             final List<StarColumnPredicate> list =
@@ -105,93 +101,17 @@ public abstract class AbstractColumnPredicate implements StarColumnPredicate {
             list.add(this);
             list.add(predicate);
             return new ListColumnPredicate(
-                getConstrainedColumn(),
+                getColumn(),
                 list);
         }
     }
 
     public StarPredicate and(StarPredicate predicate) {
-        final List<StarPredicate> list = new ArrayList<StarPredicate>(2);
-        list.add(this);
-        list.add(predicate);
-        return new AndPredicate(list);
+        return new AndPredicate(Arrays.asList(this, predicate));
     }
 
-    public void toSql(SqlQuery sqlQuery, StringBuilder buf) {
+    public void toSql(Dialect dialect, StringBuilder buf) {
         throw Util.needToImplement(this);
-    }
-
-    protected static List<StarColumnPredicate> cloneListWithColumn(
-        RolapStar.Column column,
-        List<StarColumnPredicate> list)
-    {
-        List<StarColumnPredicate> newList =
-            new ArrayList<StarColumnPredicate>(list.size());
-        for (StarColumnPredicate predicate : list) {
-            newList.add(predicate.cloneWithColumn(column));
-        }
-        return newList;
-    }
-
-    /**
-     * Factory for {@link mondrian.rolap.StarPredicate}s and
-     * {@link mondrian.rolap.StarColumnPredicate}s.
-     */
-    public static class Factory {
-        /**
-         * Returns a predicate which tests whether the column's
-         * value is equal to a given constant.
-         *
-         * @param column Constrained column
-         * @param value Value
-         * @return Predicate which tests whether the column's value is equal
-         *   to a column constraint's value
-         */
-        public static StarColumnPredicate equal(
-            RolapStar.Column column,
-            Object value)
-        {
-            return new ValueColumnPredicate(column, value);
-        }
-
-        /**
-         * Returns predicate which is the OR of a list of predicates.
-         *
-         * @param column Column being constrained
-         * @param list List of predicates
-         * @return Predicate which is an OR of the list of predicates
-         */
-        public static StarColumnPredicate or(
-            RolapStar.Column column,
-            List<StarColumnPredicate> list)
-        {
-            return new ListColumnPredicate(column, list);
-        }
-
-        /**
-         * Returns a predicate which always evaluates to TRUE or FALSE.
-         * @param b Truth value
-         * @return Predicate which always evaluates to truth value
-         */
-        public static LiteralStarPredicate bool(boolean b) {
-            return b ? LiteralStarPredicate.TRUE : LiteralStarPredicate.FALSE;
-        }
-
-        /**
-         * Returns a predicate which tests whether the column's
-         * value is equal to column predicate's value.
-         *
-         * @param predicate Column predicate
-         * @return Predicate which tests whether the column's value is equal
-         *   to a column predicate's value
-         */
-        public static StarColumnPredicate equal(
-            ValueColumnPredicate predicate)
-        {
-            return equal(
-                predicate.getConstrainedColumn(),
-                predicate.getValue());
-        }
     }
 }
 

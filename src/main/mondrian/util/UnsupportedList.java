@@ -4,10 +4,12 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2009 Pentaho
+// Copyright (C) 2006-2014 Pentaho
 // All Rights Reserved.
 */
 package mondrian.util;
+
+import mondrian.olap.Util;
 
 import org.apache.log4j.Logger;
 
@@ -55,8 +57,7 @@ public abstract class UnsupportedList<T> implements List<T> {
     }
 
     public Object[] toArray() {
-        throw new UnsupportedOperationException(
-            getClass().getName() + ".toArray");
+        return toArray(new Object[size()]);
     }
 
     public void add(int index, T element) {
@@ -90,8 +91,17 @@ public abstract class UnsupportedList<T> implements List<T> {
     }
 
     public <T> T[] toArray(T[] a) {
-        throw new UnsupportedOperationException(
-            getClass().getName() + ".toArray");
+        int size = size();
+        if (a.length < size) {
+            a = Util.copyOf(a, size);
+        }
+        for (int i = 0; i < a.length; i++) {
+            a[i] = (T) get(i);
+        }
+        if (a.length > size) {
+            a[size] = null;
+        }
+        return a;
     }
 
     public boolean add(T o) {
@@ -181,10 +191,9 @@ public abstract class UnsupportedList<T> implements List<T> {
                 return next;
             } catch (IndexOutOfBoundsException e) {
                 LOGGER.error(
-                    "UnsupportedList.Itr.next: cursor="
-                        +  cursor
-                        + ", size="
-                        + size(), e);
+                    "UnsupportedList.Itr.next: cursor=" +  cursor
+                    + ", size=" + size(),
+                    e);
                 throw new NoSuchElementException();
             }
         }

@@ -5,15 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.olap.*;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * A <code>RolapCalculatedMember</code> is a member based upon a
@@ -25,9 +22,11 @@ import java.util.Map;
  * @author jhyde
  * @since 26 August, 2001
  */
-public class RolapCalculatedMember extends RolapMemberBase {
+public class RolapCalculatedMember
+    extends RolapMemberBase
+    implements CalculatedMember
+{
     private final Formula formula;
-    private Map<String, Annotation> annotationMap;
 
     /**
      * Creates a RolapCalculatedMember.
@@ -39,15 +38,18 @@ public class RolapCalculatedMember extends RolapMemberBase {
      */
     RolapCalculatedMember(
         RolapMember parentMember,
-        RolapLevel level,
+        RolapCubeLevel level,
         String name,
         Formula formula)
     {
         // A calculated measure has MemberType.FORMULA because FORMULA
         // overrides MEASURE.
-        super(parentMember, level, name, null, MemberType.FORMULA);
+        super(
+            parentMember, level, null,
+            MemberType.FORMULA,
+            deriveUniqueName(parentMember, level, name, true),
+            Larders.ofName(name));
         this.formula = formula;
-        this.annotationMap = Collections.emptyMap();
     }
 
     // override RolapMember
@@ -56,17 +58,15 @@ public class RolapCalculatedMember extends RolapMemberBase {
         return solveOrder == null ? 0 : solveOrder.intValue();
     }
 
-    public Object getPropertyValue(String propertyName, boolean matchCase) {
-        if (Util.equal(propertyName, Property.FORMULA.name, matchCase)) {
+    public Object getPropertyValue(Property property) {
+        if (property == Property.FORMULA) {
             return formula;
-        } else if (Util.equal(
-                propertyName, Property.CHILDREN_CARDINALITY.name, matchCase))
-        {
+        } else if (property == Property.CHILDREN_CARDINALITY) {
             // Looking up children is unnecessary for calculated member.
             // If do that, SQLException will be thrown.
             return 0;
         } else {
-            return super.getPropertyValue(propertyName, matchCase);
+            return super.getPropertyValue(property);
         }
     }
 
@@ -76,7 +76,7 @@ public class RolapCalculatedMember extends RolapMemberBase {
 
     public boolean isCalculatedInQuery() {
         final String memberScope =
-            (String) getPropertyValue(Property.MEMBER_SCOPE.name);
+            (String) getPropertyValue(Property.MEMBER_SCOPE);
         return memberScope == null
             || memberScope.equals("QUERY");
     }
@@ -89,14 +89,9 @@ public class RolapCalculatedMember extends RolapMemberBase {
         return formula;
     }
 
-    @Override
-    public Map<String, Annotation> getAnnotationMap() {
-        return annotationMap;
-    }
-
-    void setAnnotationMap(Map<String, Annotation> annotationMap) {
-        assert annotationMap != null;
-        this.annotationMap = annotationMap;
+    void setLarder(Larder larder) {
+        assert larder != null;
+        this.larder = larder;
     }
 }
 

@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2011-2013 Pentaho
+=======
+// Copyright (C) 2011-2014 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.server;
@@ -13,7 +17,8 @@ import mondrian.olap.MondrianProperties;
 import mondrian.olap.Util;
 import mondrian.rolap.RolapUtil;
 import mondrian.server.monitor.*;
-import mondrian.util.Pair;
+import mondrian.server.monitor.MonitorMXBean;
+import mondrian.util.*;
 
 import org.apache.log4j.Logger;
 
@@ -59,7 +64,7 @@ import java.util.concurrent.BlockingQueue;
  * </ul>
  */
 class MonitorImpl
-    implements Monitor
+    implements Monitor, MonitorMXBean
 {
     private static final Logger LOGGER = Logger.getLogger(MonitorImpl.class);
     private final Handler handler = new Handler();
@@ -192,7 +197,11 @@ class MonitorImpl
      */
     private static class MutableServerInfo {
         private final MutableSqlStatementInfo aggSql =
+<<<<<<< HEAD
             new MutableSqlStatementInfo(null, -1, null);
+=======
+            new MutableSqlStatementInfo(null, -1, null, null);
+>>>>>>> upstream/4.0
         private final MutableExecutionInfo aggExec =
             new MutableExecutionInfo(null, -1, null);
         private final MutableStatementInfo aggStmt =
@@ -281,7 +290,11 @@ class MonitorImpl
         private final MutableExecutionInfo aggExec =
             new MutableExecutionInfo(null, -1, null);
         private final MutableSqlStatementInfo aggSql =
+<<<<<<< HEAD
             new MutableSqlStatementInfo(null, -1, null);
+=======
+            new MutableSqlStatementInfo(null, -1, null, null);
+>>>>>>> upstream/4.0
         private int startCount;
         private int endCount;
         private final String stack;
@@ -332,7 +345,11 @@ class MonitorImpl
         private final MutableStatementInfo stmt;
         private final long executionId;
         private final MutableSqlStatementInfo aggSql =
+<<<<<<< HEAD
             new MutableSqlStatementInfo(null, -1, null);
+=======
+            new MutableSqlStatementInfo(null, -1, null, null);
+>>>>>>> upstream/4.0
         private int startCount;
         private int phaseCount;
         private int endCount;
@@ -396,21 +413,38 @@ class MonitorImpl
         private long executeNanos;
         private long rowFetchCount;
         private final String stack;
+<<<<<<< HEAD
+=======
+        private final String sql;
+>>>>>>> upstream/4.0
 
         public MutableSqlStatementInfo(
             MutableStatementInfo stmt,
             long sqlStatementId,
+<<<<<<< HEAD
+=======
+            String sql,
+>>>>>>> upstream/4.0
             String stack)
         {
             this.sqlStatementId = sqlStatementId;
             this.stmt = stmt;
+<<<<<<< HEAD
+=======
+            this.sql = sql;
+>>>>>>> upstream/4.0
             this.stack = stack;
         }
 
         public SqlStatementInfo fix() {
             return new SqlStatementInfo(
                 stack,
+<<<<<<< HEAD
                 sqlStatementId);
+=======
+                sqlStatementId,
+                sql);
+>>>>>>> upstream/4.0
         }
     }
 
@@ -848,6 +882,10 @@ class MonitorImpl
                 new MutableSqlStatementInfo(
                     stmt,
                     event.sqlStatementId,
+<<<<<<< HEAD
+=======
+                    event.sql,
+>>>>>>> upstream/4.0
                     event.stack);
             sqlStatementMap.put(event.sqlStatementId, sql);
             foo(sql, event);
@@ -952,91 +990,14 @@ class MonitorImpl
         }
     }
 
-    /**
-     * Point for various clients in a request-response pattern to receive the
-     * response to their requests.
-     *
-     * <p>The key type should test for object identity using the == operator,
-     * like {@link WeakHashMap}. This allows responses to be automatically
-     * removed if the request (key) is garbage collected.</p>
-     *
-     * <p><b>Thread safety</b>. {@link #queue} is a thread-safe data structure;
-     * a thread can safely call {@link #put} while another thread calls
-     * {@link #take}. The {@link #taken} map is not thread safe, so you must
-     * lock the ResponseQueue before reading or writing it.</p>
-     *
-     * <p>If requests are processed out of order, this queue is not ideal: until
-     * request #1 has received its response, requests #2, #3 etc. will not
-     * receive their response. However, this is not a problem for the monitor,
-     * which uses an actor model, processing requests in strict order.</p>
-     *
-     * @param <K> request (key) type
-     * @param <V> response (value) type
-     */
-    private static class ResponseQueue<K, V> {
-        private final BlockingQueue<Pair<K, V>> queue;
-
-        /**
-         * Entries that have been removed from the queue. If the request
-         * is garbage-collected, the map entry is removed.
-         */
-        private final Map<K, V> taken =
-            new WeakHashMap<K, V>();
-
-        /**
-         * Creates a ResponseQueue with given capacity.
-         *
-         * @param capacity Capacity
-         */
-        public ResponseQueue(int capacity) {
-            queue = new ArrayBlockingQueue<Pair<K, V>>(capacity);
-        }
-
-        /**
-         * Places a (request, response) pair onto the queue.
-         *
-         * @param k Request
-         * @param v Response
-         * @throws InterruptedException if interrupted while waiting
-         */
-        public void put(K k, V v) throws InterruptedException {
-            queue.put(Pair.of(k, v));
-        }
-
-        /**
-         * Retrieves the response from the queue matching the given key,
-         * blocking until it is received.
-         *
-         * @param k Response
-         * @return Response
-         * @throws InterruptedException if interrupted while waiting
-         */
-        public synchronized V take(K k) throws InterruptedException {
-            final V v = taken.remove(k);
-            if (v != null) {
-                return v;
-            }
-            // Take the laundry out of the machine. If it's ours, leave with it.
-            // If it's someone else's, fold it neatly and put it on the pile.
-            for (;;) {
-                final Pair<K, V> pair = queue.take();
-                if (pair.left.equals(k)) {
-                    return pair.right;
-                } else {
-                    taken.put(pair.left, pair.right);
-                }
-            }
-        }
-    }
-
     private static class Actor implements Runnable {
         private boolean running = true;
 
         private final BlockingQueue<Pair<Handler, Message>> eventQueue =
             new ArrayBlockingQueue<Pair<Handler, Message>>(1000);
 
-        private final ResponseQueue<Command, Object> responseQueue =
-            new ResponseQueue<Command, Object>(1000);
+        private final BlockingHashMap<Command, Object> responseMap =
+            new BlockingHashMap<Command, Object>(1000);
 
         public void run() {
             try {
@@ -1047,7 +1008,7 @@ class MonitorImpl
                         final Message message = entry.right;
                         final Object result = message.accept(handler);
                         if (message instanceof Command) {
-                            responseQueue.put((Command) message, result);
+                            responseMap.put((Command) message, result);
                         } else {
                             // Broadcast the event to anyone who is interested.
                             RolapUtil.MONITOR_LOGGER.debug(message);
@@ -1087,7 +1048,7 @@ class MonitorImpl
                 throw Util.newError(e, "Interrupted while sending " + command);
             }
             try {
-                return responseQueue.take(command);
+                return responseMap.get(command);
             } catch (InterruptedException e) {
                 throw Util.newError(e, "Interrupted while awaiting " + command);
             }

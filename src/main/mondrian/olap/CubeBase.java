@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -46,29 +46,18 @@ public abstract class CubeBase extends OlapElementBase implements Cube {
 
     protected final String name;
     private final String uniqueName;
-    private final String description;
-    protected Dimension[] dimensions;
 
     /**
      * Creates a CubeBase.
      *
      * @param name Name
-     * @param caption Caption
-     * @param description Description
-     * @param dimensions List of dimensions
      */
     protected CubeBase(
         String name,
-        String caption,
-        boolean visible,
-        String description,
-        Dimension[] dimensions)
+        boolean visible)
     {
         this.name = name;
-        this.caption = caption;
         this.visible = visible;
-        this.description = description;
-        this.dimensions = dimensions;
         this.uniqueName = Util.quoteMdxIdentifier(name);
     }
 
@@ -94,18 +83,9 @@ public abstract class CubeBase extends OlapElementBase implements Cube {
         return null;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public Dimension[] getDimensions() {
-        return dimensions;
-    }
-
     public Hierarchy lookupHierarchy(Id.NameSegment s, boolean unique) {
-        for (Dimension dimension : dimensions) {
-            Hierarchy[] hierarchies = dimension.getHierarchies();
-            for (Hierarchy hierarchy : hierarchies) {
+        for (Dimension dimension : getDimensionList()) {
+            for (Hierarchy hierarchy : dimension.getHierarchyList()) {
                 String name = unique
                     ? hierarchy.getUniqueName() : hierarchy.getName();
                 if (name.equals(s.getName())) {
@@ -129,10 +109,34 @@ public abstract class CubeBase extends OlapElementBase implements Cube {
         final List<Dimension> dimensions = schemaReader.getCubeDimensions(this);
 
         // Look for hierarchies named '[dimension.hierarchy]'.
+<<<<<<< HEAD
         if (s instanceof Id.NameSegment) {
             Hierarchy hierarchy = lookupHierarchy((Id.NameSegment)s, false);
             if (hierarchy != null) {
                 return hierarchy;
+=======
+        if (s instanceof Id.NameSegment
+            && ((Id.NameSegment) s).name.contains("."))
+        {
+            for (Dimension dimension : dimensions) {
+                if (!((Id.NameSegment) s).name.startsWith(dimension.getName()))
+                {
+                    // Rough check to save time.
+                    continue;
+                }
+                for (Hierarchy hierarchy
+                    : schemaReader.getDimensionHierarchies(dimension))
+                {
+                    if (Util.equalName(
+                            ((Id.NameSegment) s).name,
+                            dimension.getName()
+                            + "."
+                            + hierarchy.getName()))
+                    {
+                        return hierarchy;
+                    }
+                }
+>>>>>>> upstream/4.0
             }
         }
         
@@ -167,7 +171,7 @@ public abstract class CubeBase extends OlapElementBase implements Cube {
             return null;
         }
         final Id.NameSegment nameSegment = (Id.NameSegment) s;
-        for (Dimension dimension : dimensions) {
+        for (Dimension dimension : getDimensionList()) {
             if (Util.equalName(dimension.getName(), nameSegment.name)) {
                 return dimension;
             }
@@ -177,19 +181,13 @@ public abstract class CubeBase extends OlapElementBase implements Cube {
 
     // ------------------------------------------------------------------------
 
-    /**
-     * Returns the first level of a given type in this cube.
-     *
-     * @param levelType Level type
-     * @return First level of given type, or null
-     */
-    private Level getTimeLevel(LevelType levelType) {
-        for (Dimension dimension : dimensions) {
-            if (dimension.getDimensionType() == DimensionType.TimeDimension) {
-                Hierarchy[] hierarchies = dimension.getHierarchies();
-                for (Hierarchy hierarchy : hierarchies) {
-                    Level[] levels = hierarchy.getLevels();
-                    for (Level level : levels) {
+    public Level getTimeLevel(org.olap4j.metadata.Level.Type levelType) {
+        for (Dimension dimension : getDimensionList()) {
+            if (dimension.getDimensionType()
+                == org.olap4j.metadata.Dimension.Type.TIME)
+            {
+                for (Hierarchy hierarchy : dimension.getHierarchyList()) {
+                    for (Level level : hierarchy.getLevelList()) {
                         if (level.getLevelType() == levelType) {
                             return level;
                         }
@@ -201,19 +199,19 @@ public abstract class CubeBase extends OlapElementBase implements Cube {
     }
 
     public Level getYearLevel() {
-        return getTimeLevel(LevelType.TimeYears);
+        return getTimeLevel(org.olap4j.metadata.Level.Type.TIME_YEARS);
     }
 
     public Level getQuarterLevel() {
-        return getTimeLevel(LevelType.TimeQuarters);
+        return getTimeLevel(org.olap4j.metadata.Level.Type.TIME_QUARTERS);
     }
 
     public Level getMonthLevel() {
-        return getTimeLevel(LevelType.TimeMonths);
+        return getTimeLevel(org.olap4j.metadata.Level.Type.TIME_MONTHS);
     }
 
     public Level getWeekLevel() {
-        return getTimeLevel(LevelType.TimeWeeks);
+        return getTimeLevel(org.olap4j.metadata.Level.Type.TIME_WEEKS);
     }
 }
 

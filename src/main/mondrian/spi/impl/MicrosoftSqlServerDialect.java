@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2008-2009 Pentaho
+// Copyright (C) 2008-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.spi.impl;
@@ -53,6 +53,7 @@ public class MicrosoftSqlServerDialect extends JdbcDialectImpl {
             columnNames, columnTypes, valueList, null, false);
     }
 
+<<<<<<< HEAD
     public boolean requiresAliasForFromQuery() {
         return true;
     }
@@ -68,6 +69,12 @@ public class MicrosoftSqlServerDialect extends JdbcDialectImpl {
         // See http://msdn.microsoft.com/en-us/library/ms187928.aspx
         buf.append("', 112)");
     }
+=======
+    @Override
+    public boolean requiresAliasForFromQuery() {
+        return true;
+    }
+>>>>>>> upstream/4.0
 }
 
 // End MicrosoftSqlServerDialect.java

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho
+// Copyright (C) 2005-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -95,7 +95,7 @@ public class UdfTest extends FoodMartTestCase {
      * @return Test context
      */
     private TestContext measureTestContext(String xmlMeasure) {
-        return TestContext.instance().createSubstitutingCube(
+        return TestContext.instance().legacy().createSubstitutingCube(
             "Sales", null, xmlMeasure, null, null);
     }
 
@@ -116,13 +116,13 @@ public class UdfTest extends FoodMartTestCase {
     public void testSanity() {
         // sanity check, make sure the schema is loading correctly
         assertQueryReturns(
-            "SELECT {[Measures].[Store Sqft]} ON COLUMNS, {[Store Type]} ON ROWS FROM [Store]",
+            "SELECT {[Measures].[Store Sqft]} ON COLUMNS, {[Store].[Store Type]} ON ROWS FROM [Store]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
             + "{[Measures].[Store Sqft]}\n"
             + "Axis #2:\n"
-            + "{[Store Type].[All Store Types]}\n"
+            + "{[Store].[Store Type].[All Store Types]}\n"
             + "Row #0: 571,596\n");
     }
 
@@ -130,7 +130,7 @@ public class UdfTest extends FoodMartTestCase {
         assertQueryReturns(
             "WITH MEMBER [Measures].[Sqft Plus One] AS 'PlusOne([Measures].[Store Sqft])'\n"
             + "SELECT {[Measures].[Sqft Plus One]} ON COLUMNS, \n"
-            + "  {[Store Type].children} ON ROWS \n"
+            + "  {[Store].[Store Type].children} ON ROWS \n"
             + "FROM [Store]",
 
             "Axis #0:\n"
@@ -138,12 +138,12 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Sqft Plus One]}\n"
             + "Axis #2:\n"
-            + "{[Store Type].[Deluxe Supermarket]}\n"
-            + "{[Store Type].[Gourmet Supermarket]}\n"
-            + "{[Store Type].[HeadQuarters]}\n"
-            + "{[Store Type].[Mid-Size Grocery]}\n"
-            + "{[Store Type].[Small Grocery]}\n"
-            + "{[Store Type].[Supermarket]}\n"
+            + "{[Store].[Store Type].[Deluxe Supermarket]}\n"
+            + "{[Store].[Store Type].[Gourmet Supermarket]}\n"
+            + "{[Store].[Store Type].[HeadQuarters]}\n"
+            + "{[Store].[Store Type].[Mid-Size Grocery]}\n"
+            + "{[Store].[Store Type].[Small Grocery]}\n"
+            + "{[Store].[Store Type].[Supermarket]}\n"
             + "Row #0: 146,046\n"
             + "Row #1: 47,448\n"
             + "Row #2: \n"
@@ -191,35 +191,35 @@ public class UdfTest extends FoodMartTestCase {
             + "FROM [Sales]\n"
             + "WHERE ([Store].[All Stores].[USA].[OR].[Portland].[Store 11])",
             "Axis #0:\n"
-            + "{[Store].[USA].[OR].[Portland].[Store 11]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland].[Store 11]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Last Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
-            + "{[Time].[1997], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
-            + "{[Time].[1997], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
-            + "{[Time].[1997], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
-            + "{[Time].[1997], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
-            + "{[Time].[1997].[Q1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
-            + "{[Time].[1997].[Q1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
-            + "{[Time].[1997].[Q1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
-            + "{[Time].[1997].[Q1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
-            + "{[Time].[1997].[Q1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
-            + "{[Time].[1997].[Q1].[1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
-            + "{[Time].[1997].[Q1].[1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
-            + "{[Time].[1997].[Q1].[1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
-            + "{[Time].[1997].[Q1].[1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
-            + "{[Time].[1997].[Q1].[1], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
-            + "{[Time].[1997].[Q1].[2], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
-            + "{[Time].[1997].[Q1].[2], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
-            + "{[Time].[1997].[Q1].[2], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
-            + "{[Time].[1997].[Q1].[2], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
-            + "{[Time].[1997].[Q1].[2], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
-            + "{[Time].[1997].[Q1].[3], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
-            + "{[Time].[1997].[Q1].[3], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
-            + "{[Time].[1997].[Q1].[3], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
-            + "{[Time].[1997].[Q1].[3], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
-            + "{[Time].[1997].[Q1].[3], [Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
+            + "{[Time].[Time].[1997], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
+            + "{[Time].[Time].[1997], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
+            + "{[Time].[Time].[1997], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
+            + "{[Time].[Time].[1997], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
+            + "{[Time].[Time].[1997], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
+            + "{[Time].[Time].[1997].[Q1].[1], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3], [Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus]}\n"
             + "Row #0: 2\n"
             + "Row #1: 7\n"
             + "Row #2: 6\n"
@@ -268,7 +268,7 @@ public class UdfTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where [Time].[Time].LastSibling",
             "Axis #0:\n"
-            + "{[Time].[1998]}\n"
+            + "{[Time].[Time].[1998]}\n"
             + "Axis #1:\n"
             + "Axis #2:\n");
     }
@@ -305,7 +305,7 @@ public class UdfTest extends FoodMartTestCase {
         assertQueryReturns(
             "WITH MEMBER [Measures].[InverseNormal] AS 'InverseNormal([Measures].[Grocery Sqft] / [Measures].[Store Sqft])', FORMAT_STRING = \"0.000\"\n"
             + "SELECT {[Measures].[InverseNormal]} ON COLUMNS, \n"
-            + "  {[Store Type].children} ON ROWS \n"
+            + "  {[Store].[Store Type].children} ON ROWS \n"
             + "FROM [Store]",
 
             "Axis #0:\n"
@@ -313,12 +313,12 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[InverseNormal]}\n"
             + "Axis #2:\n"
-            + "{[Store Type].[Deluxe Supermarket]}\n"
-            + "{[Store Type].[Gourmet Supermarket]}\n"
-            + "{[Store Type].[HeadQuarters]}\n"
-            + "{[Store Type].[Mid-Size Grocery]}\n"
-            + "{[Store Type].[Small Grocery]}\n"
-            + "{[Store Type].[Supermarket]}\n"
+            + "{[Store].[Store Type].[Deluxe Supermarket]}\n"
+            + "{[Store].[Store Type].[Gourmet Supermarket]}\n"
+            + "{[Store].[Store Type].[HeadQuarters]}\n"
+            + "{[Store].[Store Type].[Mid-Size Grocery]}\n"
+            + "{[Store].[Store Type].[Small Grocery]}\n"
+            + "{[Store].[Store Type].[Supermarket]}\n"
             + "Row #0: 0.467\n"
             + "Row #1: 0.463\n"
             + "Row #2: \n"
@@ -372,19 +372,16 @@ public class UdfTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1998].[Q4].[12]}\n"
+            + "{[Time].[Time].[1998].[Q4].[12]}\n"
             + "Row #0: \n");
     }
 
     public void testCurrentDateMemberBeforeUsingQuotes()
     {
         assertAxisReturns(
-            MondrianProperties.instance().SsasCompatibleNaming.get()
-            ? "CurrentDateMember([Time].[Time], "
-            + "'\"[Time].[Time].[\"yyyy\"].[Q\"q\"].[\"m\"]\"', BEFORE)"
-            : "CurrentDateMember([Time], "
-            + "'\"[Time].[\"yyyy\"].[Q\"q\"].[\"m\"]\"', BEFORE)",
-            "[Time].[1998].[Q4].[12]");
+            "CurrentDateMember([Time].[Time], "
+            + "'\"[Time].[Time].[\"yyyy\"].[Q\"q\"].[\"m\"]\"', BEFORE)",
+            "[Time].[Time].[1998].[Q4].[12]");
     }
 
     public void testCurrentDateMemberAfter()
@@ -429,13 +426,9 @@ public class UdfTest extends FoodMartTestCase {
 
     public void testCurrentDateMemberHierarchy() {
         final String query =
-            MondrianProperties.instance().SsasCompatibleNaming.get()
-                ? "SELECT { CurrentDateMember([Time.Weekly], "
-                  + "\"[Ti\\me\\.Weekl\\y]\\.[All Weekl\\y\\s]\\.[yyyy]\\.[ww]\", BEFORE)} "
-                  + "ON COLUMNS FROM [Sales]"
-                : "SELECT { CurrentDateMember([Time.Weekly], "
-                  + "\"[Ti\\me\\.Weekl\\y]\\.[All Ti\\me\\.Weekl\\y\\s]\\.[yyyy]\\.[ww]\", BEFORE)} "
-                  + "ON COLUMNS FROM [Sales]";
+            "SELECT { CurrentDateMember([Time.Weekly], "
+            + "\"[Ti\\me\\.Weekl\\y]\\.[All Weekl\\y\\s]\\.[yyyy]\\.[ww]\", BEFORE)} "
+            + "ON COLUMNS FROM [Sales]";
         assertQueryReturns(
             query,
             "Axis #0:\n"
@@ -469,7 +462,7 @@ public class UdfTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
             + "Row #0: 66,291\n");
     }
 
@@ -484,7 +477,7 @@ public class UdfTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Row #0: 266,773\n");
     }
 
@@ -499,7 +492,7 @@ public class UdfTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997].[Q2].[5]}\n"
+            + "{[Time].[Time].[1997].[Q2].[5]}\n"
             + "Row #0: 21,081\n");
     }
 
@@ -512,7 +505,7 @@ public class UdfTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1998].[Q4].[11]}\n"
+            + "{[Time].[Time].[1998].[Q4].[11]}\n"
             + "Row #0: \n");
     }
 
@@ -530,10 +523,10 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1998].[Q3].[9]}\n"
-            + "{[Time].[1998].[Q4].[10]}\n"
-            + "{[Time].[1998].[Q4].[11]}\n"
-            + "{[Time].[1998].[Q4].[12]}\n"
+            + "{[Time].[Time].[1998].[Q3].[9]}\n"
+            + "{[Time].[Time].[1998].[Q4].[10]}\n"
+            + "{[Time].[Time].[1998].[Q4].[11]}\n"
+            + "{[Time].[Time].[1998].[Q4].[12]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n"
@@ -551,13 +544,13 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Org Salary]}\n"
             + "Axis #2:\n"
-            + "{[Employees].[Sheri Nowmer].[Derrick Whelply].[Beverly Baker].[Jacqueline Wyllie].[Ralph Mccoy].[Anne Tuck].[Samuel Johnson]}\n"
-            + "{[Employees].[Sheri Nowmer].[Derrick Whelply].[Pedro Castillo].[Jose Bernard].[Mary Hunt].[Bonnie Bruno].[Sam Warren]}\n"
-            + "{[Employees].[Sheri Nowmer].[Derrick Whelply].[Pedro Castillo].[Charles Macaluso].[Barbara Wallin].[Michael Suggs].[Sam Adair]}\n"
-            + "{[Employees].[Sheri Nowmer].[Derrick Whelply].[Pedro Castillo].[Lois Wood].[Dell Gras].[Kristine Aldred].[Sam Zeller]}\n"
-            + "{[Employees].[Sheri Nowmer].[Derrick Whelply].[Laurie Borges].[Cody Goldey].[Shanay Steelman].[Neal Hasty].[Sam Wheeler]}\n"
-            + "{[Employees].[Sheri Nowmer].[Maya Gutierrez].[Brenda Blumberg].[Wayne Banack].[Samuel Agcaoili]}\n"
-            + "{[Employees].[Sheri Nowmer].[Maya Gutierrez].[Jonathan Murraiin].[James Thompson].[Samantha Weller]}\n"
+            + "{[Employee].[Employees].[Sheri Nowmer].[Derrick Whelply].[Beverly Baker].[Jacqueline Wyllie].[Ralph Mccoy].[Anne Tuck].[Samuel Johnson]}\n"
+            + "{[Employee].[Employees].[Sheri Nowmer].[Derrick Whelply].[Pedro Castillo].[Jose Bernard].[Mary Hunt].[Bonnie Bruno].[Sam Warren]}\n"
+            + "{[Employee].[Employees].[Sheri Nowmer].[Derrick Whelply].[Pedro Castillo].[Charles Macaluso].[Barbara Wallin].[Michael Suggs].[Sam Adair]}\n"
+            + "{[Employee].[Employees].[Sheri Nowmer].[Derrick Whelply].[Pedro Castillo].[Lois Wood].[Dell Gras].[Kristine Aldred].[Sam Zeller]}\n"
+            + "{[Employee].[Employees].[Sheri Nowmer].[Derrick Whelply].[Laurie Borges].[Cody Goldey].[Shanay Steelman].[Neal Hasty].[Sam Wheeler]}\n"
+            + "{[Employee].[Employees].[Sheri Nowmer].[Maya Gutierrez].[Brenda Blumberg].[Wayne Banack].[Samuel Agcaoili]}\n"
+            + "{[Employee].[Employees].[Sheri Nowmer].[Maya Gutierrez].[Jonathan Murraiin].[James Thompson].[Samantha Weller]}\n"
             + "Row #0: $40.62\n"
             + "Row #1: $40.31\n"
             + "Row #2: $75.60\n"
@@ -579,11 +572,11 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store Type].[All Store Types]}\n"
-            + "{[Store Type].[Deluxe Supermarket]}\n"
-            + "{[Store Type].[Gourmet Supermarket]}\n"
-            + "{[Store Type].[HeadQuarters]}\n"
-            + "{[Store Type].[Supermarket]}\n"
+            + "{[Store].[Store Type].[All Store Types]}\n"
+            + "{[Store].[Store Type].[Deluxe Supermarket]}\n"
+            + "{[Store].[Store Type].[Gourmet Supermarket]}\n"
+            + "{[Store].[Store Type].[HeadQuarters]}\n"
+            + "{[Store].[Store Type].[Supermarket]}\n"
             + "Row #0: 565,238.13\n"
             + "Row #1: 162,062.24\n"
             + "Row #2: 45,750.24\n"
@@ -596,7 +589,7 @@ public class UdfTest extends FoodMartTestCase {
             "SELECT {[Measures].[Unit Sales]} ON COLUMNS, "
             + "FILTER([Product].[Product Family].MEMBERS, "
             + "[Product].[Product Family].CurrentMember IN "
-            + "{[Product].[All Products].firstChild, "
+            + "{[Product].[Products].[All Products].firstChild, "
             + "[Product].[All Products].lastChild}) ON ROWS "
             + "FROM [Sales]",
             "Axis #0:\n"
@@ -604,8 +597,8 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: 24,597\n"
             + "Row #1: 50,236\n");
     }
@@ -615,7 +608,7 @@ public class UdfTest extends FoodMartTestCase {
             "SELECT {[Measures].[Unit Sales]} ON COLUMNS, "
             + "FILTER([Product].[Product Family].MEMBERS, "
             + "[Product].[Product Family].CurrentMember NOT IN "
-            + "{[Product].[All Products].firstChild, "
+            + "{[Product].[Products].[All Products].firstChild, "
             + "[Product].[All Products].lastChild}) ON ROWS "
             + "FROM [Sales]",
             "Axis #0:\n"
@@ -623,7 +616,7 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food]}\n"
+            + "{[Product].[Products].[Food]}\n"
             + "Row #0: 191,940\n");
     }
 
@@ -637,31 +630,31 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Canada].[BC].[Vancouver].[Store 19]}\n"
-            + "{[Store].[Canada].[BC].[Victoria].[Store 20]}\n"
-            + "{[Store].[Mexico].[DF].[Mexico City].[Store 9]}\n"
-            + "{[Store].[Mexico].[DF].[San Andres].[Store 21]}\n"
-            + "{[Store].[Mexico].[Guerrero].[Acapulco].[Store 1]}\n"
-            + "{[Store].[Mexico].[Jalisco].[Guadalajara].[Store 5]}\n"
-            + "{[Store].[Mexico].[Veracruz].[Orizaba].[Store 10]}\n"
-            + "{[Store].[Mexico].[Yucatan].[Merida].[Store 8]}\n"
-            + "{[Store].[Mexico].[Zacatecas].[Camacho].[Store 4]}\n"
-            + "{[Store].[Mexico].[Zacatecas].[Hidalgo].[Store 12]}\n"
-            + "{[Store].[Mexico].[Zacatecas].[Hidalgo].[Store 18]}\n"
-            + "{[Store].[USA].[CA].[Alameda].[HQ]}\n"
-            + "{[Store].[USA].[CA].[Beverly Hills].[Store 6]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles].[Store 7]}\n"
-            + "{[Store].[USA].[CA].[San Diego].[Store 24]}\n"
-            + "{[Store].[USA].[CA].[San Francisco].[Store 14]}\n"
-            + "{[Store].[USA].[OR].[Portland].[Store 11]}\n"
-            + "{[Store].[USA].[OR].[Salem].[Store 13]}\n"
-            + "{[Store].[USA].[WA].[Bellingham].[Store 2]}\n"
-            + "{[Store].[USA].[WA].[Bremerton].[Store 3]}\n"
-            + "{[Store].[USA].[WA].[Seattle].[Store 15]}\n"
-            + "{[Store].[USA].[WA].[Spokane].[Store 16]}\n"
-            + "{[Store].[USA].[WA].[Tacoma].[Store 17]}\n"
-            + "{[Store].[USA].[WA].[Walla Walla].[Store 22]}\n"
-            + "{[Store].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Store].[Stores].[Canada].[BC].[Vancouver].[Store 19]}\n"
+            + "{[Store].[Stores].[Canada].[BC].[Victoria].[Store 20]}\n"
+            + "{[Store].[Stores].[Mexico].[DF].[Mexico City].[Store 9]}\n"
+            + "{[Store].[Stores].[Mexico].[DF].[San Andres].[Store 21]}\n"
+            + "{[Store].[Stores].[Mexico].[Guerrero].[Acapulco].[Store 1]}\n"
+            + "{[Store].[Stores].[Mexico].[Jalisco].[Guadalajara].[Store 5]}\n"
+            + "{[Store].[Stores].[Mexico].[Veracruz].[Orizaba].[Store 10]}\n"
+            + "{[Store].[Stores].[Mexico].[Yucatan].[Merida].[Store 8]}\n"
+            + "{[Store].[Stores].[Mexico].[Zacatecas].[Camacho].[Store 4]}\n"
+            + "{[Store].[Stores].[Mexico].[Zacatecas].[Hidalgo].[Store 12]}\n"
+            + "{[Store].[Stores].[Mexico].[Zacatecas].[Hidalgo].[Store 18]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Alameda].[HQ]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Beverly Hills].[Store 6]}\n"
+            + "{[Store].[Stores].[USA].[CA].[Los Angeles].[Store 7]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Diego].[Store 24]}\n"
+            + "{[Store].[Stores].[USA].[CA].[San Francisco].[Store 14]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Portland].[Store 11]}\n"
+            + "{[Store].[Stores].[USA].[OR].[Salem].[Store 13]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bellingham].[Store 2]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Bremerton].[Store 3]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Seattle].[Store 15]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Spokane].[Store 16]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Tacoma].[Store 17]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Walla Walla].[Store 22]}\n"
+            + "{[Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
             + "Row #0: \n"
             + "Row #1: \n"
             + "Row #2: \n"
@@ -773,7 +766,7 @@ public class UdfTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Test]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[All Customers]}\n"
+            + "{[Customer].[Customers].[All Customers]}\n"
             + "Row #0: 409,035.59\n");
     }
 
@@ -788,7 +781,7 @@ public class UdfTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1998].[Q4].[12]}\n"
+            + "{[Time].[Time].[1998].[Q4].[12]}\n"
             + "Row #0: \n");
     }
 
@@ -825,9 +818,9 @@ public class UdfTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Gender].[M]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[M]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
             + "Row #0: 135,215\n"
             + "Row #0: 131,558\n"
             + "Row #0: 266,773\n";
@@ -941,7 +934,7 @@ public class UdfTest extends FoodMartTestCase {
      * Unit test for a UDF defined in JavaScript.
      */
     public void testScriptUdf() {
-        if (Util.PreJdk16) {
+        if (!Util.haveScripting()) {
             return;
         }
         TestContext tc = udfTestContext(
@@ -986,7 +979,7 @@ public class UdfTest extends FoodMartTestCase {
      * function. We also use 'CDATA' section to mask the '&lt;' symbol.
      */
     public void testScriptUdfFactorial() {
-        if (Util.PreJdk16) {
+        if (!Util.haveScripting()) {
             return;
         }
         TestContext tc = udfTestContext(
@@ -1018,7 +1011,7 @@ public class UdfTest extends FoodMartTestCase {
      * Unit test that we get a nice error if a script UDF contains an error.
      */
     public void testScriptUdfInvalid() {
-        if (Util.PreJdk16) {
+        if (!Util.haveScripting()) {
             return;
         }
         TestContext tc = udfTestContext(
@@ -1106,7 +1099,7 @@ public class UdfTest extends FoodMartTestCase {
      * As {@link #testCellFormatterNested()}, but using a script.
      */
     public void testCellFormatterScript() {
-        if (Util.PreJdk16) {
+        if (!Util.haveScripting()) {
             return;
         }
         TestContext tc = measureTestContext(
@@ -1193,7 +1186,7 @@ public class UdfTest extends FoodMartTestCase {
      * using a script.
      */
     public void testCellFormatterOnCalcMemberScript() {
-        if (Util.PreJdk16) {
+        if (!Util.haveScripting()) {
             return;
         }
         TestContext tc = calcMemberTestContext(
@@ -1225,7 +1218,7 @@ public class UdfTest extends FoodMartTestCase {
      * attribute of a Measure element.
      */
     public void testMemberFormatter() {
-        TestContext tc = TestContext.instance().createSubstitutingCube(
+        TestContext tc = TestContext.instance().legacy().createSubstitutingCube(
             "Sales",
             "  <Dimension name='Promotion Media2' foreignKey='promotion_id'>\n"
             + "    <Hierarchy hasAll='true' allMemberName='All Media' primaryKey='promotion_id'>\n"
@@ -1246,7 +1239,7 @@ public class UdfTest extends FoodMartTestCase {
      * memberFormatter element.
      */
     public void testMemberFormatterNested() {
-        TestContext tc = TestContext.instance().createSubstitutingCube(
+        TestContext tc = TestContext.instance().legacy().createSubstitutingCube(
             "Sales",
             "  <Dimension name='Promotion Media2' foreignKey='promotion_id'>\n"
             + "    <Hierarchy hasAll='true' allMemberName='All Media' primaryKey='promotion_id'>\n"
@@ -1268,10 +1261,10 @@ public class UdfTest extends FoodMartTestCase {
      * As {@link #testMemberFormatterNested()}, but using a script.
      */
     public void testMemberFormatterScript() {
-        if (Util.PreJdk16) {
+        if (!Util.haveScripting()) {
             return;
         }
-        TestContext tc = TestContext.instance().createSubstitutingCube(
+        TestContext tc = TestContext.instance().legacy().createSubstitutingCube(
             "Sales",
             "  <Dimension name='Promotion Media2' foreignKey='promotion_id'>\n"
             + "    <Hierarchy hasAll='true' allMemberName='All Media' primaryKey='promotion_id'>\n"
@@ -1298,7 +1291,7 @@ public class UdfTest extends FoodMartTestCase {
      * @throws java.sql.SQLException on error
      */
     public void testPropertyFormatter() throws SQLException {
-        TestContext tc = TestContext.instance().createSubstitutingCube(
+        TestContext tc = TestContext.instance().legacy().createSubstitutingCube(
             "Sales",
             "<Dimension name='Promotions2' foreignKey='promotion_id'>\n"
             + "  <Hierarchy hasAll='true' allMemberName='All Promotions' primaryKey='promotion_id' defaultMember='[All Promotions]'>\n"
@@ -1329,7 +1322,7 @@ public class UdfTest extends FoodMartTestCase {
      * @throws java.sql.SQLException on error
      */
     public void testPropertyFormatterNested() throws SQLException {
-        TestContext tc = TestContext.instance().createSubstitutingCube(
+        TestContext tc = TestContext.instance().legacy().createSubstitutingCube(
             "Sales",
             "<Dimension name='Promotions2' foreignKey='promotion_id'>\n"
             + "  <Hierarchy hasAll='true' allMemberName='All Promotions' primaryKey='promotion_id' defaultMember='[All Promotions]'>\n"
@@ -1361,10 +1354,10 @@ public class UdfTest extends FoodMartTestCase {
      * @throws java.sql.SQLException on error
      */
     public void testPropertyFormatterScript() throws SQLException {
-        if (Util.PreJdk16) {
+        if (!Util.haveScripting()) {
             return;
         }
-        TestContext tc = TestContext.instance().createSubstitutingCube(
+        TestContext tc = TestContext.instance().legacy().createSubstitutingCube(
             "Sales",
             "<Dimension name='Promotions2' foreignKey='promotion_id'>\n"
             + "  <Hierarchy hasAll='true' allMemberName='All Promotions' primaryKey='promotion_id' defaultMember='[All Promotions]'>\n"

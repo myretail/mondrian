@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2006-2012 Pentaho
+=======
+// Copyright (C) 2006-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -88,7 +92,7 @@ public class VisualTotalsFunDef extends FunDefBase {
             final List<Member> resultList = new ArrayList<Member>(list);
             final int memberCount = list.size();
             for (int i = memberCount - 1; i >= 0; --i) {
-                Member member = list.get(i);
+                RolapMember member = (RolapMember) list.get(i);
                 if (i + 1 < memberCount) {
                     Member nextMember = resultList.get(i + 1);
                     if (nextMember != member
@@ -104,7 +108,7 @@ public class VisualTotalsFunDef extends FunDefBase {
         }
 
         private VisualTotalMember createMember(
-            Member member,
+            RolapMember member,
             int i,
             final List<Member> list,
             Evaluator evaluator)
@@ -201,20 +205,30 @@ public class VisualTotalsFunDef extends FunDefBase {
      *     members which occur following it in the list</ul></p>
      */
     public static class VisualTotalMember extends RolapMemberBase {
-        private final Member member;
+        private final RolapMember member;
         private Exp exp;
         private String caption;
 
         VisualTotalMember(
-            Member member,
+            RolapMember member,
             String name,
             String caption,
             final Exp exp)
         {
             super(
+<<<<<<< HEAD
                 (RolapMember) member.getParentMember(),
                 (RolapLevel) member.getLevel(),
                 RolapUtil.sqlNullValue, name, MemberType.FORMULA);
+=======
+                member.getParentMember(),
+                member.getLevel(),
+                null,
+                MemberType.FORMULA,
+                deriveUniqueName(
+                    member.getParentMember(), member.getLevel(), name, false),
+                Larders.ofName(name));
+>>>>>>> upstream/4.0
             this.member = member;
             this.caption = caption;
             this.exp = exp;
@@ -249,8 +263,14 @@ public class VisualTotalsFunDef extends FunDefBase {
         }
 
         @Override
+<<<<<<< HEAD
         public String getCaption() {
             return caption;
+=======
+        public Larder getLarder() {
+            // Use underlying member's larder, therefore use its caption.
+            return member.getLarder();
+>>>>>>> upstream/4.0
         }
 
         protected boolean computeCalculated(final MemberType memberType) {
@@ -303,7 +323,7 @@ public class VisualTotalsFunDef extends FunDefBase {
             return member.getOrdinal();
         }
 
-        public Member getDataMember() {
+        public RolapMember getDataMember() {
             return member;
         }
 
@@ -311,20 +331,16 @@ public class VisualTotalsFunDef extends FunDefBase {
             throw new UnsupportedOperationException();
         }
 
-        public Member getMember() {
+        public RolapMember getMember() {
             return member;
         }
 
-        public Object getPropertyValue(String propertyName, boolean matchCase) {
-            Property property = Property.lookup(propertyName, matchCase);
-            if (property == null) {
-                return null;
-            }
+        public Object getPropertyValue(Property property) {
             switch (property.ordinal) {
             case Property.CHILDREN_CARDINALITY_ORDINAL:
-                return member.getPropertyValue(propertyName, matchCase);
+                return member.getPropertyValue(property);
             default:
-                return super.getPropertyValue(propertyName, matchCase);
+                return super.getPropertyValue(property);
             }
         }
     }

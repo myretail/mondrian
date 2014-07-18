@@ -6,13 +6,14 @@
 //
 // Copyright (C) 2004-2005 TONBELLER AG
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.mdx.MemberExpr;
 import mondrian.olap.*;
+<<<<<<< HEAD
 import mondrian.olap.MondrianDef.RelationOrJoin;
 import mondrian.rolap.aggmatcher.AggStar;
 import mondrian.rolap.sql.*;
@@ -23,6 +24,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+=======
+import mondrian.rolap.sql.*;
+import mondrian.spi.Dialect;
+
+import java.util.*;
+>>>>>>> upstream/4.0
 import javax.sql.DataSource;
 
 /**
@@ -33,6 +40,9 @@ import javax.sql.DataSource;
   */
 public class RolapNativeTopCount extends RolapNativeSet {
 
+    /**
+     * Creates a RolapNativeTopCount.
+     */
     public RolapNativeTopCount() {
         super.setEnabled(
             MondrianProperties.instance().EnableNativeTopCount.get());
@@ -43,15 +53,28 @@ public class RolapNativeTopCount extends RolapNativeSet {
         boolean ascending;
         Integer topCount;
 
+        /**
+         * Creates TopCountConstraint.
+         *
+         * @param count Count
+         * @param args Cross-join args
+         * @param evaluator Evaluator
+         * @param measureGroupList List of measure groups to join to
+         * @param orderByExpr Expression to order by
+         * @param ascending Whether ascending
+         */
         public TopCountConstraint(
             int count,
-            CrossJoinArg[] args, RolapEvaluator evaluator,
-            Exp orderByExpr, boolean ascending)
+            CrossJoinArg[] args,
+            RolapEvaluator evaluator,
+            List<RolapMeasureGroup> measureGroupList,
+            Exp orderByExpr,
+            boolean ascending)
         {
-            super(args, evaluator, true);
+            super(args, evaluator, measureGroupList, true);
             this.orderByExpr = orderByExpr;
             this.ascending = ascending;
-            this.topCount = new Integer(count);
+            this.topCount = count;
         }
 
         /**
@@ -60,32 +83,35 @@ public class RolapNativeTopCount extends RolapNativeSet {
          * <p>TopCount always needs to join the fact table because we want to
          * evaluate the top count expression which involves a fact.
          */
-        protected boolean isJoinRequired() {
+        public boolean isJoinRequired() {
             return true;
         }
 
         public void addConstraint(
-            SqlQuery sqlQuery,
-            RolapCube baseCube,
-            AggStar aggStar)
+            SqlQueryBuilder queryBuilder,
+            RolapStarSet starSet)
         {
             if (orderByExpr != null) {
+                final SqlQuery sqlQuery = queryBuilder.sqlQuery;
                 RolapNativeSql sql =
                     new RolapNativeSql(
-                        sqlQuery, aggStar, getEvaluator(), null);
-                String orderBySql = sql.generateTopCountOrderBy(orderByExpr);
-                Dialect dialect = sqlQuery.getDialect();
-                boolean nullable = deduceNullability(orderByExpr);
-                if (dialect.requiresOrderByAlias()) {
-                    String alias = sqlQuery.nextColumnAlias();
-                    alias = dialect.quoteIdentifier(alias);
-                    sqlQuery.addSelect(orderBySql, null, alias);
-                    sqlQuery.addOrderBy(alias, ascending, true, nullable);
-                } else {
-                    sqlQuery.addOrderBy(orderBySql, ascending, true, nullable);
-                }
+                        sqlQuery, starSet.getAggStar(),
+                        getEvaluator(), null);
+                final String orderBySql =
+                    sql.generateTopCountOrderBy(orderByExpr);
+                boolean nullable =
+                    deduceNullability(orderByExpr);
+                final String orderByAlias =
+                    sqlQuery.addSelect(orderBySql, null);
+                sqlQuery.addOrderBy(
+                    orderBySql,
+                    orderByAlias,
+                    ascending,
+                    true,
+                    nullable,
+                    true);
             }
-            super.addConstraint(sqlQuery, baseCube, aggStar);
+            super.addConstraint(queryBuilder, starSet);
         }
 
         private boolean deduceNullability(Exp expr) {
@@ -152,19 +178,24 @@ public class RolapNativeTopCount extends RolapNativeSet {
         FunDef fun,
         Exp[] args)
     {
-        boolean ascending;
-
         if (!isEnabled()) {
             return null;
         }
-        if (!TopCountConstraint.isValidContext(
-                evaluator, restrictMemberTypes()))
+        final List<RolapMeasureGroup> measureGroupList =
+            new ArrayList<RolapMeasureGroup>();
+        if (!SqlContextConstraint.checkValidContext(
+                evaluator,
+                true,
+                Collections.<RolapCubeLevel>emptyList(),
+                restrictMemberTypes(),
+                measureGroupList))
         {
             return null;
         }
 
         // is this "TopCount(<set>, <count>, [<numeric expr>])"
         String funName = fun.getName();
+        boolean ascending;
         if ("TopCount".equalsIgnoreCase(funName)) {
             ascending = false;
         } else if ("BottomCount".equalsIgnoreCase(funName)) {
@@ -207,15 +238,16 @@ public class RolapNativeTopCount extends RolapNativeSet {
         // Need to generate top count order by to determine whether
         // or not it can be created. The top count
         // could change to use an aggregate table later in evaulation
-        SqlQuery sqlQuery = SqlQuery.newQuery(ds, "NativeTopCount");
+        SqlQuery sqlQuery =
+            SqlQuery.newQuery(evaluator.getDialect(), "NativeTopCount");
         RolapNativeSql sql =
             new RolapNativeSql(
                 sqlQuery, null, evaluator, null);
         Exp orderByExpr = null;
         if (args.length == 3) {
             orderByExpr = args[2];
-            String orderBySQL = sql.generateTopCountOrderBy(args[2]);
-            if (orderBySQL == null) {
+            String orderBySql = sql.generateTopCountOrderBy(args[2]);
+            if (orderBySql == null) {
                 return null;
             }
         }
@@ -231,16 +263,28 @@ public class RolapNativeTopCount extends RolapNativeSet {
 
             CrossJoinArg[] combinedArgs;
             if (predicateArgs != null) {
+<<<<<<< HEAD
                 // Combined the CJ and the additional predicate args
                 // to form the TupleConstraint.
                 combinedArgs =
                         Util.appendArrays(cjArgs, predicateArgs);
+=======
+                // Combined the CJ and the additional predicate args to form the
+                // TupleConstraint.
+                combinedArgs =
+                    Util.appendArrays(cjArgs, predicateArgs);
+>>>>>>> upstream/4.0
             } else {
                 combinedArgs = cjArgs;
             }
             TupleConstraint constraint =
                 new TopCountConstraint(
+<<<<<<< HEAD
                     count, combinedArgs, evaluator, orderByExpr, ascending);
+=======
+                    count, combinedArgs, evaluator,
+                    measureGroupList, orderByExpr, ascending);
+>>>>>>> upstream/4.0
             SetEvaluator sev =
                 new SetEvaluator(cjArgs, schemaReader, constraint);
             sev.setMaxRows(count);

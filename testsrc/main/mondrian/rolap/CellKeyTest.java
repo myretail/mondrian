@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -325,31 +325,27 @@ public class CellKeyTest extends FoodMartTestCase {
 
         String result =
             "Axis #0:\n"
-            + "{[City].[Redwood City]}\n"
+            + "{[City].[City].[Redwood City]}\n"
             + "Axis #1:\n"
-            + "{[Gender].[F], [Address2].[#null]}\n"
-            + "{[Gender].[F], [Address2].[#2]}\n"
-            + "{[Gender].[F], [Address2].[Unit H103]}\n"
-            + "{[Gender].[M], [Address2].[#null]}\n"
-            + "{[Gender].[M], [Address2].[#208]}\n"
+            + "{[Gender].[Gender].[F], [Address2].[Address2].[#null]}\n"
+            + "{[Gender].[Gender].[F], [Address2].[Address2].[#2]}\n"
+            + "{[Gender].[Gender].[F], [Address2].[Address2].[Unit H103]}\n"
+            + "{[Gender].[Gender].[M], [Address2].[Address2].[#null]}\n"
+            + "{[Gender].[Gender].[M], [Address2].[Address2].[#208]}\n"
             + "Row #0: 71\n"
             + "Row #0: 10\n"
             + "Row #0: 3\n"
             + "Row #0: 52\n"
             + "Row #0: 8\n";
 
-        /*
-         * Make sure ExpandNonNative is not set. Otherwise, the query is
-         * evaluated natively. For the given data set(which contains NULL
-         * members), native evaluation produces results in a different order
-         * from the non-native evaluation.
-         */
-        propSaver.set(
-            MondrianProperties.instance().ExpandNonNative,
-            false);
+        // Make sure ExpandNonNative is not set. Otherwise, the query is
+        // evaluated natively. For the given data set (which contains NULL
+        // members), native evaluation produces results in a different order
+        // from the non-native evaluation.
+        propSaver.set(propSaver.props.ExpandNonNative, false);
 
         TestContext testContext =
-            TestContext.instance().create(
+            TestContext.instance().legacy().create(
                 null,
                 cubeDef,
                 null,

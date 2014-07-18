@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2011-2013 Pentaho and others
+=======
+// Copyright (C) 2011-2014 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap.cache;
@@ -103,9 +107,6 @@ public interface SegmentCacheIndex {
     /**
      * Adds a header to the index.
      *
-     * <p>If {@code loading} is true, there must follow a call to
-     * {@link #loadSucceeded} or {@link #loadFailed}.</p>
-     *
      * @param header Segment header
      * @param loading Whether segment is pending a load from SQL
      * @param converter Segment converter
@@ -113,8 +114,18 @@ public interface SegmentCacheIndex {
      */
     boolean add(
         SegmentHeader header,
-        boolean loading,
-        SegmentBuilder.SegmentConverter converter);
+        SegmentBuilder.SegmentConverter converter,
+        boolean loading);
+
+    /**
+     * Updates a header in the index. This is required when some of the
+     * excluded regions have changed.
+     * @param oldHeader The old header to replace.
+     * @param newHeader The new header to use instead.
+     */
+    public void update(
+        SegmentHeader oldHeader,
+        SegmentHeader newHeader);
 
     /**
      * Changes the state of a header from loading to loaded.

@@ -4,24 +4,23 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2011 Pentaho
+// Copyright (C) 2006-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
-import mondrian.olap.Annotation;
-import mondrian.olap.MondrianDef;
-
-import java.util.Map;
+import mondrian.olap.*;
 
 /**
  * Measure which is defined in a virtual cube, and based on a stored measure
  * in one of the virtual cube's base cubes.
  *
+ * <p>Almost obsolete. Used only in {@link RolapSchemaUpgrader}.</p>
+ *
  * @author jhyde
  * @since Aug 18, 2006
  */
-public class RolapVirtualCubeMeasure
+class RolapVirtualCubeMeasure
     extends RolapMemberBase
     implements RolapStoredMeasure
 {
@@ -29,41 +28,50 @@ public class RolapVirtualCubeMeasure
      * The measure in the underlying cube.
      */
     private final RolapStoredMeasure cubeMeasure;
-    private final Map<String, Annotation> annotationMap;
+    private final Larder larder;
+    private final RolapMeasureGroup measureGroup;
 
-    public RolapVirtualCubeMeasure(
+    RolapVirtualCubeMeasure(
+        RolapMeasureGroup measureGroup,
         RolapMember parentMember,
-        RolapLevel level,
+        RolapCubeLevel level,
         RolapStoredMeasure cubeMeasure,
-        Map<String, Annotation> annotationMap)
+        Larder larder)
     {
-        super(parentMember, level, cubeMeasure.getName());
+        super(
+            parentMember, level, cubeMeasure.getName(), MemberType.MEASURE,
+            deriveUniqueName(parentMember, level, cubeMeasure.getName(), false),
+            Larders.ofName(cubeMeasure.getName()));
+        this.measureGroup = measureGroup;
+        Util.deprecated(
+            "since all cubes are now virtual, is this class obsolete? we just need a way to clone RolapStoredMeasure in a different measure group",
+            false);
         this.cubeMeasure = cubeMeasure;
-        this.annotationMap = annotationMap;
+        this.larder = larder;
     }
 
-    public Object getPropertyValue(String propertyName, boolean matchCase) {
+    public Object getPropertyValue(Property property) {
         // Look first in this member (against the virtual cube), then
         // fallback on the base measure.
         // This allows, for instance, a measure to be invisible in a virtual
         // cube but visible in its base cube.
-        Object value = super.getPropertyValue(propertyName, matchCase);
+        Object value = super.getPropertyValue(property);
         if (value == null) {
-            value = cubeMeasure.getPropertyValue(propertyName, matchCase);
+            value = cubeMeasure.getPropertyValue(property);
         }
         return value;
     }
 
-    public RolapCube getCube() {
-        return cubeMeasure.getCube();
-    }
-
-    public Object getStarMeasure() {
+    public RolapStar.Measure getStarMeasure() {
         return cubeMeasure.getStarMeasure();
     }
 
-    public MondrianDef.Expression getMondrianDefExpression() {
-        return cubeMeasure.getMondrianDefExpression();
+    public RolapMeasureGroup getMeasureGroup() {
+        return measureGroup;
+    }
+
+    public RolapSchema.PhysColumn getExpr() {
+        return cubeMeasure.getExpr();
     }
 
     public RolapAggregator getAggregator() {
@@ -72,10 +80,6 @@ public class RolapVirtualCubeMeasure
 
     public RolapResult.ValueFormatter getFormatter() {
         return cubeMeasure.getFormatter();
-    }
-
-    public Map<String, Annotation> getAnnotationMap() {
-        return annotationMap;
     }
 }
 

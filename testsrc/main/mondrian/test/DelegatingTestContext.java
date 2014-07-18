@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2005-2011 Pentaho
+// Copyright (C) 2005-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -39,6 +39,14 @@ public class DelegatingTestContext extends TestContext {
 
     public PrintWriter getWriter() {
         return context.getWriter();
+    }
+
+    public String getCatalogContent() {
+        String schema = super.getCatalogContent();
+        if (schema != null) {
+            return schema;
+        }
+        return context.getCatalogContent();
     }
 }
 

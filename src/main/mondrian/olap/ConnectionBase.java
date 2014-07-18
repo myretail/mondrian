@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -56,8 +56,8 @@ public abstract class ConnectionBase implements Connection {
     }
 
     /**
-     * Parses a query, with specified function table and the mode for strict
-     * validation(if true then invalid members are not ignored).
+     * Parses a statement, with specified function table and the mode for strict
+     * validation (if true then invalid members are not ignored).
      *
      * <p>This method is only used in testing and by clients that need to
      * support customized parser behavior. That is why this method is not part
@@ -102,9 +102,7 @@ public abstract class ConnectionBase implements Connection {
     }
 
     protected MdxParserValidator createParser() {
-        return true
-            ? new JavaccParserValidatorImpl()
-            : new MdxParserValidatorImpl();
+        return new JavaccParserValidatorImpl();
     }
 }
 

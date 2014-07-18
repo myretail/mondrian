@@ -4,12 +4,13 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2011 Pentaho
+// Copyright (C) 2007-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.olap4j;
 
 import mondrian.rolap.RolapConnectionProperties;
+import mondrian.xmla.XmlaHandler;
 
 import java.sql.*;
 import java.util.*;
@@ -35,9 +36,10 @@ import java.util.logging.Logger;
  * <br/>
  * Connection connection =<br/>
  * &nbsp;&nbsp;DriverManager.getConnection(<br/>
- * &nbsp;&nbsp;&nbsp;&nbsp;"jdbc:mondrian:Jdbc=jdbc:odbc:MondrianFoodMart;
- * Catalog=file:/mondrian/demo/FoodMart.xml;
- * JdbcDrivers=sun.jdbc.odbc.JdbcOdbcDriver");<br/>
+ * &nbsp;&nbsp;&nbsp;&nbsp;"jdbc:mondrian:Jdbc=jdbc:mysql://localhost/foodmart;
+ * JdbcUser=foodmart; JdbcPassword=foodmart;
+ * Catalog=file:/mondrian/demo/FoodMart.mondrian.xml;
+ * JdbcDrivers=com.mysql.jdbc.Driver");<br/>
  * OlapConnection olapConnection =<br/>
  * &nbsp;&nbsp;connection.unwrap(OlapConnection.class);</code>
  * </blockquote>
@@ -61,6 +63,9 @@ import java.util.logging.Logger;
  * @since May 22, 2007
  */
 public class MondrianOlap4jDriver implements Driver {
+    public static final XmlaHandler.XmlaExtra EXTRA =
+        MondrianOlap4jExtra.INSTANCE;
+
     protected final Factory factory;
 
     static {
@@ -81,6 +86,8 @@ public class MondrianOlap4jDriver implements Driver {
     private static Factory createFactory() {
         final String factoryClassName = getFactoryClassName();
         try {
+            // Cannot use ClassResolver here, because factory's constructor has
+            // package access.
             final Class<?> clazz = Class.forName(factoryClassName);
             return (Factory) clazz.newInstance();
         } catch (ClassNotFoundException e) {

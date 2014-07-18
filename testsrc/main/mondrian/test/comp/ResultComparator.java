@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.test.comp;
@@ -47,13 +47,14 @@ class ResultComparator {
         NodeList slicerList = xmlRoot.getElementsByTagName("slicer");
 
         Cube cube = result.getQuery().getCube();
-        Dimension[] dims = cube.getDimensions();
         HashSet<String> defaultDimMembers = new HashSet<String>();
 
-        for (Dimension dim : dims) {
-            String uniqueName =
-                dim.getHierarchies()[0].getDefaultMember().getUniqueName();
-            defaultDimMembers.add(uniqueName);
+        for (Dimension dim : cube.getDimensionList()) {
+            for (Hierarchy hierarchy : dim.getHierarchyList()) {
+                String uniqueName =
+                    hierarchy.getDefaultMember().getUniqueName();
+                defaultDimMembers.add(uniqueName);
+            }
         }
 
         Axis slicerAxis = result.getSlicerAxis();
@@ -79,6 +80,7 @@ class ResultComparator {
         for (int idx = 0; idx < numMembers; idx++) {
             String expectedMemberName =
                 expectedTuple.item(idx).getFirstChild().getNodeValue();
+            expectedMemberName = foo(expectedMemberName);
             if (resultMembersContainsExpected(expectedMemberName, members)) {
                 seenMembers++;
             } else if (defaultDimMembers.contains(expectedMemberName)) {
@@ -91,6 +93,21 @@ class ResultComparator {
             "The query returned more slicer members than were expected",
             members.size(),
             seenMembers);
+    }
+
+    /**
+     * @see Util#deprecated(Object) TODO: upgrade ref logs and remove this
+     * hackery
+     */
+    private String foo(String expectedMemberName) {
+        return expectedMemberName
+            .replace("[Product].", "[Product].[Products].")
+            .replace("[Customers].", "[Customer].[Customers].")
+            .replace("[Marital Status].", "[Customer].[Marital Status].")
+            .replace("[Gender].", "[Customer].[Gender].")
+            .replace("[Education Level].", "[Customer].[Education Level].")
+            .replace("[Yearly Income].", "[Customer].[Yearly Income].")
+            .replace("[Time].", "[Time].[Time].");
     }
 
     private boolean resultMembersContainsExpected(
@@ -223,8 +240,8 @@ class ResultComparator {
         final Element dataResultXml,
         final Result result)
     {
-        final Dimension[] dimensions =
-            result.getQuery().getCube().getDimensions();
+        final List<? extends Dimension> dimensions =
+            result.getQuery().getCube().getDimensionList();
         String axisName = "slicer";
         final Axis slicerAxis = result.getSlicerAxis();
         final Element axisXml = document.createElement(axisName);
@@ -287,7 +304,7 @@ class ResultComparator {
                 }
             }
         }
-        return dimension.getHierarchies()[0].getDefaultMember();
+        return dimension.getHierarchyList().get(0).getDefaultMember();
     }
 
     private void axisToXml(
@@ -416,6 +433,7 @@ class ResultComparator {
             String resultName = resultTuple.get(idx).getUniqueName();
             String expectedName =
                 expectedMembers.item(idx).getFirstChild().getNodeValue();
+            expectedName = foo(expectedName);
 
             _assertEquals(message + " member " + idx, expectedName, resultName);
         }

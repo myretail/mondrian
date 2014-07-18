@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 1998-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2013 Pentaho and others
+=======
+// Copyright (C) 2005-2014 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 //
 // jhyde, 21 January, 1999
@@ -41,9 +45,7 @@ import org.apache.log4j.Logger;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Enumeration;
 import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * Main test suite for Mondrian.
@@ -55,9 +57,14 @@ import java.util.regex.Pattern;
  */
 public class Main extends TestSuite {
     private static final Logger logger = Logger.getLogger(Main.class);
+<<<<<<< HEAD
     /**
      * Scratch area to store information on the emerging test suite.
      */
+=======
+
+    /** Scratch area to store information on the emerging test suite. */
+>>>>>>> upstream/4.0
     private static Map<TestSuite, String> testSuiteInfo =
         new HashMap<TestSuite, String>();
 
@@ -138,7 +145,7 @@ public class Main extends TestSuite {
      */
     public static Test suite() throws Exception {
         MondrianProperties properties = MondrianProperties.instance();
-        String testName = properties.TestName.get();
+        final String testName = properties.TestName.get();
         String testClass = properties.TestClass.get();
 
         System.out.println("testName: " + testName);
@@ -208,11 +215,10 @@ public class Main extends TestSuite {
             addTest(suite, NativeFilterMatchingTest.class);
             addTest(suite, RolapConnectionTest.class);
             addTest(suite, FilteredIterableTest.class);
-            addTest(suite, HighDimensionsTest.class);
             addTest(suite, IndexedValuesTest.class);
             addTest(suite, MemoryMonitorTest.class);
             addTest(suite, ObjectPoolTest.class);
-            addTest(suite, Ssas2005CompatibilityTest.OldBehaviorTest.class);
+            addTest(suite, Ssas2005CompatibilityTest.class);
             addTest(suite, DialectTest.class);
             addTest(suite, ResultComparatorTest.class, "suite");
             addTest(suite, DrillThroughTest.class);
@@ -221,7 +227,7 @@ public class Main extends TestSuite {
             addTest(suite, SegmentCacheTest.class);
             addTest(suite, CVBasicTest.class, "suite");
             addTest(suite, GrandTotalTest.class, "suite");
-            addTest(suite, HangerDimensionTest.class, "suite");
+            addTest(suite, HangerDimensionClearViewTest.class, "suite");
             addTest(suite, MetricFilterTest.class, "suite");
             addTest(suite, MiscTest.class, "suite");
             addTest(suite, PredicateFilterTest.class, "suite");
@@ -241,7 +247,11 @@ public class Main extends TestSuite {
             addTest(suite, ScheduleTest.class);
             addTest(suite, UtilTestCase.class);
             addTest(suite, PartiallyOrderedSetTest.class);
+<<<<<<< HEAD
             addTest(suite, ExpiringReferenceTest.class);
+=======
+            addTest(suite, ConcatenableListTest.class);
+>>>>>>> upstream/4.0
             addTest(suite, Olap4jTest.class);
             addTest(suite, SortTest.class);
             if (isRunOnce()) {
@@ -254,6 +264,7 @@ public class Main extends TestSuite {
             addTest(suite, CustomizedParserTest.class);
             addTest(suite, SolveOrderScopeIsolationTest.class);
             addTest(suite, ParentChildHierarchyTest.class);
+            addTest(suite, ClosureSqlTest.class);
             addTest(suite, Olap4jTckTest.class, "suite");
             addTest(suite, MondrianServerTest.class);
             addTest(suite, XmlaBasicTest.class);
@@ -286,12 +297,13 @@ public class Main extends TestSuite {
             addTest(suite, ParallelTest.class);
             addTest(suite, SchemaVersionTest.class);
             addTest(suite, SchemaTest.class);
+            addTest(suite, HangerDimensionTest.class);
+            addTest(suite, DateTableBuilderTest.class);
             addTest(suite, PerformanceTest.class);
             // GroupingSetQueryTest must be run before any test derived from
             // CsvDBTestCase
             addTest(suite, GroupingSetQueryTest.class);
             addTest(suite, CmdRunnerTest.class);
-            addTest(suite, DataSourceChangeListenerTest.class);
             addTest(suite, ModulosTest.class);
             addTest(suite, PrimeFinderTest.class);
             addTest(suite, CellKeyTest.class);
@@ -305,6 +317,7 @@ public class Main extends TestSuite {
             addTest(suite, CellPropertyTest.class);
             addTest(suite, QueryTest.class);
             addTest(suite, RolapSchemaReaderTest.class);
+            addTest(suite, RolapSchemaTest.class);
             addTest(suite, RolapCubeTest.class);
             addTest(suite, RolapStarTest.class);
             addTest(suite, RolapSchemaPoolTest.class);
@@ -323,7 +336,11 @@ public class Main extends TestSuite {
             addTest(suite, MultipleColsInTupleAggTest.class);
             addTest(suite, DynamicSchemaProcessorTest.class);
             addTest(suite, MonitorTest.class);
+<<<<<<< HEAD
             addTest(suite, DeadlockTest.class);
+=======
+            addTest(suite, BlockingHashMapTest.class);
+>>>>>>> upstream/4.0
             addTest(suite, CodeComplianceTest.class);
 
             boolean testNonEmpty = isRunOnce();
@@ -336,7 +353,9 @@ public class Main extends TestSuite {
             if (testNonEmpty) {
                 addTest(suite, NonEmptyTest.class);
                 addTest(suite, FilterTest.class);
-                addTest(suite, NativizeSetFunDefTest.class);
+                if (Bug.BugMondrian1315Fixed) {
+                    addTest(suite, NativizeSetFunDefTest.class);
+                }
             } else {
                 logger.warn("skipping NonEmptyTests");
             }
@@ -357,8 +376,8 @@ public class Main extends TestSuite {
         if (testName != null && !testName.equals("")) {
             // Filter the suite,  so that only tests whose names match
             // "testName" (in its entirety) will be run.
-            Pattern testPattern = Pattern.compile(testName);
-            suite = copySuite(suite,  testPattern);
+            suite = TestContext.copySuite(
+                suite, TestContext.patternPredicate(testName));
         }
 
         String testInfo = testSuiteInfo.get(suite);
@@ -387,42 +406,6 @@ public class Main extends TestSuite {
             && properties.Iterations.get() == 1;
     }
 
-    /**
-     * Makes a copy of a suite, filtering certain tests.
-     *
-     * @param suite Test suite
-     * @param testPattern Regular expression of name of tests to include
-     * @return copy of test suite
-     * @throws Exception on error
-     */
-    private static TestSuite copySuite(TestSuite suite, Pattern testPattern)
-        throws Exception
-    {
-        TestSuite newSuite = new TestSuite(suite.getName());
-        Enumeration<?> tests = suite.tests();
-        while (tests.hasMoreElements()) {
-            Test test = (Test) tests.nextElement();
-            if (test instanceof TestCase) {
-                TestCase testCase = (TestCase) test;
-                final String testName = testCase.getName();
-                if (testPattern == null
-                    || testPattern.matcher(testName).matches())
-                {
-                    addTest(newSuite, test, suite.getName() + testName);
-                }
-            } else if (test instanceof TestSuite) {
-                TestSuite subSuite = copySuite((TestSuite) test, testPattern);
-                if (subSuite.countTestCases() > 0) {
-                   addTest(newSuite, subSuite, subSuite.getName());
-                }
-            } else {
-                // some other kind of test
-                addTest(newSuite, test, " ");
-            }
-        }
-        return newSuite;
-    }
-
     private static void addTest(
         TestSuite suite,
         Class<? extends TestCase> testClass) throws Exception
@@ -448,8 +431,22 @@ public class Main extends TestSuite {
 
     private static void addTest(
         TestSuite suite,
+        Class<? extends TestCase> testClass,
+        Util.Predicate1<Test> predicate)
+    {
+        final TestSuite tempSuite = new TestSuite();
+        tempSuite.addTestSuite(testClass);
+
+        int startTestCount = suite.countTestCases();
+        TestContext.copyTests(suite, tempSuite, predicate);
+        int endTestCount = suite.countTestCases();
+        printTestInfo(suite, testClass.getName(), startTestCount, endTestCount);
+    }
+
+    private static void addTest(
+        TestSuite suite,
         Test tests,
-        String testClassName) throws Exception
+        String testClassName)
     {
         int startTestCount = suite.countTestCases();
         suite.addTest(tests);

@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
+<<<<<<< HEAD
 // Copyright (C) 2006-2013 Pentaho
+=======
+// Copyright (C) 2006-2012 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -74,7 +78,7 @@ public class RolapNativeSql {
     }
 
     private RolapStar getStar(RolapStoredMeasure m) {
-        return ((RolapStar.Measure) m.getStarMeasure()).getStar();
+        return m.getStarMeasure().getStar();
     }
 
     /**
@@ -180,14 +184,12 @@ public class RolapNativeSql {
             if (aggStar != null
                 && measure.getStarMeasure() instanceof RolapStar.Column)
             {
-                RolapStar.Column column =
-                    (RolapStar.Column) measure.getStarMeasure();
+                RolapStar.Column column = measure.getStarMeasure();
                 int bitPos = column.getBitPosition();
                 AggStar.Table.Column aggColumn = aggStar.lookupColumn(bitPos);
                 exprInner = aggColumn.generateExprString(sqlQuery);
             } else {
-                exprInner =
-                    measure.getMondrianDefExpression().getExpression(sqlQuery);
+                exprInner = measure.getExpr().toSql();
             }
 
             String expr = measure.getAggregator().getExpression(exprInner);
@@ -269,12 +271,12 @@ public class RolapNativeSql {
                 final RolapCubeHierarchy hierarchy =
                     (RolapCubeHierarchy) evaluator.getCachedResult(
                         new ExpCacheDescriptor(dimExpr, evaluator));
-                dimension = (RolapCubeDimension) hierarchy.getDimension();
+                dimension = hierarchy.getDimension();
             } else if (dimExpr instanceof LevelExpr) {
                 final RolapCubeLevel level =
                     (RolapCubeLevel) evaluator.getCachedResult(
                         new ExpCacheDescriptor(dimExpr, evaluator));
-                dimension = (RolapCubeDimension) level.getDimension();
+                dimension = level.getDimension();
             } else {
                 return null;
             }
@@ -287,6 +289,7 @@ public class RolapNativeSql {
                 // We must use, in order of priority,
                 //  - caption requested: caption->name->key
                 //  - name requested: name->key
+<<<<<<< HEAD
                 MondrianDef.Expression expression = useCaption
                 ? rolapLevel.captionExp == null
                         ? rolapLevel.nameExp == null
@@ -302,31 +305,67 @@ public class RolapNativeSql {
                  // link the aggregate table to the hierarchy table. If no
                  // aggregate table is used, we can use the column expression
                  // directly.
+=======
+                RolapSchema.PhysColumn expression =
+                    useCaption
+                        ? rolapLevel.attribute.getCaptionExp() == null
+                            ? rolapLevel.attribute.getNameExp()
+                            : rolapLevel.attribute.getCaptionExp()
+                        : rolapLevel.attribute.getNameExp();
+                /*
+                 * If an aggregation table is used, it might be more efficient
+                 * to use only the aggregate table and not the hierarchy table.
+                 * Try to lookup the column bit key. If that fails, we will
+                 * link the aggregate table to the hierarchy table. If no
+                 * aggregate table is used, we can use the column expression
+                 * directly.
+                 */
+>>>>>>> upstream/4.0
                 String sourceExp;
                 if (aggStar != null
                     && rolapLevel instanceof RolapCubeLevel
-                    && expression == rolapLevel.keyExp)
+                    && rolapLevel.attribute.getKeyList().size() == 1
+                    && rolapLevel.attribute.getKeyList().get(0) == expression)
                 {
-                    int bitPos =
-                        ((RolapCubeLevel)rolapLevel).getStarKeyColumn()
-                            .getBitPosition();
+                    // The following is disabled until we sort out AggStars.
+                    // "col" will always come out null.
+                    int bitPos = -100;
+                    /*
+                    final RolapCubeLevel cubeLevel =
+                        (RolapCubeLevel) rolapLevel;
+                    RolapStar.Column starColumn =
+                        measureGroup.getRolapStarColumn(
+                            cubeLevel.cubeDimension,
+                            column,
+                            false);
+                    int bitPos = starColumn.getBitPosition();
+                    AggStar.Table.Column aggColumn =
+                        aggStar.lookupColumn(bitPos);
+                    */
+
                     mondrian.rolap.aggmatcher.AggStar.Table.Column col =
                         aggStar.lookupColumn(bitPos);
                     if (col != null) {
                         sourceExp = col.generateExprString(sqlQuery);
                     } else {
+                        // FIXME:
+                        /*
                         // Make sure the level table is part of the query.
                         rolapLevel.getHierarchy().addToFrom(
                             sqlQuery,
                             expression);
-                        sourceExp = expression.getExpression(sqlQuery);
+                        */
+                        sourceExp = expression.toSql();
                     }
                 } else if (aggStar != null) {
+                    // FIXME:
+                    /*
                     // Make sure the level table is part of the query.
                     rolapLevel.getHierarchy().addToFrom(sqlQuery, expression);
-                    sourceExp = expression.getExpression(sqlQuery);
+                    */
+                    sourceExp = expression.toSql();
                 } else {
-                    sourceExp = expression.getExpression(sqlQuery);
+                    sourceExp = expression.toSql();
                 }
 
                 // The dialect might require the use of the alias rather
@@ -365,7 +404,7 @@ public class RolapNativeSql {
                 return null;
             }
             final Member member = ((MemberExpr) exp).getMember();
-            if (!(member instanceof RolapCalculatedMember)) {
+            if (!(member instanceof CalculatedMember)) {
                 return null;
             }
             exp = member.getExpression();
@@ -467,7 +506,7 @@ public class RolapNativeSql {
                 }
                 buf.append(args[i]);
             }
-            buf.append(") ");
+            buf.append(")");
             return buf.toString();
         }
 

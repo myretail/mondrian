@@ -16,19 +16,29 @@ import mondrian.olap.fun.Resolver;
 import mondrian.olap.type.Type;
 import mondrian.resource.MondrianResource;
 import mondrian.rolap.*;
-import mondrian.spi.UserDefinedFunction;
+import mondrian.spi.*;
 import mondrian.util.*;
 
+<<<<<<< HEAD
 import org.apache.commons.collections.keyvalue.AbstractMapEntry;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs.*;
 import org.apache.commons.vfs.provider.http.HttpFileObject;
+=======
+import org.apache.commons.collections.Predicate;
+import org.apache.commons.io.IOUtils;
+>>>>>>> upstream/4.0
 import org.apache.log4j.Logger;
 
 import org.eigenbase.xom.XOMUtil;
 
+<<<<<<< HEAD
 import org.olap4j.impl.Olap4jUtil;
+=======
+import org.olap4j.impl.*;
+>>>>>>> upstream/4.0
 import org.olap4j.mdx.*;
+import org.olap4j.metadata.NamedList;
 
 import java.io.*;
 import java.lang.ref.Reference;
@@ -43,6 +53,7 @@ import java.sql.*;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -103,6 +114,13 @@ public class Util extends XOMUtil {
         || System.getProperty("java.version").startsWith("1.5");
 
     /**
+     * Whether we are running a version of Java before 1.7.
+     */
+    public static final boolean PreJdk17 =
+        PreJdk16
+        || System.getProperty("java.version").startsWith("1.6");
+
+    /**
      * Whether this is an IBM JVM.
      */
     public static final boolean IBM_JVM =
@@ -134,6 +152,8 @@ public class Util extends XOMUtil {
         Access.class.getSuperclass().getName().equals(
             "net.sourceforge.retroweaver.runtime.java.lang.Enum");
 
+    private static Boolean HAVE_SCRIPTING;
+
     private static final UtilCompatible compatible;
 
     /**
@@ -143,26 +163,60 @@ public class Util extends XOMUtil {
      */
     public static final boolean DEBUG = false;
 
+    public static final ComparableEmptyList COMPARABLE_EMPTY_LIST =
+        new ComparableEmptyList();
+
+    public static final Lazy<VirtualFileHandler> VIRTUAL_FILE_HANDLER =
+        new Lazy<VirtualFileHandler>(VirtualFileHandler.FACTORY);
+
     static {
         String className;
         if (PreJdk15 || Retrowoven) {
             className = "mondrian.util.UtilCompatibleJdk14";
         } else if (PreJdk16) {
             className = "mondrian.util.UtilCompatibleJdk15";
-        } else {
+        } else if (PreJdk17) {
             className = "mondrian.util.UtilCompatibleJdk16";
+        } else {
+            className = "mondrian.util.UtilCompatibleJdk17";
+        }
+        compatible = ClassResolver.INSTANCE.instantiateSafe(className);
+    }
+
+    private static boolean deduceHaveScripting() {
+        // Figure out whether scripting is available.
+        // We know that scripting only exists in JDK 1.6 and later.
+        // But even then, if certain JARs are not on path, the JavaScript
+        // engine may not be available. OpenJDK 1.7 has this problem.
+        if (PreJdk16) {
+            return false;
         }
         try {
-            Class<UtilCompatible> clazz =
-                (Class<UtilCompatible>) Class.forName(className);
-            compatible = clazz.newInstance();
-        } catch (ClassNotFoundException e) {
-            throw Util.newInternal(e, "Could not load '" + className + "'");
-        } catch (InstantiationException e) {
-            throw Util.newInternal(e, "Could not load '" + className + "'");
-        } catch (IllegalAccessException e) {
-            throw Util.newInternal(e, "Could not load '" + className + "'");
+            //noinspection unchecked
+            final Function0<Boolean> function =
+                compatible.compileScript(
+                    Function0.class,
+                    "function apply() { return true; }",
+                    "JavaScript");
+            return function.apply();
+        } catch (MondrianException e) {
+            Util.discard(e);
         }
+        return false;
+    }
+
+    /**
+     * Returns whether scripting is available.
+     */
+    public static synchronized boolean haveScripting() {
+        if (HAVE_SCRIPTING == null) {
+            // Figure out whether scripting is available.
+            // We know that scripting only exists in JDK 1.6 and later.
+            // But even then, if certain JARs are not on path, the JavaScript
+            // engine may not be available. OpenJDK 1.7 has this problem.
+            HAVE_SCRIPTING = deduceHaveScripting();
+        }
+        return HAVE_SCRIPTING;
     }
 
     public static boolean isNull(Object o) {
@@ -250,11 +304,12 @@ public class Util extends XOMUtil {
         // have the right name and are marked as daemon threads.
         final ThreadFactory factory =
             new ThreadFactory() {
+                private final AtomicInteger counter = new AtomicInteger(0);
                 public Thread newThread(Runnable r) {
                     final Thread t =
                         Executors.defaultThreadFactory().newThread(r);
                     t.setDaemon(true);
-                    t.setName(name);
+                    t.setName(name + '_' + counter.incrementAndGet());
                     return t;
                 }
             };
@@ -304,17 +359,104 @@ public class Util extends XOMUtil {
         return Executors.newScheduledThreadPool(
             maxNbThreads,
             new ThreadFactory() {
+                final AtomicInteger counter = new AtomicInteger(0);
+
+<<<<<<< HEAD
+=======
                 public Thread newThread(Runnable r) {
                     final Thread thread =
                         Executors.defaultThreadFactory().newThread(r);
                     thread.setDaemon(true);
-                    thread.setName(name);
+                    thread.setName(name + '_' + counter.incrementAndGet());
                     return thread;
                 }
             }
         );
     }
 
+    /**
+     * Distributes and executes a list of tasks via an executor
+     * service. This function will only return if one of the two
+     * following things occur:
+     * <ul>
+     * <li>all tasks have finished running</li>
+     * <li><code>breakAtFirstNonNull</code> is set to true and
+     * one of the tasks has returned a non null value.</li>
+     * </ul>
+     * @param <E>
+     * @param tasks List of tasks to run.
+     * @param executor The executor service to use.
+     * @param breakAtFirstNonNull Whether or not to stop executing
+     * the tasks if one of them returns a non null value. Useful
+     * when scanning a list of items for the first match found.
+     * @return If <code>breakAtFirstNonNull</code> is true, this
+     * function returns the first non null result given by the first
+     * task to complete. Returns null otherwise.
+     */
+    public static <E> E executeDistributedTasks(
+        List<Callable<E>> tasks,
+        ExecutorService executor,
+        boolean breakAtFirstNonNull)
+    {
+        final List<Future<E>> tasksList =
+            new ArrayList<Future<E>>();
+        final CountDownLatch latch =
+            new CountDownLatch(tasks.size());
+        try {
+            for (final Callable<E> call : tasks) {
+                tasksList.add(
+                    executor.submit(
+                        new Callable<E>() {
+                            public E call() throws Exception {
+                                E result = call.call();
+                                latch.countDown();
+                                return result;
+                            }
+                        }));
+            }
+
+            E result = null;
+            taskLoop:
+            while (true) {
+                if (breakAtFirstNonNull) {
+                    for (Future<E> task : tasksList) {
+                        if (task.isDone()) {
+                            E taskResult = null;
+                            try {
+                                taskResult = task.get();
+                            } catch (InterruptedException e) {
+                                throw new MondrianException(e);
+                            } catch (ExecutionException e) {
+                                throw new MondrianException(e);
+                            }
+                            if (taskResult != null) {
+                                result = taskResult;
+                                break taskLoop;
+                            }
+                        }
+                    }
+                }
+                // Break anyway if all tasks are completed.
+                if (latch.getCount() == 0) {
+                    break taskLoop;
+                }
+                // Sleep for some time as not all tasks seem completed.
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new MondrianException(e);
+                }
+            }
+            return result;
+        } finally {
+            // Make double sure all tasks are killed
+            for (Future<E> task : tasksList) {
+                task.cancel(true);
+            }
+        }
+    }
+
+>>>>>>> upstream/4.0
     /**
      * Encodes string for MDX (escapes ] as ]] inside a name).
      *
@@ -466,6 +608,10 @@ public class Util extends XOMUtil {
         return matchCase ? s.equals(t) : s.equalsIgnoreCase(t);
     }
 
+    public static String toUpperCase(String s) {
+        return s == null ? null : s.toUpperCase();
+    }
+
     /**
      * Compares two names.  if case sensitive flag is false,
      * apply finer grain difference with case sensitive
@@ -523,12 +669,33 @@ public class Util extends XOMUtil {
             // Luckily, "F" comes before "T" in the alphabet.
             k1 = k1.toString();
             k2 = k2.toString();
+        } else if (k1 instanceof List) {
+            return compareLists((List) k1, (List) k2);
         }
         return ((Comparable) k1).compareTo(k2);
     }
 
+    private static int compareLists(List list0, List list1) {
+        final int size0 = list0.size();
+        final int size1 = list1.size();
+        int c = compare(size0, size1);
+        if (c != 0) {
+            return c;
+        }
+        for (int i = 0; i < size0; i++) {
+            Object o0 = list0.get(i);
+            Object o1 = list1.get(i);
+            c = compareKey(o0, o1);
+            if (c != 0) {
+                return c;
+            }
+        }
+        return 0;
+    }
+
     /**
-     * Compares integer values.
+     * Compares two integers using the same algorithm as
+     * {@link Integer#compareTo(Integer)}.
      *
      * @param i0 First integer
      * @param i1 Second integer
@@ -536,6 +703,29 @@ public class Util extends XOMUtil {
      */
     public static int compare(int i0, int i1) {
         return i0 < i1 ? -1 : (i0 == i1 ? 0 : 1);
+    }
+
+    /**
+     * Compares two comparables, handling null values.
+     *
+     * @param t0 First value
+     * @param t1 Second value
+     * @param <T> Value type
+     * @return Comparison, per {@link Comparable#compareTo(Object)}
+     */
+    public static <T extends Comparable<T>> int compare(T t0, T t1) {
+        if (t0 == null) {
+            if (t1 == null) {
+                return 0;
+            } else {
+                // null is less than anything else
+                return -1;
+            }
+        } else if (t1 == null) {
+            return 1;
+        } else {
+            return RolapUtil.ROLAP_COMPARATOR.compare(t0, t1);
+        }
     }
 
     /**
@@ -672,222 +862,6 @@ public class Util extends XOMUtil {
             buf.append('.');
             Util.quoteMdxIdentifier(name, buf);
             return buf.toString();
-        }
-    }
-
-    public static OlapElement lookupCompound(
-        SchemaReader schemaReader,
-        OlapElement parent,
-        List<Id.Segment> names,
-        boolean failIfNotFound,
-        int category)
-    {
-        return lookupCompound(
-            schemaReader, parent, names, failIfNotFound, category,
-            MatchType.EXACT);
-    }
-
-    /**
-     * Resolves a name such as
-     * '[Products]&#46;[Product Department]&#46;[Produce]' by resolving the
-     * components ('Products', and so forth) one at a time.
-     *
-     * @param schemaReader Schema reader, supplies access-control context
-     * @param parent Parent element to search in
-     * @param names Exploded compound name, such as {"Products",
-     *   "Product Department", "Produce"}
-     * @param failIfNotFound If the element is not found, determines whether
-     *   to return null or throw an error
-     * @param category Type of returned element, a {@link Category} value;
-     *   {@link Category#Unknown} if it doesn't matter.
-     *
-     * @pre parent != null
-     * @post !(failIfNotFound && return == null)
-     *
-     * @see #parseIdentifier(String)
-     */
-    public static OlapElement lookupCompound(
-        SchemaReader schemaReader,
-        OlapElement parent,
-        List<Id.Segment> names,
-        boolean failIfNotFound,
-        int category,
-        MatchType matchType)
-    {
-        Util.assertPrecondition(parent != null, "parent != null");
-
-        if (LOGGER.isDebugEnabled()) {
-            StringBuilder buf = new StringBuilder(64);
-            buf.append("Util.lookupCompound: ");
-            buf.append("parent.name=");
-            buf.append(parent.getName());
-            buf.append(", category=");
-            buf.append(Category.instance.getName(category));
-            buf.append(", names=");
-            quoteMdxIdentifier(names, buf);
-            LOGGER.debug(buf.toString());
-        }
-
-        // First look up a member from the cache of calculated members
-        // (cubes and queries both have them).
-        switch (category) {
-        case Category.Member:
-        case Category.Unknown:
-            Member member = schemaReader.getCalculatedMember(names);
-            if (member != null) {
-                return member;
-            }
-        }
-        // Likewise named set.
-        switch (category) {
-        case Category.Set:
-        case Category.Unknown:
-            NamedSet namedSet = schemaReader.getNamedSet(names);
-            if (namedSet != null) {
-                return namedSet;
-            }
-        }
-
-        // Now resolve the name one part at a time.
-        for (int i = 0; i < names.size(); i++) {
-            OlapElement child;
-            Id.NameSegment name;
-            if (names.get(i) instanceof Id.NameSegment) {
-                name = (Id.NameSegment) names.get(i);
-                child = schemaReader.getElementChild(parent, name, matchType);
-            } else if (parent instanceof RolapLevel
-                       && names.get(i) instanceof Id.KeySegment
-                       && names.get(i).getKeyParts().size() == 1)
-            {
-                // The following code is for SsasCompatibleNaming=false.
-                // Continues the very limited support for key segments in
-                // mondrian-3.x. To be removed in mondrian-4, when
-                // SsasCompatibleNaming=true is the only option.
-                final Id.KeySegment keySegment = (Id.KeySegment) names.get(i);
-                name = keySegment.getKeyParts().get(0);
-                final List<Member> levelMembers =
-                    schemaReader.getLevelMembers(
-                        (Level) parent, false);
-                child = null;
-                for (Member member : levelMembers) {
-                    if (((RolapMember) member).getKey().toString().equals(
-                            name.getName()))
-                    {
-                        child = member;
-                        break;
-                    }
-                }
-            } else {
-                name = null;
-                child = schemaReader.getElementChild(parent, name, matchType);
-            }
-            // if we're doing a non-exact match, and we find a non-exact
-            // match, then for an after match, return the first child
-            // of each subsequent level; for a before match, return the
-            // last child
-            if (child instanceof Member
-                && !matchType.isExact()
-                && !Util.equalName(child.getName(), name.getName()))
-            {
-                Member bestChild = (Member) child;
-                for (int j = i + 1; j < names.size(); j++) {
-                    List<Member> childrenList =
-                        schemaReader.getMemberChildren(bestChild);
-                    FunUtil.hierarchizeMemberList(childrenList, false);
-                    if (matchType == MatchType.AFTER) {
-                        bestChild = childrenList.get(0);
-                    } else {
-                        bestChild =
-                            childrenList.get(childrenList.size() - 1);
-                    }
-                    if (bestChild == null) {
-                        child = null;
-                        break;
-                    }
-                }
-                parent = bestChild;
-                break;
-            }
-            if (child == null) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug(
-                        "Util.lookupCompound: "
-                        + "parent.name="
-                        + parent.getName()
-                        + " has no child with name="
-                        + name);
-                }
-
-                if (!failIfNotFound) {
-                    return null;
-                } else if (category == Category.Member) {
-                    throw MondrianResource.instance().MemberNotFound.ex(
-                        quoteMdxIdentifier(names));
-                } else {
-                    throw MondrianResource.instance().MdxChildObjectNotFound
-                        .ex(name.toString(), parent.getQualifiedName());
-                }
-            }
-            parent = child;
-            if (matchType == MatchType.EXACT_SCHEMA) {
-                matchType = MatchType.EXACT;
-            }
-        }
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(
-                "Util.lookupCompound: "
-                + "found child.name="
-                + parent.getName()
-                + ", child.class="
-                + parent.getClass().getName());
-        }
-
-        switch (category) {
-        case Category.Dimension:
-            if (parent instanceof Dimension) {
-                return parent;
-            } else if (parent instanceof Hierarchy) {
-                return parent.getDimension();
-            } else if (failIfNotFound) {
-                throw Util.newError(
-                    "Can not find dimension '" + implode(names) + "'");
-            } else {
-                return null;
-            }
-        case Category.Hierarchy:
-            if (parent instanceof Hierarchy) {
-                return parent;
-            } else if (parent instanceof Dimension) {
-                return parent.getHierarchy();
-            } else if (failIfNotFound) {
-                throw Util.newError(
-                    "Can not find hierarchy '" + implode(names) + "'");
-            } else {
-                return null;
-            }
-        case Category.Level:
-            if (parent instanceof Level) {
-                return parent;
-            } else if (failIfNotFound) {
-                throw Util.newError(
-                    "Can not find level '" + implode(names) + "'");
-            } else {
-                return null;
-            }
-        case Category.Member:
-            if (parent instanceof Member) {
-                return parent;
-            } else if (failIfNotFound) {
-                throw MondrianResource.instance().MdxCantFindMember.ex(
-                    implode(names));
-            } else {
-                return null;
-            }
-        case Category.Unknown:
-            assertPostcondition(parent != null, "return != null");
-            return parent;
-        default:
-            throw newInternal("Bad switch " + category);
         }
     }
 
@@ -1140,7 +1114,7 @@ public class Util extends XOMUtil {
             if (matchType.isExact() || hierarchy.hasAll()) {
                 rc = rootMember.getName().compareToIgnoreCase(memberName.name);
             } else {
-                rc = FunUtil.compareSiblingMembers(
+                rc = FunUtil.compareSiblingMembersByName(
                     rootMember,
                     searchMember);
             }
@@ -1151,7 +1125,7 @@ public class Util extends XOMUtil {
                 if (matchType == MatchType.BEFORE) {
                     if (rc < 0
                         && (bestMatch == -1
-                            || FunUtil.compareSiblingMembers(
+                            || FunUtil.compareSiblingMembersByName(
                                 rootMember,
                                 rootMembers.get(bestMatch)) > 0))
                     {
@@ -1160,7 +1134,7 @@ public class Util extends XOMUtil {
                 } else if (matchType == MatchType.AFTER) {
                     if (rc > 0
                         && (bestMatch == -1
-                            || FunUtil.compareSiblingMembers(
+                            || FunUtil.compareSiblingMembersByName(
                                 rootMember,
                                 rootMembers.get(bestMatch)) < 0))
                     {
@@ -1180,12 +1154,17 @@ public class Util extends XOMUtil {
         // If the first level is 'all', lookup member at second level. For
         // example, they could say '[USA]' instead of '[(All
         // Customers)].[USA]'.
-        return (rootMembers.size() > 0 && rootMembers.get(0).isAll())
-            ? reader.lookupMemberChildByName(
-                rootMembers.get(0),
-                memberName,
-                matchType)
-            : null;
+        if (rootMembers.size() <= 0 || !rootMembers.get(0).isAll()) {
+            return null;
+        }
+
+        // REVIEW: Since we look up root members frequently -- whenever we
+        // resolve an MDX name -- it would probably be better to retrieve
+        // all root members, not just the one by a particular name.
+        return reader.lookupMemberChildByName(
+            rootMembers.get(0),
+            memberName,
+            matchType);
     }
 
     /**
@@ -1193,16 +1172,13 @@ public class Util extends XOMUtil {
      * such level.
      */
     public static Level lookupHierarchyLevel(Hierarchy hierarchy, String s) {
-        final Level[] levels = hierarchy.getLevels();
-        for (Level level : levels) {
+        for (Level level : hierarchy.getLevelList()) {
             if (level.getName().equalsIgnoreCase(s)) {
                 return level;
             }
         }
         return null;
     }
-
-
 
     /**
      * Finds the zero based ordinal of a Member among its siblings.
@@ -1323,18 +1299,18 @@ public class Util extends XOMUtil {
         Level level,
         String propertyName)
     {
+        boolean caseSensitive =
+            MondrianProperties.instance().CaseSensitive.get();
         do {
             Property[] properties = level.getProperties();
             for (Property property : properties) {
-                if (property.getName().equals(propertyName)) {
+                if (equal(property.getName(), propertyName, caseSensitive)) {
                     return property;
                 }
             }
             level = level.getParentLevel();
         } while (level != null);
         // Now try a standard property.
-        boolean caseSensitive =
-            MondrianProperties.instance().CaseSensitive.get();
         final Property property = Property.lookup(propertyName, caseSensitive);
         if (property != null
             && property.isMemberProperty()
@@ -1363,10 +1339,20 @@ public class Util extends XOMUtil {
      */
     public static <T> T deprecated(T reason, boolean fail) {
         if (fail) {
-            throw new UnsupportedOperationException(reason.toString());
+            throw new UnsupportedOperationException(String.valueOf(reason));
         } else {
             return reason;
         }
+    }
+
+    /** Call this method to hit a break point. Remove calls to this method
+     * before checking in code. */
+    @Deprecated
+    public static <T> T pauseIf(boolean condition, T... args) {
+        if (condition) {
+            Util.discard(0); // put a breakpoint here
+        }
+        return args.length > 0 ? args[0] : null;
     }
 
     public static List<Member> addLevelCalculatedMembers(
@@ -1375,21 +1361,8 @@ public class Util extends XOMUtil {
         List<Member> members)
     {
         List<Member> calcMembers =
-            reader.getCalculatedMembers(level.getHierarchy());
-        List<Member> calcMembersInThisLevel = new ArrayList<Member>();
-        for (Member calcMember : calcMembers) {
-            if (calcMember.getLevel().equals(level)) {
-                calcMembersInThisLevel.add(calcMember);
-            }
-        }
-        if (!calcMembersInThisLevel.isEmpty()) {
-            List<Member> newMemberList =
-                new ConcatenableList<Member>();
-            newMemberList.addAll(members);
-            newMemberList.addAll(calcMembersInThisLevel);
-            return newMemberList;
-        }
-        return members;
+            reader.getCalculatedMembers(level);
+        return Composite.optimalOf(members, calcMembers);
     }
 
     /**
@@ -1606,6 +1579,32 @@ public class Util extends XOMUtil {
     }
 
     /**
+     * Converts a list of a string, with commas between elements.
+     *
+     * For example,
+     * <code>commaList(Arrays.asList({"a", "b"}))</code>
+     * returns "a, b".
+     *
+     * @param list List
+     * @return String representation of string
+     */
+    public static <T> String commaList(List<T> list)
+    {
+        if (list.size() == 1) {
+            return list.get(0).toString();
+        }
+        final StringBuilder buf = new StringBuilder();
+        int k = -1;
+        for (T t : list) {
+            if (++k > 0) {
+                buf.append(", ");
+            }
+            buf.append(t);
+        }
+        return buf.toString();
+    }
+
+    /**
      * Makes a name distinct from other names which have already been used
      * and shorter than a length limit, adds it to the list, and returns it.
      *
@@ -1670,6 +1669,23 @@ public class Util extends XOMUtil {
     }
 
     /**
+     * Returns whether all of the elements in a collection are different.
+     *
+     * <p>Trivially true if the collection is a {@link Set}; if another kind
+     * of collection, such as a {@link List}, internally forms a set to
+     * detect duplicates.
+     *
+     * @param collection Collection
+     * @return true if contents are distinct; false if same element occurs
+     *    more than once
+     */
+    public static <T> boolean isDistinct(Collection<T> collection) {
+        return collection instanceof Set
+            || collection.size() < 2
+            || new HashSet<T>(collection).size() == collection.size();
+    }
+
+    /**
      * Creates a memory-, CPU- and cache-efficient immutable list.
      *
      * @param t Array of members of list
@@ -1703,7 +1719,7 @@ public class Util extends XOMUtil {
     private static <T> List<T> _flatList(T[] t, boolean copy) {
         switch (t.length) {
         case 0:
-            return Collections.emptyList();
+            return COMPARABLE_EMPTY_LIST;
         case 1:
             return Collections.singletonList(t[0]);
         case 2:
@@ -1715,9 +1731,9 @@ public class Util extends XOMUtil {
             //   write our own implementation and reduce creation overhead a
             //   bit.
             if (copy) {
-                return Arrays.asList(t.clone());
+                return new ComparableList(Arrays.asList(t.clone()));
             } else {
-                return Arrays.asList(t);
+                return new ComparableList(Arrays.asList(t));
             }
         }
     }
@@ -1733,7 +1749,7 @@ public class Util extends XOMUtil {
     public static <T> List<T> flatList(List<T> t) {
         switch (t.size()) {
         case 0:
-            return Collections.emptyList();
+            return COMPARABLE_EMPTY_LIST;
         case 1:
             return Collections.singletonList(t.get(0));
         case 2:
@@ -1745,7 +1761,7 @@ public class Util extends XOMUtil {
             //   write our own implementation and reduce creation overhead a
             //   bit.
             //noinspection unchecked
-            return (List<T>) Arrays.asList(t.toArray());
+            return new ComparableList(Arrays.asList(t.toArray()));
         }
     }
 
@@ -1758,6 +1774,13 @@ public class Util extends XOMUtil {
      * @return Java locale object
      */
     public static Locale parseLocale(String localeString) {
+        if (localeString.contains("-")) {
+            // JDK 1.7 and later can parse BCP47 locales, e.g. "en-US".
+            Locale locale = compatible.localeForLanguageTag(localeString);
+            if (locale != null) {
+                return locale;
+            }
+        }
         String[] strings = localeString.split("_");
         switch (strings.length) {
         case 1:
@@ -1909,9 +1932,9 @@ public class Util extends XOMUtil {
      */
     public static <T> Iterable<T> filter(
         final Iterable<T> iterable,
-        final Functor1<Boolean, T>... conds)
+        final Predicate1<T>... conds)
     {
-        final Functor1<Boolean, T>[] conds2 = optimizeConditions(conds);
+        final Predicate1<T>[] conds2 = optimizeConditions(conds);
         if (conds2.length == 0) {
             return iterable;
         }
@@ -1926,8 +1949,8 @@ public class Util extends XOMUtil {
                         outer:
                         while (iterator.hasNext()) {
                             next = iterator.next();
-                            for (Functor1<Boolean, T> cond : conds2) {
-                                if (!cond.apply(next)) {
+                            for (Predicate1<T> cond : conds2) {
+                                if (!cond.test(next)) {
                                     continue outer;
                                 }
                             }
@@ -1954,22 +1977,22 @@ public class Util extends XOMUtil {
         };
     }
 
-    private static <T> Functor1<Boolean, T>[] optimizeConditions(
-        Functor1<Boolean, T>[] conds)
+    private static <T> Predicate1<T>[] optimizeConditions(
+        Predicate1<T>[] conds)
     {
-        final List<Functor1<Boolean, T>> functor1List =
-            new ArrayList<Functor1<Boolean, T>>(Arrays.asList(conds));
-        for (Iterator<Functor1<Boolean, T>> funcIter =
-            functor1List.iterator(); funcIter.hasNext();)
+        final List<Predicate1<T>> predicateList =
+            new ArrayList<Predicate1<T>>(Arrays.asList(conds));
+        for (Iterator<Predicate1<T>> funcIter = predicateList.iterator();
+            funcIter.hasNext();)
         {
-            Functor1<Boolean, T> booleanTFunctor1 = funcIter.next();
-            if (booleanTFunctor1 == trueFunctor()) {
+            Predicate1<T> predicate = funcIter.next();
+            if (predicate == truePredicate1()) {
                 funcIter.remove();
             }
         }
-        if (functor1List.size() < conds.length) {
+        if (predicateList.size() < conds.length) {
             //noinspection unchecked
-            return functor1List.toArray(new Functor1[functor1List.size()]);
+            return predicateList.toArray(new Predicate1[predicateList.size()]);
         } else {
             return conds;
         }
@@ -1991,8 +2014,8 @@ public class Util extends XOMUtil {
     }
 
     /**
-     * Sorts a collection of objects using a {@link java.util.Comparator} and returns a
-     * list.
+     * Sorts a collection of objects using a {@link java.util.Comparator} and
+     * returns a list.
      *
      * @param collection Collection
      * @param comparator Comparator
@@ -2216,7 +2239,7 @@ public class Util extends XOMUtil {
             || !(set2 instanceof ArraySortedSet))
         {
             final TreeSet<E> set = new TreeSet<E>(set1);
-            set.removeAll(set2);
+            set.retainAll(set2);
             return set;
         }
         final Comparable<?>[] result =
@@ -2251,18 +2274,6 @@ public class Util extends XOMUtil {
     }
 
     /**
-     * Compares two integers using the same algorithm as
-     * {@link Integer#compareTo(Integer)}.
-     *
-     * @param i0 First integer
-     * @param i1 Second integer
-     * @return Comparison
-     */
-    public static int compareIntegers(int i0, int i1) {
-        return (i0 < i1 ? -1 : (i0 == i1 ? 0 : 1));
-    }
-
-    /**
      * Returns the last item in a list.
      *
      * @param list List
@@ -2294,6 +2305,69 @@ public class Util extends XOMUtil {
     }
 
     /**
+<<<<<<< HEAD
+=======
+     * Sets or clears a given bit in an integer.
+     *
+     * @param i Initial integer
+     * @param bit Bit to set
+     * @param set Whether to set or clear
+     * @return Integer with bit set or cleared
+     */
+    public static int bit(int i, int bit, boolean set) {
+        return i & ~(set ? 0 : (1 << bit)) | (set ? (1 << bit) : 0);
+    }
+
+    /**
+     * Returns the first argument that is not null.
+     *
+     * <p>You can use this method to provide defaults, e.g.
+     * {@code first(foo.name, "anonymous")}.</p>
+     *
+     * @param s0 Argument one
+     * @param s1 Argument two
+     * @param <T> Type of arguments and result
+     * @return First argument that is not null.
+     */
+    public static <T> T first(T s0, T s1) {
+        if (s0 != null) {
+            return s0;
+        }
+        return s1;
+    }
+
+    /**
+     * Computes <a href="http://en.wikipedia.org/wiki/Julian_day">Julian Day
+     * Number</a>.</p>
+     *
+     * @param year Year
+     * @param month Month
+     * @param day Date
+     * @return Julian Day Number (JDN)
+     */
+    public static long julian(long year, long month, long day) {
+        long a = (14 - month) / 12;
+        long y = year + 4800 - a;
+        long m = month + 12 * a - 3;
+        return day
+            + (153 * m + 2) / 5
+            + 365 * y
+            + y / 4
+            - y / 100
+            + y / 400
+            - 32045;
+    }
+
+    public static <T> List<T> toList(Iterable<? extends T> iterable) {
+        final List<T> list = new ArrayList<T>();
+        for (T t : iterable) {
+            list.add(t);
+        }
+        return list;
+    }
+
+    /**
+>>>>>>> upstream/4.0
      * Closes a JDBC result set, statement, and connection, ignoring any errors.
      * If any of them are null, that's fine.
      *
@@ -2345,6 +2419,85 @@ public class Util extends XOMUtil {
     }
 
     /**
+<<<<<<< HEAD
+=======
+     * Adds a (key, value) pair to a multi-map represented as a map of lists.
+     * A "put" may add a new key, or it may add a new value to the list of an
+     * existing key.
+     *
+     * @param map Map
+     * @param k Key
+     * @param v Value
+     * @param <K> Key type
+     * @param <V> Value type
+     */
+    public static <K, V> void putMulti(Map<K, List<V>> map, K k, V v) {
+        List<V> list = map.put(k, Collections.singletonList(v));
+        if (list != null) {
+            if (list.size() == 1) {
+                list = new ArrayList<V>(list);
+            }
+            list.add(v);
+            map.put(k, list);
+        }
+    }
+
+    /**
+     * Adds a (key, bit) pair to a multi-map represented as a map of
+     * {@link BitSet}s. A "put" may add a new bit set, or it may add a new value
+     * to the list of an existing bit set.
+     *
+     * @param map Map
+     * @param k Key
+     * @param v Value
+     * @param <K> Key type
+     */
+    public static <K> void putMulti(Map<K, BitSet> map, K k, int v) {
+        BitSet bitSet = map.get(k);
+        if (bitSet == null) {
+            bitSet = new BitSet();
+            map.put(k, bitSet);
+        }
+        bitSet.set(v);
+    }
+
+    /** Returns a subset of a list whose elements pass a given predicate. */
+    public static <E> List<E> copyWhere(List<E> list, Predicate1<E> predicate) {
+        final int size = list.size();
+        List<E> result = new ArrayList<E>(size);
+        for (E e : list) {
+            if (predicate.apply(e)) {
+                result.add(e);
+            }
+        }
+        // Don't make a copy if all elements pass predicate.
+        return result.size() == size ? list : result;
+    }
+
+    /** Returns a view of a list obtained by applying a function to each
+     * element. */
+    public static <P, R> List<R> transform(
+        final Function1<P, R> fn,
+        final List<P> list)
+    {
+        return new AbstractList<R>() {
+            public R get(int index) {
+                return fn.apply(list.get(index));
+            }
+
+            public int size() {
+                return list.size();
+            }
+        };
+    }
+
+    /** Returns a list with all elements from {@code from} onwards. */
+    public static <E> List<E> subList(List<E> list, int from) {
+        return list.subList(from, list.size());
+    }
+
+    /**
+>>>>>>> upstream/4.0
      * Creates a bitset with bits from {@code fromIndex} (inclusive) to
      * specified {@code toIndex} (exclusive) set to {@code true}.
      *
@@ -2365,6 +2518,10 @@ public class Util extends XOMUtil {
         return bitSet;
     }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/4.0
     public static class ErrorCellValue {
         public String toString() {
             return "#ERR";
@@ -2629,7 +2786,13 @@ public class Util extends XOMUtil {
         @SuppressWarnings({"CloneDoesntCallSuperClone"})
         @Override
         public PropertyList clone() {
-            return new PropertyList(new ArrayList<Pair<String, String>>(list));
+            // Copy pairs, because pairs are modified when put is called.
+            final List<Pair<String, String>> list1 =
+                new ArrayList<Pair<String, String>>(list.size());
+            for (Pair<String, String> pair : list) {
+                list1.add(Pair.of(pair.left, pair.right));
+            }
+            return new PropertyList(list1);
         }
 
         public String get(String key) {
@@ -2637,8 +2800,7 @@ public class Util extends XOMUtil {
         }
 
         public String get(String key, String defaultValue) {
-            for (int i = 0, n = list.size(); i < n; i++) {
-                Pair<String, String> pair = list.get(i);
+            for (Pair<String, String> pair : list) {
                 if (pair.left.equalsIgnoreCase(key)) {
                     return pair.right;
                 }
@@ -2647,8 +2809,7 @@ public class Util extends XOMUtil {
         }
 
         public String put(String key, String value) {
-            for (int i = 0, n = list.size(); i < n; i++) {
-                Pair<String, String> pair = list.get(i);
+            for (Pair<String, String> pair : list) {
                 if (pair.left.equalsIgnoreCase(key)) {
                     String old = pair.right;
                     if (key.equalsIgnoreCase("Provider")) {
@@ -2660,7 +2821,7 @@ public class Util extends XOMUtil {
                     return old;
                 }
             }
-            list.add(new Pair<String, String>(key, value));
+            list.add(Pair.of(key, value));
             return null;
         }
 
@@ -2915,10 +3076,26 @@ public class Util extends XOMUtil {
     }
 
     /**
+     * Computes a hash code from an existing hash code and one or more objects
+     * (any of which may be null).
+     *
+     * @param h Existing hash code
+     * @param a Array of zero or more arguments
+     * @return Hash code of h and each object in array
+     */
+    public static int hashV(int h, Object... a) {
+        return hashArray(h, a);
+    }
+
+    /**
      * Computes a hash code from an existing hash code and an array of objects
      * (which may be null).
+     *
+     * @param h Existing hash code
+     * @param a Array of arguments
+     * @return Hash code of h and each object in array
      */
-    public static int hashArray(int h, Object [] a) {
+    public static int hashArray(int h, Object[] a) {
         // The hashcode for a null array and an empty array should be different
         // than h, so use magic numbers.
         if (a == null) {
@@ -3225,6 +3402,28 @@ public class Util extends XOMUtil {
     }
 
     /**
+     * Reads an InputStream into an OutputStream until it returns EOF.
+     *
+     * @param is Input stream
+     * @param bufferSize size of buffer to allocate for reading.
+     * @param os Output stream
+     * @throws IOException on IO error
+     */
+    public static void readFully(
+        final InputStream is,
+        final int bufferSize,
+        ByteArrayOutputStream os)
+        throws IOException
+    {
+        final byte[] buffer = new byte[bufferSize];
+        int len = is.read(buffer);
+        while (len != -1) {
+            os.write(buffer, 0, len);
+            len = is.read(buffer);
+        }
+    }
+
+    /**
      * Returns the contents of a URL, substituting tokens.
      *
      * <p>Replaces the tokens "${key}" if the map is not null and "key" occurs
@@ -3295,13 +3494,14 @@ public class Util extends XOMUtil {
     /**
      * Gets content via Apache VFS. File must exist and have content
      *
-     * @param url String
-     * @return Apache VFS FileContent for further processing
-     * @throws FileSystemException on error
+     * @param url URL String
+     * @return Contents of file as an input stream
+     * @throws java.io.IOException on error
      */
     public static InputStream readVirtualFile(String url)
-        throws FileSystemException
+        throws IOException
     {
+<<<<<<< HEAD
         // Treat catalogUrl as an Apache VFS (Virtual File System) URL.
         // VFS handles all of the usual protocols (http:, file:)
         // and then some.
@@ -3369,6 +3569,9 @@ public class Util extends XOMUtil {
         }
 
         return fileContent.getInputStream();
+=======
+        return VIRTUAL_FILE_HANDLER.get().readVirtualFile(url);
+>>>>>>> upstream/4.0
     }
 
     public static String readVirtualFileAsString(
@@ -3542,6 +3745,45 @@ public class Util extends XOMUtil {
     }
 
     /**
+     * Makes a collection of untyped elements appear as a list of strictly typed
+     * elements, by filtering out those which are not of the correct type.
+     *
+     * <p>The returned object is an {@link Iterable},
+     * which makes it ideal for use with the 'foreach' construct. For example,
+     *
+     * <blockquote><code>List&lt;Number&gt; numbers = Arrays.asList(1, 2, 3.14,
+     * 4, null, 6E23);<br/>
+     * for (int myInt : filter(numbers, Integer.class)) {<br/>
+     * &nbsp;&nbsp;&nbsp;&nbsp;print(i);<br/>
+     * }</code></blockquote>
+     *
+     * will print 1, 2, 4.
+     *
+     * @param iterable Source iterable
+     * @param includeFilter Class whose instances to return
+     * @return Iterable that only returns those elements that are instances
+     * of {@code includeFilter}.
+     */
+    public static <E> Iterable<E> filter(
+        final Iterable<?> iterable,
+        final Class<E> includeFilter)
+    {
+        return new Iterable<E>() {
+            public Iterator<E> iterator()
+            {
+                return new Filterator<E>(iterable.iterator(), includeFilter);
+            }
+        };
+    }
+
+    public static <E> Iterable<E> filter(
+        final Object[] array,
+        final Class<E> includeFilter)
+    {
+        return filter(Arrays.asList(array), includeFilter);
+    }
+
+    /**
      * Looks up an enumeration by name, returning null if null or not valid.
      *
      * @param clazz Enumerated type
@@ -3549,6 +3791,26 @@ public class Util extends XOMUtil {
      */
     public static <E extends Enum<E>> E lookup(Class<E> clazz, String name) {
         return lookup(clazz, name, null);
+    }
+
+    /**
+     * Looks up an enumeration by name, returning a given default value if null
+     * or not valid. Default value must not be null.
+     *
+     * @param name Name of constant
+     * @param defaultValue Default value if constant is not found
+     * @return Value, or null if name is null or value does not exist
+     */
+    public static <E extends Enum<E>> E lookup(
+        String name, E defaultValue)
+    {
+        Class<E> clazz = (Class<E>) defaultValue.getClass();
+        while (!clazz.isEnum()) {
+            // Enum constants with overriding methods belong to their own
+            // anonymous subclass.
+            clazz = (Class<E>) clazz.getSuperclass();
+        }
+        return lookup(clazz, name, defaultValue);
     }
 
     /**
@@ -3561,7 +3823,9 @@ public class Util extends XOMUtil {
      * @return Value, or null if name is null or value does not exist
      */
     public static <E extends Enum<E>> E lookup(
-        Class<E> clazz, String name, E defaultValue)
+        Class<E> clazz,
+        String name,
+        E defaultValue)
     {
         if (name == null) {
             return defaultValue;
@@ -3780,10 +4044,11 @@ public class Util extends XOMUtil {
      * Converts an olap4j connect string into a legacy mondrian connect string.
      *
      * <p>For example,
-     * "jdbc:mondrian:Datasource=jdbc/SampleData;Catalog=foodmart/FoodMart.xml;"
+     * "jdbc:mondrian:Datasource=jdbc/SampleData;
+     * Catalog=foodmart/FoodMart.mondrian.xml;"
      * becomes
      * "Provider=Mondrian;
-     * Datasource=jdbc/SampleData;Catalog=foodmart/FoodMart.xml;"
+     * Datasource=jdbc/SampleData;Catalog=foodmart/FoodMart.mondrian.xml;"
      *
      * <p>This method is intended to allow legacy applications (such as JPivot
      * and Mondrian's XMLA server) to continue to create connections using
@@ -3844,44 +4109,53 @@ public class Util extends XOMUtil {
         return role;
     }
 
-    /**
-     * Tries to find the cube from which a dimension is taken.
-     * It considers private dimensions, shared dimensions and virtual
-     * dimensions. If it can't determine with certitude the origin
-     * of the dimension, it returns null.
-     */
-    public static Cube getDimensionCube(Dimension dimension) {
-        final Cube[] cubes = dimension.getSchema().getCubes();
-        for (Cube cube : cubes) {
-            for (Dimension dimension1 : cube.getDimensions()) {
-                // If the dimensions have the same identity,
-                // we found an access rule.
-                if (dimension == dimension1) {
-                    return cube;
-                }
-                // If the passed dimension argument is of class
-                // RolapCubeDimension, we must validate the cube
-                // assignment and make sure the cubes are the same.
-                // If not, skip to the next grant.
-                if (dimension instanceof RolapCubeDimension
-                    && dimension.equals(dimension1)
-                    && !((RolapCubeDimension)dimension1)
-                    .getCube()
-                    .equals(cube))
-                {
-                    continue;
-                }
-                // Last thing is to allow for equality correspondences
-                // to work with virtual cubes.
-                if (cube instanceof RolapCube
-                    && ((RolapCube)cube).isVirtual()
-                    && dimension.equals(dimension1))
-                {
-                    return cube;
-                }
+    /** Returns a view of an array of {@link Named} objects as a
+     * {@link NamedList}. */
+    public static <T extends Named> NamedList<T> asNamedList(final T... ts) {
+        return new AbstractNamedList<T>() {
+            public T get(int index) {
+                return ts[index];
             }
+
+            public int size() {
+                return ts.length;
+            }
+
+            public String getName(Object element) {
+                return ((Named) element).getName();
+            }
+        };
+    }
+
+    /**
+     * Similar to {@link ClassLoader#getResource(String)}, except the lookup
+     *  is in reverse order.<br>
+     *  i.e. returns the resource from the supplied classLoader or the
+     *  one closest to it in the hierarchy, instead of the closest to the root
+     *  class loader
+     * @param classLoader The class loader to fetch from
+     * @param name The resource name
+     * @return A URL object for reading the resource, or null if the resource
+     * could not be found or the invoker doesn't have adequate privileges to get
+     * the resource.
+     * @see ClassLoader#getResource(String)
+     * @see ClassLoader#getResources(String)
+     */
+    public static URL getClosestResource(ClassLoader classLoader, String name) {
+        URL resource = null;
+        try {
+            // The last resource will be from the nearest ClassLoader.
+            Enumeration<URL> resourceCandidates =
+                classLoader.getResources(name);
+            while (resourceCandidates.hasMoreElements()) {
+                resource = resourceCandidates.nextElement();
+            }
+        } catch (IOException ioe) {
+            // ignore exception - it's OK if file is not found
+            // just keep getResource contract and return null
+            Util.discard(ioe);
         }
-        return null;
+        return resource;
     }
 
     public static abstract class AbstractFlatList<T>
@@ -3982,7 +4256,10 @@ public class Util extends XOMUtil {
      * @see mondrian.olap.Util.Flat3List
      * @param <T>
      */
-    protected static class Flat2List<T> extends AbstractFlatList<T> {
+    protected static class Flat2List<T>
+        extends AbstractFlatList<T>
+        implements Comparable<T>
+    {
         private final T t0;
         private final T t1;
 
@@ -4010,6 +4287,10 @@ public class Util extends XOMUtil {
 
         public int size() {
             return 2;
+        }
+
+        public Iterator<T> iterator() {
+            return Arrays.asList(t0, t1).iterator();
         }
 
         public boolean equals(Object o) {
@@ -4058,6 +4339,16 @@ public class Util extends XOMUtil {
         public Object[] toArray() {
             return new Object[] {t0, t1};
         }
+
+        public int compareTo(T o) {
+            //noinspection unchecked
+            Flat2List<T> that = (Flat2List<T>) o;
+            int c = Util.compare((Comparable) t0, (Comparable) that.t0);
+            if (c != 0) {
+                return c;
+            }
+            return Util.compare((Comparable) t1, (Comparable) that.t1);
+        }
     }
 
     /**
@@ -4075,7 +4366,10 @@ public class Util extends XOMUtil {
      * @see mondrian.olap.Util.Flat2List
      * @param <T>
      */
-    protected static class Flat3List<T> extends AbstractFlatList<T> {
+    protected static class Flat3List<T>
+        extends AbstractFlatList<T>
+        implements Comparable<T>
+    {
         private final T t0;
         private final T t1;
         private final T t2;
@@ -4108,6 +4402,10 @@ public class Util extends XOMUtil {
 
         public int size() {
             return 3;
+        }
+
+        public Iterator<T> iterator() {
+            return Arrays.asList(t0, t1, t2).iterator();
         }
 
         public boolean equals(Object o) {
@@ -4164,6 +4462,20 @@ public class Util extends XOMUtil {
 
         public Object[] toArray() {
             return new Object[] {t0, t1, t2};
+        }
+
+        public int compareTo(T o) {
+            //noinspection unchecked
+            Flat3List<T> that = (Flat3List<T>) o;
+            int c = Util.compare((Comparable) t0, (Comparable) that.t0);
+            if (c != 0) {
+                return c;
+            }
+            c = Util.compare((Comparable) t1, (Comparable) that.t1);
+            if (c != 0) {
+                return c;
+            }
+            return Util.compare((Comparable) t2, (Comparable) that.t2);
         }
     }
 
@@ -4229,27 +4541,71 @@ public class Util extends XOMUtil {
         }
     }
 
-    public static interface Functor1<RT, PT> {
+    /**
+     * Function that takes zero arguments and returns {@code RT}.
+     *
+     * @param <RT> Return type
+     */
+    public static interface Function0<RT> {
+        RT apply();
+    }
+
+    /**
+     * Function that takes one argument ({@code PT}) and returns {@code RT}.
+     *
+     * @param <RT> Return type
+     * @param <PT> Parameter type
+     */
+    public static interface Function1<PT, RT> {
         RT apply(PT param);
     }
 
-    public static <T> Functor1<T, T> identityFunctor() {
-        //noinspection unchecked
-        return (Functor1) IDENTITY_FUNCTOR;
+    /**
+     * Predicate that takes one argument ({@code PT}).
+     * Can be used as a {@code Functor1&lt;PT&gt;} or as an Apache-collections
+     * Predicate.
+     *
+     * @param <PT> Parameter type
+     */
+    public static abstract class Predicate1<PT>
+        implements Predicate, Function1<PT, Boolean>
+    {
+        public Boolean apply(PT param) {
+            return test(param);
+        }
+
+        public boolean evaluate(Object o) {
+            //noinspection unchecked
+            return test((PT) o);
+        }
+
+        public abstract boolean test(PT pt);
     }
 
-    private static final Functor1 IDENTITY_FUNCTOR =
-        new Functor1<Object, Object>() {
+    public static <T> Function1<T, T> identityFunctor() {
+        //noinspection unchecked
+        return (Function1) IDENTITY_FUNCTION;
+    }
+
+    private static final Function1 IDENTITY_FUNCTION =
+        new Function1<Object, Object>() {
             public Object apply(Object param) {
                 return param;
             }
         };
 
-    public static <PT> Functor1<Boolean, PT> trueFunctor() {
+    /**
+     * Returns a predicate that takes 1 argument and always returns true.
+     *
+     * @param <PT> Parameter type
+     * @return Predicate that always returns true
+     */
+    public static <PT> Predicate1<PT> truePredicate1() {
         //noinspection unchecked
-        return (Functor1) TRUE_FUNCTOR;
+        return (Predicate1) TRUE_PREDICATE1;
     }
 
+<<<<<<< HEAD
     public static <PT> Functor1<Boolean, PT> falseFunctor() {
         //noinspection unchecked
         return (Functor1) FALSE_FUNCTOR;
@@ -4258,6 +4614,11 @@ public class Util extends XOMUtil {
     private static final Functor1 TRUE_FUNCTOR =
         new Functor1<Boolean, Object>() {
             public Boolean apply(Object param) {
+=======
+    private static final Predicate1 TRUE_PREDICATE1 =
+        new Predicate1<Object>() {
+            public boolean test(Object o) {
+>>>>>>> upstream/4.0
                 return true;
             }
         };
@@ -4304,10 +4665,81 @@ public class Util extends XOMUtil {
             if (o2 == RolapUtil.sqlNullValue) {
                 return 1;
             }
+            //noinspection unchecked
             return o1.compareTo(o2);
         }
     }
 
+<<<<<<< HEAD
+=======
+    private static class ComparableEmptyList
+        extends AbstractList
+        implements Comparable<List>
+    {
+        private ComparableEmptyList() {
+        }
+
+        public Object get(int index) {
+            throw new IndexOutOfBoundsException();
+        }
+
+        public int size() {
+            return 0;
+        }
+
+        public int compareTo(List o) {
+            if (o == this) {
+                return 0;
+            }
+            return o.size() == 0 ? 0 : -1;
+        }
+    }
+
+    private static class ComparableList<T extends Comparable<T>>
+        extends AbstractList<T>
+        implements Comparable<List<T>>
+    {
+        private final List<T> list;
+
+        protected ComparableList(List<T> list) {
+            this.list = list;
+        }
+
+        public T get(int index) {
+            return list.get(index);
+        }
+
+        public int size() {
+            return list.size();
+        }
+
+        public int compareTo(List<T> o) {
+            int size = size();
+            if (o.size() == size) {
+                return compare(this, o, size);
+            }
+            final int c = compare(this, o, Math.min(size(), o.size()));
+            if (c != 0) {
+                return c;
+            }
+            return size() - o.size();
+        }
+
+        private static <T extends Comparable>
+        int compare(List<T> list0, List<T> list1, int size) {
+            for (int i = 0; i < size; i++) {
+                Comparable o0 = list0.get(i);
+                Comparable o1 = list1.get(i);
+                int c = o0.compareTo(o1);
+                if (c != 0) {
+                    return c;
+                }
+            }
+            return 0;
+        }
+    }
+
+>>>>>>> upstream/4.0
     /**
      * This class implements the Knuth-Morris-Pratt algorithm
      * to search within a byte array for a token byte array.
@@ -4357,6 +4789,7 @@ public class Util extends XOMUtil {
             return matcher;
         }
     }
+<<<<<<< HEAD
 
     /**
      * Transforms a list into a map for which all the keys return
@@ -4470,6 +4903,8 @@ public class Util extends XOMUtil {
             }
         }
     }
+=======
+>>>>>>> upstream/4.0
 }
 
 // End Util.java

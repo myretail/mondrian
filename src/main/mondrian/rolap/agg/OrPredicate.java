@@ -4,13 +4,13 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2011 Pentaho
+// Copyright (C) 2007-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
 
 import mondrian.rolap.*;
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.spi.Dialect;
 
 import java.util.*;
 
@@ -24,7 +24,14 @@ import java.util.*;
  */
 public class OrPredicate extends ListPredicate {
 
-    public OrPredicate(List<StarPredicate> predicateList) {
+    /**
+     * Creates an OrPredicate.
+     *
+     * @param predicateList List of operand predicates
+     */
+    public OrPredicate(
+        List<StarPredicate> predicateList)
+    {
         super(predicateList);
     }
 
@@ -62,10 +69,7 @@ public class OrPredicate extends ListPredicate {
     }
 
     public StarPredicate and(StarPredicate predicate) {
-        List<StarPredicate> list = new ArrayList<StarPredicate>();
-        list.add(this);
-        list.add(predicate);
-        return new AndPredicate(list);
+        return Predicates.and(Arrays.asList(this, predicate));
     }
 
     /**
@@ -77,12 +81,12 @@ public class OrPredicate extends ListPredicate {
      * column values to use in the IN list.
      *
      * @param predicate predicate to analyze
-     * @param sqlQuery Query
+     * @param dialect SQL dialect
      * @param predicateMap the map containing predicates analyzed so far
      */
     private void checkInListForPredicate(
         StarPredicate predicate,
-        SqlQuery sqlQuery,
+        Dialect dialect,
         Map<BitKey, List<StarPredicate>> predicateMap)
     {
         BitKey inListRhsBitKey;
@@ -94,25 +98,26 @@ public class OrPredicate extends ListPredicate {
         } else if (predicate instanceof AndPredicate) {
             // OR of ANDs over a set of values over the same column set
             inListRhsBitKey =
-                ((AndPredicate) predicate).checkInList(sqlQuery, columnBitKey);
+                ((AndPredicate) predicate).checkInList(
+                    dialect, columnBitKey);
         } else {
             inListRhsBitKey = columnBitKey.emptyCopy();
         }
         List<StarPredicate> predicateGroup =
             predicateMap.get(inListRhsBitKey);
         if (predicateGroup == null) {
-            predicateGroup = new ArrayList<StarPredicate> ();
+            predicateGroup = new ArrayList<StarPredicate>();
             predicateMap.put(inListRhsBitKey, predicateGroup);
         }
         predicateGroup.add(predicate);
     }
 
     private void checkInList(
-        SqlQuery sqlQuery,
+        Dialect dialect,
         Map<BitKey, List<StarPredicate>> predicateMap)
     {
         for (StarPredicate predicate : children) {
-            checkInListForPredicate(predicate, sqlQuery, predicateMap);
+            checkInListForPredicate(predicate, dialect, predicateMap);
         }
     }
 
@@ -120,7 +125,7 @@ public class OrPredicate extends ListPredicate {
      * Translates a list of predicates over the same set of columns into sql
      * using IN list where possible.
      *
-     * @param sqlQuery Query
+     * @param dialect SQL dialect
      * @param buf buffer to build sql
      * @param inListRhsBitKey which column positions are included in
      *     the IN predicate; the non included positions corresponde to
@@ -128,17 +133,17 @@ public class OrPredicate extends ListPredicate {
      * @param predicateList the list of predicates to translate.
      */
     private void toInListSql(
-        SqlQuery sqlQuery,
+        Dialect dialect,
         StringBuilder buf,
         BitKey inListRhsBitKey,
         List<StarPredicate> predicateList)
     {
         // Make a col position to column map to aid search.
-        Map<Integer, RolapStar.Column> columnMap =
-            new HashMap<Integer, RolapStar.Column>();
+        Map<Integer, RolapSchema.PhysColumn> columnMap =
+            new HashMap<Integer, RolapSchema.PhysColumn>();
 
-        for (RolapStar.Column column : columns) {
-            columnMap.put(column.getBitPosition(), column);
+        for (PredicateColumn column : columns) {
+            columnMap.put(column.physColumn.ordinal(), column.physColumn);
         }
 
         buf.append("(");
@@ -146,15 +151,14 @@ public class OrPredicate extends ListPredicate {
         // in the IN list
 
         boolean firstNullColumnPredicate = true;
-        for (Integer colPos
-            : getConstrainedColumnBitKey().andNot(inListRhsBitKey))
+        for (int colPos : getConstrainedColumnBitKey().andNot(inListRhsBitKey))
         {
             if (firstNullColumnPredicate) {
                 firstNullColumnPredicate = false;
             } else {
                 buf.append(" and ");
             }
-            String expr = columnMap.get(colPos).generateExprString(sqlQuery);
+            String expr = columnMap.get(colPos).toSql();
             buf.append(expr);
             buf.append(" is null");
         }
@@ -164,9 +168,7 @@ public class OrPredicate extends ListPredicate {
             return;
         }
 
-        if (firstNullColumnPredicate) {
-            firstNullColumnPredicate = false;
-        } else {
+        if (!firstNullColumnPredicate) {
             buf.append(" and ");
         }
 
@@ -184,7 +186,7 @@ public class OrPredicate extends ListPredicate {
             } else {
                 buf.append(", ");
             }
-            String expr = columnMap.get(colPos).generateExprString(sqlQuery);
+            String expr = columnMap.get(colPos).toSql();
             buf.append(expr);
         }
         if (multiInList) {
@@ -203,17 +205,17 @@ public class OrPredicate extends ListPredicate {
 
             if (predicate instanceof AndPredicate) {
                 ((AndPredicate) predicate).toInListSql(
-                    sqlQuery, buf, inListRhsBitKey);
+                    dialect, buf, inListRhsBitKey);
             } else {
                 assert predicate instanceof ValueColumnPredicate;
-                ((ValueColumnPredicate) predicate).toInListSql(sqlQuery, buf);
+                ((ValueColumnPredicate) predicate).toInListSql(dialect, buf);
             }
         }
         buf.append(")");
         buf.append(")");
     }
 
-    public void toSql(SqlQuery sqlQuery, StringBuilder buf) {
+    public void toSql(Dialect dialect, StringBuilder buf) {
         //
         // If possible, translate the predicate using IN lists.
         //
@@ -234,10 +236,10 @@ public class OrPredicate extends ListPredicate {
         // super.toSql().
         //
         final Map<BitKey, List<StarPredicate>> predicateMap =
-            new LinkedHashMap<BitKey, List<StarPredicate>> ();
+            new LinkedHashMap<BitKey, List<StarPredicate>>();
 
         boolean first = true;
-        checkInList(sqlQuery, predicateMap);
+        checkInList(dialect, predicateMap);
         buf.append("(");
 
         for (BitKey columnKey : predicateMap.keySet()) {
@@ -251,7 +253,7 @@ public class OrPredicate extends ListPredicate {
                     } else {
                         buf.append(" or ");
                     }
-                    pred.toSql(sqlQuery, buf);
+                    pred.toSql(dialect, buf);
                 }
             } else {
                 // Translate the rest
@@ -260,7 +262,7 @@ public class OrPredicate extends ListPredicate {
                 } else {
                     buf.append(" or ");
                 }
-                toInListSql(sqlQuery, buf, columnKey, predList);
+                toInListSql(dialect, buf, columnKey, predList);
             }
         }
 

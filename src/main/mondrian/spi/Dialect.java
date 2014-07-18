@@ -4,10 +4,24 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2008-2012 Pentaho
+=======
+// Copyright (C) 2008-2014 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.spi;
+
+import mondrian.rolap.SqlStatement;
+
+import java.math.BigDecimal;
+
+import java.sql.Date;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
 
 import java.util.List;
 import java.util.Map;
@@ -44,9 +58,28 @@ import java.util.Map;
  * See {@link #allowsDialectSharing} and
  * {@link mondrian.spi.DialectFactory} for more details.</p>
  *
+ * <h3>Explicitly specifying a dialect</h3>
+ *
+ * <p>You can explicitly specify a dialect in Mondrian's olap4j connect string
+ * using the {@link mondrian.rolap.RolapConnectionProperties#Dialect Dialect}
+ * connect string property. Such a dialect must implement this Dialect SPI,
+ * and may or may not have an explicit dialect factory, as described above.
+ * The dialect does not need to be registered in the
+ * <code>META-INF/services/mondrian.spi.Dialect</code> configuration
+ * file (described below), but we recommend it.</p>
+ *
+ * <p>Explicit dialects are rarely needed. Usually Mondrian will automatically
+ * choose the right dialect for your database. The main case where you would
+ * specify a dialect explicitly is when you are developing a dialect for a new
+ * database, or creating an alternative version of an existing dialect.</p>
+ *
+ * <p>Explicitly specified dialects are not cached, nor are schemas that use
+ * explicitly specified dialects.</p>
+ *
  * <h3>Registering dialects</h3>
  *
- * <p>A dialect needs to be registered with the system in order to be used.
+ * <p>Unless you use the {@code Dialect} connect string property, a
+ * dialect needs to be registered with the system in order to be used.
  * Call {@link mondrian.spi.DialectManager#register(DialectFactory)}
  * to register a dialect factory, or
  * {@link mondrian.spi.DialectManager#register(Class)} to register a dialect
@@ -187,11 +220,11 @@ public interface Dialect {
      * "<code>'Can''t'</code>" to <code>buf</code>.
      *
      * @param buf Buffer to append to
-     * @param s Literal
+     * @param value Literal
      */
     void quoteStringLiteral(
         StringBuilder buf,
-        String s);
+        String value);
 
     /**
      * Appends to a buffer a numeric literal.
@@ -203,7 +236,7 @@ public interface Dialect {
      */
     void quoteNumericLiteral(
         StringBuilder buf,
-        String value);
+        Number value);
 
     /**
      * Appends to a buffer a boolean literal.
@@ -215,7 +248,7 @@ public interface Dialect {
      */
     void quoteBooleanLiteral(
         StringBuilder buf,
-        String value);
+        boolean value);
 
     /**
      * Appends to a buffer a date literal.
@@ -229,7 +262,7 @@ public interface Dialect {
      */
     void quoteDateLiteral(
         StringBuilder buf,
-        String value);
+        Date value);
 
     /**
      * Appends to a buffer a time literal.
@@ -243,7 +276,7 @@ public interface Dialect {
      */
     void quoteTimeLiteral(
         StringBuilder buf,
-        String value);
+        Time value);
 
     /**
      * Appends to a buffer a timestamp literal.
@@ -257,7 +290,7 @@ public interface Dialect {
      */
     void quoteTimestampLiteral(
         StringBuilder buf,
-        String value);
+        Timestamp value);
 
     /**
      * Returns whether this Dialect requires subqueries in the FROM clause
@@ -292,7 +325,7 @@ public interface Dialect {
 
     /**
      * Returns whether this Dialect allows multiple arguments to the
-     * <code>COUNT(DISTINCT ...) aggregate function, for example
+     * <code>COUNT(DISTINCT ...)</code> aggregate function, for example
      *
      * <blockquote><code>SELECT COUNT(DISTINCT x, y) FROM t</code></blockquote>
      *
@@ -385,14 +418,24 @@ public interface Dialect {
     /**
      * Appends to a buffer a value quoted for its type.
      *
+     * <p>Throws {@link NumberFormatException} if the value is not appropriate
+     * for the type. For example the value '1 or true or 2' is not valid for a
+     * numeric column and may represent an attempt at SQL injection. The caller
+     * must decide how to handle this exception. If the value is already known
+     * to be valid, then the exception is an internal error. Otherwise it might
+     * be a or simply a predicate that returns 0 rows.
+     *
      * @param buf Buffer to append to
      * @param value Value
      * @param datatype Datatype of value
+     *
+     * @throws NumberFormatException if the value is not appropriate for the
+     * type
      */
     void quote(
         StringBuilder buf,
         Object value,
-        Datatype datatype);
+        Datatype datatype) throws NumberFormatException;
 
     /**
      * Returns whether this dialect supports common SQL Data Definition
@@ -493,7 +536,7 @@ public interface Dialect {
      *
      * would be legal.</p>
      *
-     * <p>MySQL, DB2 and Ingres are examples of such dialects.</p>
+     * <p>Ingres and Hive are examples of such dialects.</p>
      *
      * @return Whether this Dialect can include expressions in the ORDER BY
      *   clause only by adding an expression to the SELECT clause and using
@@ -760,6 +803,42 @@ public interface Dialect {
         String javaRegExp);
 
     /**
+<<<<<<< HEAD
+=======
+     * Converts a SQL type code and type name to a dialect data type.
+     *
+     * <p>The type code is as returned from
+     * {@link java.sql.ResultSetMetaData#getColumnType(int)} and described in
+     * {@link java.sql.Types}, and the type name is as returned from
+     * {@link java.sql.ResultSetMetaData#getColumnTypeName(int)}.
+     *
+     * @param typeName Type name
+     * @param type Type code
+     * @return Dialect datatype
+     */
+    Datatype sqlTypeToDatatype(
+        String typeName,
+        int type);
+
+    /**
+     * Converts a data type to its representation on this database.
+     *
+     * <p>For example, {@link Datatype#String} with a {@code columnSize} of 20
+     * becomes {@code VARCHAR2(20)} on Oracle and {@code VARCHAR(20)} on
+     * MySQL.</p>
+     *
+     * @param datatype Data type
+     * @param precision Precision of column, or 0 if applicable for datatype
+     * @param scale Scale of column, or 0 if not applicable for datatype
+     * @return String representation of datatype
+     */
+    String datatypeToString(
+        Datatype datatype,
+        int precision,
+        int scale);
+
+    /**
+>>>>>>> upstream/4.0
      * Returns a list of statistics providers for this dialect.
      *
      * <p>The default implementation looks for the value of the property
@@ -775,6 +854,84 @@ public interface Dialect {
     List<StatisticsProvider> getStatisticsProviders();
 
     /**
+<<<<<<< HEAD
+=======
+     * <p>Chooses the most appropriate type for accessing the values of a
+     * column in a result set for a dialect.</p>
+     *
+     * <p>Dialect-specific nuances involving type representation should be
+     * handled in implementing methods.  For example, if a dialect
+     * has implicit rules involving scale or precision, they should be
+     * handled within this method so the client can simply retrieve the
+     * "best fit" SqlStatement.Type for the column.</p>
+     *
+     * @param metadata  Results set metadata
+     * @param columnIndex Column ordinal (0-based)
+     * @return the most appropriate SqlStatement.Type for the column
+     */
+    SqlStatement.Type getType(ResultSetMetaData metadata, int columnIndex)
+        throws SQLException;
+    /**
+     * Returns whether identifiers are always quoted.
+     */
+    boolean alwaysQuoteIdentifiers();
+
+    /**
+     * Returns whether an identifier needs to be quoted.
+     *
+     * <p>The default (and typical) implementation is</p>
+     *
+     * <blockquote>return {@link #alwaysQuoteIdentifiers}()
+     * || !{@link #hasSpecialChars}(identifier)</blockquote></blockquote>
+     */
+    boolean needToQuote(String identifier);
+
+    /**
+     * Returns a dialect identical to this dialect except that identifier
+     * quoting is enabled or disabled.
+     *
+     * @see #alwaysQuoteIdentifiers()
+     */
+    Dialect withQuoting(boolean alwaysQuoteIdentifiers);
+
+    /**
+     * Returns whether an identifier has characters other than the ones allowed
+     * in an unquoted identifier, per
+     * {@link java.sql.DatabaseMetaData#getExtraNameCharacters()}.
+     *
+     * <p>The dialect will always quote such identifiers (as long as the
+     * database supports quoting).</p>
+     *
+     * @param identifier Identifier
+     * @return true if so; false otherwise
+     */
+    boolean hasSpecialChars(String identifier);
+
+    /**
+     * Converts an identifier, as written unquoted, into the form it will
+     * appear in the catalog.
+     *
+     * <p>For example, in Oracle if you write</p>
+     *
+     * <blockquote><code>CREATE TABLE Emp (empno INT);</code></blockquote>
+     *
+     * <p>the catalog will contain a tables called "EMP" anda column called
+     * "EMPNO". Therefore
+     * <code>rectifyCase(&quot;Emp&quot;)</code> returns "EMP"
+     * and
+     * <code>rectifyCase(&quot;empno&quot;)</code> returns "EMPNO".</p>
+     *
+     * <p>For the convenience of the caller, <code>rectifyCase(null)</code>
+     * returns <code>null</code>.</p>
+     *
+     * @param identifier Identifier (or null)
+     * @return Identifier converted into the case in which it is stored in the
+     *     catalog
+     */
+    String rectifyCase(String identifier);
+
+    /**
+>>>>>>> upstream/4.0
      * Enumeration of common database types.
      *
      * <p>Branching on this enumeration allows you to write code which behaves
@@ -799,16 +956,21 @@ public interface Dialect {
         GREENPLUM,
         HIVE,
         HSQLDB,
+        IMPALA,
         INFORMIX,
         INFOBRIGHT,
         INGRES,
         INTERBASE,
         LUCIDDB,
         MSSQL,
+        MONETDB,
         NETEZZA,
         NEOVIEW,
+        NUODB,
         ORACLE,
+        PHOENIX,
         POSTGRESQL,
+        REDSHIFT,
         MYSQL,
         SQLSTREAM,
         SYBASE,
@@ -837,6 +999,15 @@ public interface Dialect {
                 return this;
             }
         }
+
+        public static DatabaseProduct getDatabaseProduct(String name) {
+            for (DatabaseProduct databaseProduct : values()) {
+                if (databaseProduct.name().equalsIgnoreCase(name)) {
+                    return databaseProduct;
+                }
+            }
+            return UNKNOWN;
+        }
     }
 
     /**
@@ -845,17 +1016,17 @@ public interface Dialect {
     enum Datatype {
         String {
             public void quoteValue(
-                StringBuilder buf, Dialect dialect, String value)
+                StringBuilder buf, Dialect dialect, Object value)
             {
-                dialect.quoteStringLiteral(buf, value);
+                dialect.quoteStringLiteral(buf, toString_(value));
             }
         },
 
         Numeric {
             public void quoteValue(
-                StringBuilder buf, Dialect dialect, String value)
+                StringBuilder buf, Dialect dialect, Object value)
             {
-                dialect.quoteNumericLiteral(buf, value);
+                dialect.quoteNumericLiteral(buf, toNumber(value));
             }
 
             public boolean isNumeric() {
@@ -865,9 +1036,9 @@ public interface Dialect {
 
         Integer {
             public void quoteValue(
-                StringBuilder buf, Dialect dialect, String value)
+                StringBuilder buf, Dialect dialect, Object value)
             {
-                dialect.quoteNumericLiteral(buf, value);
+                dialect.quoteNumericLiteral(buf, toInteger(value));
             }
 
             public boolean isNumeric() {
@@ -877,35 +1048,140 @@ public interface Dialect {
 
         Boolean {
             public void quoteValue(
-                StringBuilder buf, Dialect dialect, String value)
+                StringBuilder buf, Dialect dialect, Object value)
             {
-                dialect.quoteBooleanLiteral(buf, value);
+                dialect.quoteBooleanLiteral(buf, toBoolean(value));
             }
         },
 
         Date {
             public void quoteValue(
-                StringBuilder buf, Dialect dialect, String value)
+                StringBuilder buf, Dialect dialect, Object value)
             {
-                dialect.quoteDateLiteral(buf, value);
+                dialect.quoteDateLiteral(buf, toDate(value));
             }
         },
 
         Time {
             public void quoteValue(
-                StringBuilder buf, Dialect dialect, String value)
+                StringBuilder buf, Dialect dialect, Object value)
             {
-                dialect.quoteTimeLiteral(buf, value);
+                dialect.quoteTimeLiteral(buf, toTime(value));
             }
         },
 
         Timestamp {
             public void quoteValue(
-                StringBuilder buf, Dialect dialect, String value)
+                StringBuilder buf, Dialect dialect, Object value)
             {
-                dialect.quoteTimestampLiteral(buf, value);
+                dialect.quoteTimestampLiteral(buf, toTimestamp(value));
             }
         };
+
+        private static String toString_(Object value) {
+            return value.toString();
+        }
+
+
+        private static Number toNumber(Object value) {
+            return toInteger(value);
+        }
+
+        private static Number toInteger(Object value) {
+            if (value == null) {
+                throw new NullPointerException();
+            }
+            Number number;
+            if (value instanceof Number) {
+                number = (Number) value;
+            } else {
+                // Test whether value is a valid numeric by converting to
+                // BigDecimal. BigDecimal is stricter than Integer.parseString
+                // or Double.parseString; it does not allow any extraneous
+                // space.
+                number = new BigDecimal(value.toString());
+            }
+            return number;
+        }
+
+        private static boolean toBoolean(Object value) {
+            if (value == null) {
+                throw new NullPointerException();
+            }
+            if (value instanceof Boolean) {
+                return (Boolean) value;
+            } else {
+                final String valueString = value.toString();
+                if (valueString.equalsIgnoreCase("TRUE")) {
+                    return true;
+                } else if (valueString.equalsIgnoreCase("FALSE")) {
+                    return false;
+                } else {
+                    throw new NumberFormatException(
+                        "Illegal BOOLEAN literal:  " + value);
+                }
+            }
+        }
+
+        private static Date toDate(Object value) {
+            if (value == null) {
+                throw new NullPointerException();
+            }
+            if (value instanceof Date) {
+                return (Date) value;
+            }
+            final String valueString = value.toString();
+            try {
+                // The format of the 'value' parameter is not certain.
+                // Some JDBC drivers will return a timestamp even though
+                // we ask for a date (access is one of them). We must
+                // try to convert both formats.
+                return java.sql.Date.valueOf(valueString);
+            } catch (IllegalArgumentException ex) {
+                try {
+                    final Timestamp timestamp =
+                        java.sql.Timestamp.valueOf(valueString);
+                    return new Date(timestamp.getTime());
+                } catch (IllegalArgumentException ex2) {
+                    throw new NumberFormatException(
+                        "Illegal DATE literal:  " + value);
+                }
+            }
+        }
+
+        private static Time toTime(Object value) {
+            if (value == null) {
+                throw new NullPointerException();
+            }
+            if (value instanceof Time) {
+                return (Time) value;
+            }
+            // See toDate for explanation.
+            try {
+                final String valueString = value.toString();
+                return java.sql.Time.valueOf(valueString);
+            } catch (IllegalArgumentException ex) {
+                throw new NumberFormatException(
+                    "Illegal TIME literal:  " + value);
+            }
+        }
+
+        private static Timestamp toTimestamp(Object value) {
+            if (value == null) {
+                throw new NullPointerException();
+            }
+            if (value instanceof Timestamp) {
+                return (Timestamp) value;
+            }
+            // See toDate for explanation.
+            try {
+                final String valueString = value.toString();
+                return java.sql.Timestamp.valueOf(valueString);
+            } catch (IllegalArgumentException ex) {
+                throw new NumberFormatException(
+                    "Illegal TIME literal:  " + value);
+            }
+        }
 
         /**
          * Appends to a buffer a value of this type, in the appropriate format
@@ -914,11 +1190,15 @@ public interface Dialect {
          * @param buf Buffer
          * @param dialect Dialect
          * @param value Value
+         *
+         * @throws NumberFormatException if value is not valid for its type
+         * @throws NullPointerException if value is null
          */
         public abstract void quoteValue(
             StringBuilder buf,
             Dialect dialect,
-            String value);
+            Object value)
+            throws NumberFormatException, NullPointerException;
 
         /**
          * Returns whether this is a numeric datatype.

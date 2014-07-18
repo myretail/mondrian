@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2011 Pentaho
+// Copyright (C) 2006-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -26,7 +26,7 @@ public class InlineTableTest extends FoodMartTestCase {
 
     public void testInlineTable() {
         final String cubeName = "Sales_inline";
-        TestContext testContext = TestContext.instance().create(
+        TestContext testContext = getTestContext().create(
             null,
             "<Cube name=\"" + cubeName + "\">\n"
             + "  <Table name=\"sales_fact_1997\"/>\n"
@@ -67,15 +67,19 @@ public class InlineTableTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Alternative Promotion].[Promo0]}\n"
-            + "{[Alternative Promotion].[Promo1]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[Promo0]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[Promo1]}\n"
             + "Row #0: 195,448\n"
             + "Row #0: \n");
     }
 
+    public TestContext getTestContext() {
+        return super.getTestContext().legacy();
+    }
+
     public void testInlineTableInSharedDim() {
         final String cubeName = "Sales_inline_shared";
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = getTestContext().create(
             null,
             "  <Dimension name=\"Shared Alternative Promotion\">\n"
             + "    <Hierarchy hasAll=\"true\" primaryKey=\"promo_id\">\n"
@@ -119,8 +123,8 @@ public class InlineTableTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Shared Alternative Promotion].[First promo]}\n"
-            + "{[Shared Alternative Promotion].[Second promo]}\n"
+            + "{[Shared Alternative Promotion].[Shared Alternative Promotion].[First promo]}\n"
+            + "{[Shared Alternative Promotion].[Shared Alternative Promotion].[Second promo]}\n"
             + "Row #0: 195,448\n"
             + "Row #0: \n");
     }
@@ -135,7 +139,7 @@ public class InlineTableTest extends FoodMartTestCase {
             return;
         }
         final String cubeName = "Sales_inline_snowflake";
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = getTestContext().create(
             null,
             "<Cube name=\"" + cubeName + "\">\n"
             + "  <Table name=\"sales_fact_1997\"/>\n"
@@ -181,14 +185,14 @@ public class InlineTableTest extends FoodMartTestCase {
             null,
             null);
         testContext.assertQueryReturns(
-            "select {[Store].children} ON COLUMNS\n"
+            "select {[Store].[Store].children} ON COLUMNS\n"
             + "from [" + cubeName + "] ",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Store].[CA]}\n"
-            + "{[Store].[MX]}\n"
-            + "{[Store].[US]}\n"
+            + "{[Store].[Store].[CA]}\n"
+            + "{[Store].[Store].[MX]}\n"
+            + "{[Store].[Store].[US]}\n"
             + "Row #0: \n"
             + "Row #0: \n"
             + "Row #0: 266,773\n");
@@ -196,7 +200,7 @@ public class InlineTableTest extends FoodMartTestCase {
 
     public void testInlineTableDate() {
         final String cubeName = "Sales_Inline_Date";
-        final TestContext testContext = TestContext.instance().create(
+        final TestContext testContext = getTestContext().create(
             null,
             "<Cube name=\"" + cubeName + "\">\n"
             + "  <Table name=\"sales_fact_1997\"/>\n"
@@ -247,9 +251,9 @@ public class InlineTableTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Alternative Promotion].[All Alternative Promotions]}\n"
-            + "{[Alternative Promotion].[2008-04-29]}\n"
-            + "{[Alternative Promotion].[2007-01-20]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[All Alternative Promotions]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[2008-04-29]}\n"
+            + "{[Alternative Promotion].[Alternative Promotion].[2007-01-20]}\n"
             + "Row #0: 266,773\n"
             + "Row #0: \n"
             + "Row #0: \n");

@@ -1,28 +1,54 @@
+<<<<<<< HEAD
 GTAGS
 GSYMS
 GRTAGS
 GPATH
 .settings/
+=======
+>>>>>>> upstream/4.0
 testclasses
 testlib
 build
 dev-lib
 dist
+<<<<<<< HEAD
 doc/api
+=======
+>>>>>>> upstream/4.0
 
 *.jar
 *.log
 *.log.*
+<<<<<<< HEAD
 VERSION.txt
 classes/
 demo/FoodMartCreateData.sql
 demo/access/MondrianFoodMart.mdb
 demo/derby/foodmart/
 doc/properties.html
+=======
+*~
+VERSION.txt
+functions.html
+*.properties
+scratch.txt
+
+classes/
+demo/derby/foodmart/
+doc/properties.html
+doc/xml_schema.html
+doc/api
+doc/headapi
+intellij/mondrian.ipr
+intellij/mondrian.iml
+intellij/mondrian.iws
+junit-results/
+>>>>>>> upstream/4.0
 lib/aggregates.dtd
 lib/datasourcesconfig.dtd
 lib/jpivot.war
 lib/mondrian.dtd
+<<<<<<< HEAD
 mondrian.properties.template
 functions.html
 src/main/mondrian/gui/MondrianGuiDef.java
@@ -32,6 +58,15 @@ src/main/mondrian/olap/MondrianProperties.java
 src/main/mondrian/olap/Parser.java
 src/main/mondrian/olap/ParserSym.java
 src/main/mondrian/olap/mondrian.dtd
+=======
+lib/mondrian3.dtd
+mondrian.properties.template
+src/main/mondrian/olap/MondrianDef.java
+src/main/mondrian/olap/Mondrian3Def.java
+src/main/mondrian/olap/MondrianProperties.java
+src/main/mondrian/olap/mondrian.dtd
+src/main/mondrian/olap/mondrian3.dtd
+>>>>>>> upstream/4.0
 src/main/mondrian/olap4j/MondrianOlap4jDriverVersion.java
 src/main/mondrian/parser/MdxParserImpl.java
 src/main/mondrian/parser/MdxParserImplConstants.java
@@ -47,6 +82,10 @@ src/main/mondrian/resource/MondrianResource_en_US.java
 src/main/mondrian/resource/MondrianResource_es_ES.java
 src/main/mondrian/rolap/aggmatcher/DefaultDef.java
 src/main/mondrian/rolap/aggmatcher/aggregates.dtd
+<<<<<<< HEAD
+=======
+src/main/mondrian/server/MondrianServerVersion.java
+>>>>>>> upstream/4.0
 src/main/mondrian/xmla/DataSourcesConfig.java
 src/main/mondrian/xmla/datasourcesconfig.dtd
-/mondrian.properties
+

@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2009-2011 Pentaho and others
+// Copyright (C) 2009-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -14,6 +14,7 @@ import mondrian.calc.DummyExp;
 import mondrian.calc.impl.GenericCalc;
 import mondrian.mdx.ResolvedFunCall;
 import mondrian.olap.*;
+import mondrian.olap.fun.FunUtil;
 import mondrian.olap.type.ScalarType;
 
 import org.olap4j.AllocationPolicy;
@@ -109,29 +110,29 @@ public final class ScenarioImpl implements Scenario {
         // forth.
         final RolapStoredMeasure measure = (RolapStoredMeasure) members.get(0);
         final RolapCube baseCube = measure.getCube();
-        final RolapStar.Measure starMeasure =
-            (RolapStar.Measure) measure.getStarMeasure();
+        final RolapStar.Measure starMeasure = measure.getStarMeasure();
         assert starMeasure != null;
         int starColumnCount = starMeasure.getStar().getColumnCount();
         final BitKey constrainedColumnsBitKey =
             BitKey.Factory.makeBitKey(starColumnCount);
         Object[] keyValues = new Object[starColumnCount];
         for (int i = 1; i < members.size(); i++) {
-            Member member = members.get(i);
-            for (RolapCubeMember m = (RolapCubeMember) member;
-                m != null && !m.isAll();
-                m = m.getParentMember())
+            final RolapMember member = members.get(i);
+            final List<Comparable> keyList = member.getKeyAsList();
+            int j = 0;
+            for (RolapSchema.PhysColumn physColumn
+                : member.getLevel().getAttribute().getKeyList())
             {
-                final RolapCubeLevel level = m.getLevel();
-                RolapStar.Column column = level.getBaseStarKeyColumn(baseCube);
+                final RolapStar.Column column =
+                    measure.getMeasureGroup().getRolapStarColumn(
+                        member.getDimension(),
+                        physColumn);
                 if (column != null) {
                     final int bitPos = column.getBitPosition();
-                    keyValues[bitPos] = m.getKey();
+                    keyValues[bitPos] = keyList.get(j);
                     constrainedColumnsBitKey.set(bitPos);
                 }
-                if (level.areMembersUnique()) {
-                    break;
-                }
+                ++j;
             }
         }
 
@@ -174,15 +175,21 @@ public final class ScenarioImpl implements Scenario {
      * @return Wrapped scenario
      */
     static Scenario forMember(final RolapMember member) {
-        final Formula formula = ((RolapCalculatedMember) member).getFormula();
-        final ResolvedFunCall resolvedFunCall =
-            (ResolvedFunCall) formula.getExpression();
-        final Calc calc = resolvedFunCall.getFunDef().compileCall(null, null);
-        return ((ScenarioCalc) calc).getScenario();
+        if (isScenario(member.getHierarchy())) {
+            final Formula formula = ((RolapCalculatedMember) member)
+                .getFormula();
+            final ResolvedFunCall resolvedFunCall =
+                (ResolvedFunCall) formula.getExpression();
+            final Calc calc = resolvedFunCall.getFunDef()
+                .compileCall(null, null);
+            return ((ScenarioCalc) calc).getScenario();
+        } else {
+            return null;
+        }
     }
 
     /**
-     * Registers this Scenario with a Schema, creating a calulated member
+     * Registers this Scenario with a Schema, creating a calculated member
      * [Scenario].[{id}] for each cube that has writeback enabled. (Currently
      * a cube has writeback enabled iff it has a dimension called "Scenario".)
      *
@@ -192,15 +199,13 @@ public final class ScenarioImpl implements Scenario {
         // Add a value to the [Scenario] dimension of every cube that has
         // writeback enabled.
         for (RolapCube cube : schema.getCubeList()) {
-            for (RolapHierarchy hierarchy : cube.getHierarchies()) {
-                if (isScenario(hierarchy)) {
-                    member =
-                        cube.createCalculatedMember(
-                            hierarchy,
-                            getId() + "",
-                            new ScenarioCalc(this));
-                    assert member != null;
-                }
+            if (cube.scenarioHierarchy != null) {
+                member =
+                    cube.createCalculatedMember(
+                        cube.scenarioHierarchy,
+                        getId() + "",
+                        new ScenarioCalc(this));
+                assert member != null;
             }
         }
     }
@@ -221,14 +226,24 @@ public final class ScenarioImpl implements Scenario {
      * Returns the number of atomic cells that contribute to the current
      * cell.
      *
+     * <p>If the current cell is based on a calculated measure, returns null.
+     *
      * @param evaluator Evaluator
      * @return Number of atomic cells in the current cell
      */
     private static double evaluateAtomicCellCount(RolapEvaluator evaluator) {
+        final Member measure = evaluator.getMembers()[0];
+        if (!(measure instanceof RolapStoredMeasure)) {
+            return FunUtil.DoubleNull;
+        }
         final int savepoint = evaluator.savepoint();
         try {
             evaluator.setContext(
+<<<<<<< HEAD
                 evaluator.getCube().getAtomicCellCountMeasure());
+=======
+                evaluator.getMeasureGroup().getAtomicCellCountMeasure());
+>>>>>>> upstream/4.0
             final Object o = evaluator.evaluateCurrent();
             return ((Number) o).doubleValue();
         } finally {
@@ -265,7 +280,8 @@ public final class ScenarioImpl implements Scenario {
         int k = 0;
         for (Member member : memberList) {
             if (member.isMeasure()) {
-                member = cube.factCountMeasure;
+                member = ((RolapStoredMeasure) member).getMeasureGroup()
+                    .factCountMeasure;
                 assert member != null
                     : "fact count measure is required for writeback cubes";
             }
@@ -357,19 +373,17 @@ public final class ScenarioImpl implements Scenario {
             // Build the array of members by ordinal. If a member is not
             // specified for a particular dimension, use the 'all' member (not
             // necessarily the same as the default member).
-            final List<RolapHierarchy> hierarchyList = cube.getHierarchies();
-            this.membersByOrdinal = new Member[hierarchyList.size()];
-            for (int i = 0; i < membersByOrdinal.length; i++) {
-                membersByOrdinal[i] = hierarchyList.get(i).getDefaultMember();
+            final List<Member> memberList = new ArrayList<Member>();
+            for (RolapCubeHierarchy hierarchy : cube.getHierarchyList()) {
+                memberList.add(hierarchy.getDefaultMember());
             }
+            membersByOrdinal =
+                memberList.toArray(new Member[memberList.size()]);
             for (RolapMember member : members) {
-                final RolapHierarchy hierarchy = member.getHierarchy();
-                if (isScenario(hierarchy)) {
+                final RolapCubeHierarchy hierarchy = member.getHierarchy();
+                if (hierarchy.isScenario) {
                     assert member.isAll();
                 }
-                // REVIEW The following works because Measures is the only
-                // dimension whose members do not belong to RolapCubeDimension,
-                // just a regular RolapDimension, but has ordinal 0.
                 final int ordinal = hierarchy.getOrdinalInCube();
                 membersByOrdinal[ordinal] = member;
             }
@@ -522,6 +536,7 @@ public final class ScenarioImpl implements Scenario {
                         switch (writebackCell.allocationPolicy) {
                         case EQUAL_ALLOCATION:
                             d = writebackCell.newValue
+<<<<<<< HEAD
                             * atomicCellCount
                             / writebackCell.atomicCellCount;
                             break;
@@ -530,11 +545,22 @@ public final class ScenarioImpl implements Scenario {
                             * atomicCellCount
                             / writebackCell.atomicCellCount;
                             break;
+=======
+                            * atomicCellCount
+                            / writebackCell.atomicCellCount;
+                            break;
+                        case EQUAL_INCREMENT:
+                            d += writebackCell.getOffset()
+                            * atomicCellCount
+                            / writebackCell.atomicCellCount;
+                            break;
+>>>>>>> upstream/4.0
                         default:
                             throw Util.unexpected(
                                 writebackCell.allocationPolicy);
                         }
                         ++changeCount;
+<<<<<<< HEAD
                         break;
                     case EQUAL:
                         // This cell is the writeback cell. Value is the value
@@ -548,6 +574,21 @@ public final class ScenarioImpl implements Scenario {
                         d += writebackCell.getOffset();
                         ++changeCount;
                         break;
+=======
+                        break;
+                    case EQUAL:
+                        // This cell is the writeback cell. Value is the value
+                        // written back.
+                        d = writebackCell.newValue;
+                        ++changeCount;
+                        break;
+                    case BELOW:
+                        // This cell is above the writeback cell. Value is the
+                        // current value plus the change in the writeback cell.
+                        d += writebackCell.getOffset();
+                        ++changeCount;
+                        break;
+>>>>>>> upstream/4.0
                     case NONE:
                         // Writeback cell is unrelated. It has no effect on
                         // cell's value.

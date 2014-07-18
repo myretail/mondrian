@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2011 Pentaho and others
+// Copyright (C) 2007-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -30,7 +30,7 @@ import java.util.*;
  * @author Thiyagu
  * @since 24 May 2007
  */
-final class GroupingSetsList {
+public final class GroupingSetsList {
 
     private final List<RolapStar.Column> rollupColumns;
     private final List<RolapStar.Column[]> groupingSetsColumns;
@@ -195,7 +195,7 @@ final class GroupingSetsList {
     }
 
     public RolapStar getStar() {
-        return getDefaultGroupingSet().segment0.getStar();
+        return getDefaultGroupingSet().segment0.aggMeasure.getStar();
     }
 
     public List<GroupingSet> getGroupingSets() {
@@ -211,7 +211,7 @@ final class GroupingSetsList {
      * same dimensionality and identical axis values. A cohort contains
      * corresponding cell values for set of measures.
      */
-    static class Cohort
+    public static class Cohort
     {
         final List<SegmentDataset> segmentDatasetList;
         final SegmentAxis[] axes;

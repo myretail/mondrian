@@ -23,7 +23,6 @@ import java.util.*;
  * @author jhyde
  * @since Jan 17, 2008
  */
-
 public class TypeTest extends TestCase {
 
     public void testConversions() {
@@ -32,8 +31,8 @@ public class TypeTest extends TestCase {
             getCubeWithName("Sales", connection.getSchema().getCubes());
         assertTrue(salesCube != null);
         Dimension customersDimension = null;
-        for (Dimension dimension : salesCube.getDimensions()) {
-            if (dimension.getName().equals("Customers")) {
+        for (Dimension dimension : salesCube.getDimensionList()) {
+            if (dimension.getName().equals("Customer")) {
                 customersDimension = dimension;
             }
         }
@@ -253,6 +252,7 @@ public class TypeTest extends TestCase {
     private Member getStoreChild() {
         List<Id.Segment> storeParts = Arrays.<Id.Segment>asList(
             new Id.NameSegment("Store", Id.Quoting.UNQUOTED),
+            new Id.NameSegment("Stores", Id.Quoting.UNQUOTED),
             new Id.NameSegment("All Stores", Id.Quoting.UNQUOTED),
             new Id.NameSegment("USA", Id.Quoting.UNQUOTED),
             new Id.NameSegment("CA", Id.Quoting.UNQUOTED));
@@ -263,7 +263,7 @@ public class TypeTest extends TestCase {
     private MemberType getMemberTypeHavingMaleChild(Member maleChild) {
         return new MemberType(
             maleChild.getDimension(),
-            maleChild.getDimension().getHierarchy(),
+            maleChild.getHierarchy(),
             maleChild.getLevel(),
             maleChild);
     }
@@ -271,13 +271,14 @@ public class TypeTest extends TestCase {
     private MemberType getMemberTypeHavingMeasureInIt(Member unitSalesMeasure) {
         return new MemberType(
             unitSalesMeasure.getDimension(),
-            unitSalesMeasure.getDimension().getHierarchy(),
-            unitSalesMeasure.getDimension().getHierarchy().getLevels()[0],
+            unitSalesMeasure.getHierarchy(),
+            unitSalesMeasure.getHierarchy().getLevelList().get(0),
             unitSalesMeasure);
     }
 
     private Member getMaleChild() {
         List<Id.Segment> genderParts = Arrays.<Id.Segment>asList(
+            new Id.NameSegment("Customer", Id.Quoting.UNQUOTED),
             new Id.NameSegment("Gender", Id.Quoting.UNQUOTED),
             new Id.NameSegment("M", Id.Quoting.UNQUOTED));
         return getSalesCubeSchemaReader().getMemberByUniqueName(
@@ -317,4 +318,3 @@ public class TypeTest extends TestCase {
 }
 
 // End TypeTest.java
-

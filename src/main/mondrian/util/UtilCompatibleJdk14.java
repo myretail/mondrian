@@ -163,6 +163,10 @@ public class UtilCompatibleJdk14 implements UtilCompatible {
             Arrays.asList(ts).subList(start, end), t,
             RolapUtil.ROLAP_COMPARATOR);
     }
+
+    public Locale localeForLanguageTag(String localeString) {
+        return null;
+    }
 }
 
 // End UtilCompatibleJdk14.java

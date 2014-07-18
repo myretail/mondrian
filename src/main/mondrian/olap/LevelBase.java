@@ -5,13 +5,14 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
 
 import mondrian.resource.MondrianResource;
-import mondrian.spi.MemberFormatter;
+
+import java.util.List;
 
 /**
  * Skeleton implementation of {@link Level}.
@@ -23,32 +24,26 @@ public abstract class LevelBase
     extends OlapElementBase
     implements Level
 {
-    protected final Hierarchy hierarchy;
+    public final Hierarchy hierarchy;
     protected final String name;
     protected final String uniqueName;
-    protected final String description;
     protected final int depth;
-    protected final LevelType levelType;
-    protected MemberFormatter memberFormatter;
-    protected int  approxRowCount;
+    protected int approxRowCount;
 
     protected LevelBase(
         Hierarchy hierarchy,
         String name,
-        String caption,
         boolean visible,
-        String description,
-        int depth,
-        LevelType levelType)
+        int depth)
     {
+        assert hierarchy != null;
+        assert name != null;
+        assert depth >= 0;
         this.hierarchy = hierarchy;
         this.name = name;
-        this.caption = caption;
         this.visible = visible;
-        this.description = description;
         this.uniqueName = Util.makeFqName(hierarchy, name);
         this.depth = depth;
-        this.levelType = levelType;
     }
 
     /**
@@ -64,10 +59,6 @@ public abstract class LevelBase
         return MondrianResource.instance().MdxLevelName.str(getUniqueName());
     }
 
-    public LevelType getLevelType() {
-        return levelType;
-    }
-
     public String getUniqueName() {
         return uniqueName;
     }
@@ -77,15 +68,7 @@ public abstract class LevelBase
     }
 
     public String getDescription() {
-        return description;
-    }
-
-    public Hierarchy getHierarchy() {
-        return hierarchy;
-    }
-
-    public Dimension getDimension() {
-        return hierarchy.getDimension();
+        return Larders.getDescription(getLarder());
     }
 
     public int getDepth() {
@@ -94,43 +77,19 @@ public abstract class LevelBase
 
     public Level getChildLevel() {
         int childDepth = depth + 1;
-        Level[] levels = hierarchy.getLevels();
-        return (childDepth < levels.length)
-            ? levels[childDepth]
+        List<? extends Level> levels = hierarchy.getLevelList();
+        return (childDepth < levels.size())
+            ? levels.get(childDepth)
             : null;
     }
 
     public Level getParentLevel() {
         int parentDepth = depth - 1;
-        Level[] levels = hierarchy.getLevels();
+        List<? extends Level> levels = hierarchy.getLevelList();
         return (parentDepth >= 0)
-            ? levels[parentDepth]
+            ? levels.get(parentDepth)
             : null;
     }
-
-    public abstract boolean isAll();
-
-    public boolean isMeasure() {
-        return hierarchy.getName().equals("Measures");
-    }
-
-    public OlapElement lookupChild(
-        SchemaReader schemaReader, Id.Segment s, MatchType matchType)
-    {
-        if (areMembersUnique()
-            && s instanceof Id.NameSegment)
-        {
-            return Util.lookupHierarchyRootMember(
-                schemaReader, hierarchy, ((Id.NameSegment) s), matchType);
-        } else {
-            return null;
-        }
-    }
-
-    public MemberFormatter getMemberFormatter() {
-        return memberFormatter;
-    }
 }
-
 
 // End LevelBase.java

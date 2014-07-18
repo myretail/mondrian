@@ -98,7 +98,7 @@ abstract class Recognizer {
         // Check measures
         int nosMeasures = checkMeasures();
         // There must be at least one measure
-        checkNosMeasures(nosMeasures);
+        checkMeasureCount(nosMeasures);
         generateImpliedMeasures();
 
         // Check levels
@@ -135,6 +135,11 @@ abstract class Recognizer {
 
     /**
      * Create an ignore usage for the aggColumn.
+<<<<<<< HEAD
+=======
+     *
+     * @param aggColumn Aggregate table column
+>>>>>>> upstream/4.0
      */
     protected void makeIgnore(final JdbcSchema.Table.Column aggColumn) {
         JdbcSchema.Table.Column.Usage usage =
@@ -211,6 +216,11 @@ abstract class Recognizer {
 
     /**
      * Create a fact count usage for the aggColumn.
+<<<<<<< HEAD
+=======
+     *
+     * @param aggColumn Aggregate table column
+>>>>>>> upstream/4.0
      */
     protected void makeFactCount(final JdbcSchema.Table.Column aggColumn) {
         JdbcSchema.Table.Column.Usage usage =
@@ -221,12 +231,17 @@ abstract class Recognizer {
 
     /**
      * Make sure there was at least one measure column identified.
+<<<<<<< HEAD
+=======
+     *
+     * @param measureCount Number of measure counts
+>>>>>>> upstream/4.0
      */
-    protected void checkNosMeasures(int nosMeasures) {
+    protected void checkMeasureCount(int measureCount) {
         msgRecorder.pushContextName("Recognizer.checkNosMeasures");
 
         try {
-            if (nosMeasures == 0) {
+            if (measureCount == 0) {
                 String msg = mres.NoMeasureColumns.str(
                     aggTable.getName(),
                     dbFactTable.getName());
@@ -276,7 +291,7 @@ abstract class Recognizer {
                 int seenCount = 0;
                 for (Iterator<JdbcSchema.Table.Column.Usage> mit =
                     aggTable.getColumnUsages(JdbcSchema.UsageType.MEASURE);
-                        mit.hasNext();)
+                     mit.hasNext();)
                 {
                     JdbcSchema.Table.Column.Usage aggUsage = mit.next();
                     if (aggUsage.rMeasure == avgFactUsage.rMeasure) {
@@ -328,6 +343,12 @@ abstract class Recognizer {
     /**
      * Creates an aggregate table column measure usage from a fact
      * table column measure usage.
+<<<<<<< HEAD
+=======
+     *
+     * @param factUsage Fact usage
+     * @param aggColumn Aggregate table column
+>>>>>>> upstream/4.0
      */
     protected void makeMeasure(
         final JdbcSchema.Table.Column.Usage factUsage,
@@ -344,9 +365,9 @@ abstract class Recognizer {
     }
 
     /**
-     * This method determine how may aggregate table column's match the fact
-     * table foreign key column return in the number matched. For each matching
-     * column a foreign key usage is created.
+     * Determines how many aggregate table columns match the fact
+     * table foreign key column, returning the number matched.
+     * Creates a foreign key usage for each matching column.
      */
     protected abstract int matchForeignKey(
         JdbcSchema.Table.Column.Usage factUsage);
@@ -373,18 +394,17 @@ abstract class Recognizer {
 
             for (Iterator<JdbcSchema.Table.Column.Usage> it =
                 dbFactTable.getColumnUsages(JdbcSchema.UsageType.FOREIGN_KEY);
-                    it.hasNext();)
+                 it.hasNext();)
             {
                 JdbcSchema.Table.Column.Usage factUsage = it.next();
-
                 int matchCount = matchForeignKey(factUsage);
-
                 if (matchCount > 1) {
-                    String msg = mres.TooManyMatchingForeignKeyColumns.str(
-                        aggTable.getName(),
-                        dbFactTable.getName(),
-                        matchCount,
-                        factUsage.getColumn().getName());
+                    String msg =
+                        mres.TooManyMatchingForeignKeyColumns.str(
+                            aggTable.getName(),
+                            dbFactTable.getName(),
+                            matchCount,
+                            factUsage.getColumn().getName());
                     msgRecorder.reportError(msg);
 
                     returnValue = false;
@@ -432,6 +452,11 @@ abstract class Recognizer {
      * Note: Levels should not be created for foreign keys that WERE seen.
      * Currently, this is NOT checked explicitly. For the explicit rules any
      * extra columns MUST ge declared ignored or one gets an error.
+<<<<<<< HEAD
+=======
+     *
+     * @param notSeenForeignKeys List of foreign keys not seen
+>>>>>>> upstream/4.0
      */
     protected void checkLevels(
         List<JdbcSchema.Table.Column.Usage> notSeenForeignKeys)
@@ -442,12 +467,12 @@ abstract class Recognizer {
         // 2) for each usage, find dimension and its levels
         // 3) determine if level columns are represented
 
-        // In generaly, there is only one cube.
+        // In generally, there is only one cube.
         for (RolapCube cube : findCubes()) {
-            Dimension[] dims = cube.getDimensions();
+            List<? extends RolapCubeDimension> dims = cube.getDimensionList();
             // start dimensions at 1 (0 is measures)
-            for (int j = 1; j < dims.length; j++) {
-                Dimension dim = dims[j];
+            for (int j = 1; j < dims.size(); j++) {
+                Dimension dim = dims.get(j);
                 // Ok, got dimension.
                 // See if any of the levels exist as columns in the
                 // aggTable. This requires applying a map from:
@@ -459,10 +484,12 @@ abstract class Recognizer {
                 // then all of the higher levels must also appear.
                 String dimName = dim.getName();
 
-                Hierarchy[] hierarchies = dim.getHierarchies();
-                for (Hierarchy hierarchy : hierarchies) {
+                for (Hierarchy hierarchy : dim.getHierarchyList()) {
+                    if (true) {
+                        continue;
+                    }
                     HierarchyUsage[] hierarchyUsages =
-                        cube.getUsages(hierarchy);
+                        null; // was: cube.getUsages(hierarchy)
                     for (HierarchyUsage hierarchyUsage : hierarchyUsages) {
                         // Search through the notSeenForeignKeys list
                         // making sure that this HierarchyUsage's
@@ -502,6 +529,11 @@ abstract class Recognizer {
 
     /**
      * Debug method: Print out not seen foreign key list.
+<<<<<<< HEAD
+=======
+     *
+     * @param notSeenForeignKeys List of foreign keys not seen
+>>>>>>> upstream/4.0
      */
     private void printNotSeenForeignKeys(List notSeenForeignKeys) {
         LOGGER.debug(
@@ -518,6 +550,13 @@ abstract class Recognizer {
      * Here a measure ussage is created and the right join condition is
      * explicitly supplied. This is needed is when the aggregate table's column
      * names may not match those found in the RolapStar.
+<<<<<<< HEAD
+=======
+     *
+     * @param factUsage Fact usage
+     * @param aggColumn Aggregate table oclumn
+     * @param rightJoinConditionColumnName Right join condition column name
+>>>>>>> upstream/4.0
      */
     protected void makeForeignKey(
         final JdbcSchema.Table.Column.Usage factUsage,
@@ -575,7 +614,8 @@ abstract class Recognizer {
                 {
                     JdbcSchema.Table.Column.Usage aggUsage = uit.next();
 
-                    MondrianDef.Relation rel = hierarchyUsage.getJoinTable();
+                    RolapSchema.PhysRelation rel =
+                        hierarchyUsage.getJoinTable();
                     String cName = levelColumnName;
 
                     if (! aggUsage.relation.equals(rel)
@@ -603,7 +643,6 @@ abstract class Recognizer {
                 // Cache table and column for the above
                 // check
                 aggUsage.relation = hierarchyUsage.getJoinTable();
-                aggUsage.joinExp = hierarchyUsage.getJoinExp();
                 aggUsage.levelColumnName = levelColumnName;
                 aggUsage.rightJoinConditionColumnName = levelColumnName;
                 aggUsage.collapsed = isCollapsed;
@@ -611,16 +650,7 @@ abstract class Recognizer {
 
                 aggUsage.setSymbolicName(symbolicName);
 
-                String tableAlias;
-                if (aggUsage.joinExp instanceof MondrianDef.Column) {
-                    MondrianDef.Column mcolumn =
-                        (MondrianDef.Column) aggUsage.joinExp;
-                    tableAlias = mcolumn.table;
-                } else {
-                    tableAlias = aggUsage.relation.getAlias();
-                }
-
-
+                String tableAlias = aggUsage.relation.getAlias();
                 RolapStar.Table factTable = star.getFactTable();
                 RolapStar.Table descTable =
                     factTable.findDescendant(tableAlias);
@@ -731,6 +761,12 @@ abstract class Recognizer {
      * <p>
      * Note: this code assumes that the aggregate table does not have an
      * explicit average aggregation column.
+<<<<<<< HEAD
+=======
+     *
+     * @param aggUsage Aggregate table column usage
+     * @param factAgg Fact aggregator
+>>>>>>> upstream/4.0
      */
     protected RolapAggregator convertAggregator(
         final JdbcSchema.Table.Column.Usage aggUsage,
@@ -767,6 +803,13 @@ abstract class Recognizer {
      * <p>
      * if no new aggregator was selected, then the fact table's aggregator
      * rollup aggregator is used.
+<<<<<<< HEAD
+=======
+     *
+     * @param aggUsage Aggregate table column usage
+     * @param factAgg Fact aggregator
+     * @param siblingAgg Sibling aggregator
+>>>>>>> upstream/4.0
      */
     protected RolapAggregator convertAggregator(
         final JdbcSchema.Table.Column.Usage aggUsage,
@@ -834,8 +877,9 @@ abstract class Recognizer {
         // we want the fact count expression
         MondrianDef.Column column =
             new MondrianDef.Column(tableName, factCountColumnName);
-        SqlQuery sqlQuery = star.getSqlQuery();
-        return column.getExpression(sqlQuery);
+        SqlQuery sqlQuery = new SqlQuery(star.getSqlQueryDialect());
+//        return column.getExpression(sqlQuery);
+        return null;
     }
 
     /**
@@ -846,14 +890,19 @@ abstract class Recognizer {
 
         List<RolapCube> list = new ArrayList<RolapCube>();
         RolapSchema schema = star.getSchema();
+        cubeLoop:
         for (RolapCube cube : schema.getCubeList()) {
-            if (cube.isVirtual()) {
-                continue;
-            }
-            RolapStar cubeStar = cube.getStar();
-            String factTableName = cubeStar.getFactTable().getAlias();
-            if (name.equals(factTableName)) {
-                list.add(cube);
+            for (Member member : cube.getMeasuresMembers()) {
+                if (member instanceof RolapStoredMeasure) {
+                    RolapStoredMeasure measure = (RolapStoredMeasure) member;
+                    final RolapStar cubeStar =
+                        measure.getStarMeasure().getStar();
+                    String factTableName = cubeStar.getFactTable().getAlias();
+                    if (name.equals(factTableName)) {
+                        list.add(cube);
+                        continue cubeLoop;
+                    }
+                }
             }
         }
         return list;
@@ -863,31 +912,38 @@ abstract class Recognizer {
      * Given a {@link mondrian.olap.MondrianDef.Expression}, returns
      * the associated column name.
      *
-     * <p>Note: if the {@link mondrian.olap.MondrianDef.Expression} is
-     * not a {@link mondrian.olap.MondrianDef.Column} or {@link
-     * mondrian.olap.MondrianDef.KeyExpression}, returns null. This
+     * <p>Note: if the {@link mondrian.rolap.RolapSchema.PhysExpr} is
+     * not a {@link mondrian.rolap.RolapSchema.PhysRealColumn} or
+     * {@code mondrian.olap.MondrianDef.KeyExpression}, returns null. This
      * will result in an error.
      */
-    protected String getColumnName(MondrianDef.Expression expr) {
+    protected String getColumnName(RolapSchema.PhysExpr expr) {
         msgRecorder.pushContextName("Recognizer.getColumnName");
-
         try {
-            if (expr instanceof MondrianDef.Column) {
-                MondrianDef.Column column = (MondrianDef.Column) expr;
-                return column.getColumnName();
-            } else if (expr instanceof MondrianDef.KeyExpression) {
-                MondrianDef.KeyExpression key =
-                    (MondrianDef.KeyExpression) expr;
-                return key.toString();
+            if (expr instanceof RolapSchema.PhysRealColumn) {
+                RolapSchema.PhysRealColumn column =
+                    (RolapSchema.PhysRealColumn) expr;
+                return column.name;
+            } else {
+                return expr.toString();
             }
-
-            String msg = mres.NoColumnNameFromExpression.str(
-                expr.toString());
-            msgRecorder.reportError(msg);
-
-            return null;
         } finally {
             msgRecorder.popContextName();
+        }
+    }
+
+    @Deprecated
+    protected static class HierarchyUsage {
+        public String getForeignKey() {
+            return null;
+        }
+
+        public RolapSchema.PhysRelation getJoinTable() {
+            return null;
+        }
+
+        public String getUsagePrefix() {
+            return null;
         }
     }
 }

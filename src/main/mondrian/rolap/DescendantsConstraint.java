@@ -5,16 +5,15 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.olap.Evaluator;
-import mondrian.rolap.aggmatcher.AggStar;
 import mondrian.rolap.sql.*;
 
-import java.util.List;
+import java.util.*;
 
 /**
  * TupleConstaint which restricts the result of a tuple sqlQuery to a
@@ -31,6 +30,7 @@ class DescendantsConstraint implements TupleConstraint {
      * Creates a DescendantsConstraint.
      *
      * @param parentMembers list of parents all from the same level
+     *
      * @param mcc the constraint that would return the children for each single
      * parent
      */
@@ -43,20 +43,18 @@ class DescendantsConstraint implements TupleConstraint {
     }
 
     public void addConstraint(
-        SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar)
+        SqlQueryBuilder queryBuilder,
+        RolapStarSet starSet)
     {
-        mcc.addMemberConstraint(sqlQuery, baseCube, aggStar, parentMembers);
+        mcc.addMemberConstraint(queryBuilder, starSet, parentMembers);
     }
 
     public void addLevelConstraint(
         SqlQuery sqlQuery,
-        RolapCube baseCube,
-        AggStar aggStar,
-        RolapLevel level)
+        RolapStarSet starSet,
+        RolapCubeLevel level)
     {
-        mcc.addLevelConstraint(sqlQuery, baseCube, aggStar, level);
+        mcc.addLevelConstraint(sqlQuery, starSet, level);
     }
 
     public MemberChildrenConstraint getMemberChildrenConstraint(
@@ -76,6 +74,17 @@ class DescendantsConstraint implements TupleConstraint {
 
     public Evaluator getEvaluator() {
         return null;
+    }
+
+    public List<RolapMeasureGroup> getMeasureGroupList() {
+        return mcc instanceof TupleConstraint
+            ? ((TupleConstraint) mcc).getMeasureGroupList()
+            : Collections.<RolapMeasureGroup>emptyList();
+    }
+
+    public boolean isJoinRequired() {
+        return mcc instanceof TupleConstraint
+            && ((TupleConstraint) mcc).isJoinRequired();
     }
 }
 

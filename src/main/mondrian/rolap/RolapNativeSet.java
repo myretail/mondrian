@@ -13,12 +13,12 @@ package mondrian.rolap;
 
 import mondrian.calc.ResultStyle;
 import mondrian.calc.TupleList;
-import mondrian.calc.impl.DelegatingTupleList;
+import mondrian.calc.impl.*;
 import mondrian.olap.*;
 import mondrian.rolap.TupleReader.MemberBuilder;
-import mondrian.rolap.aggmatcher.AggStar;
 import mondrian.rolap.cache.*;
 import mondrian.rolap.sql.*;
+import mondrian.spi.*;
 
 import org.apache.commons.collections.*;
 import org.apache.log4j.Logger;
@@ -28,6 +28,11 @@ import javax.sql.DataSource;
 
 import static org.apache.commons.collections.CollectionUtils.*;
 
+<<<<<<< HEAD
+=======
+import static mondrian.spi.DataServicesLocator.*;
+
+>>>>>>> upstream/4.0
 /**
  * Analyses set expressions and executes them in SQL if possible.
  * Supports crossjoin, member.children, level.members and member.descendants -
@@ -77,12 +82,21 @@ public abstract class RolapNativeSet extends RolapNative {
     protected static abstract class SetConstraint extends SqlContextConstraint {
         CrossJoinArg[] args;
 
+        /**
+         * Creates a SetConstraint.
+         *
+         * @param args Cross-join arguments
+         * @param evaluator Evaluator
+         * @param measureGroupList List of stars to join to
+         * @param strict Whether to fail if context contains calculated members
+         */
         SetConstraint(
             CrossJoinArg[] args,
             RolapEvaluator evaluator,
+            List<RolapMeasureGroup> measureGroupList,
             boolean strict)
         {
-            super(evaluator, strict);
+            super(evaluator, measureGroupList, strict);
             this.args = args;
         }
 
@@ -92,16 +106,15 @@ public abstract class RolapNativeSet extends RolapNative {
          * <p>If there is a crossjoin, we need to join the fact table - even if
          * the evaluator context is empty.
          */
-        protected boolean isJoinRequired() {
+        public boolean isJoinRequired() {
             return args.length > 1 || super.isJoinRequired();
         }
 
         public void addConstraint(
-            SqlQuery sqlQuery,
-            RolapCube baseCube,
-            AggStar aggStar)
+            SqlQueryBuilder queryBuilder,
+            RolapStarSet starSet)
         {
-            super.addConstraint(sqlQuery, baseCube, aggStar);
+            super.addConstraint(queryBuilder, starSet);
             for (CrossJoinArg arg : args) {
                 // if the cross join argument has calculated members in its
                 // enumerated set, ignore the constraint since we won't
@@ -111,17 +124,23 @@ public abstract class RolapNativeSet extends RolapNative {
                     || !((MemberListCrossJoinArg) arg).hasCalcMembers())
                 {
                     RolapLevel level = arg.getLevel();
-                    if (level == null || levelIsOnBaseCube(baseCube, level)) {
-                        arg.addConstraint(sqlQuery, baseCube, aggStar);
+                    if (level == null
+                        || levelIsOnBaseCube(starSet.getMeasureGroup(), level))
+                    {
+                        arg.addConstraint(queryBuilder, starSet);
                     }
                 }
             }
         }
 
         private boolean levelIsOnBaseCube(
-            final RolapCube baseCube, final RolapLevel level)
+            final RolapMeasureGroup measureGroup, final RolapLevel level)
         {
-            return baseCube.findBaseCubeHierarchy(level.getHierarchy()) != null;
+            if (measureGroup == null) {
+                return false;
+            }
+            return measureGroup.getPath(
+                level.getHierarchy().getDimension()) != null;
         }
 
         /**
@@ -181,6 +200,7 @@ public abstract class RolapNativeSet extends RolapNative {
         public Object execute(ResultStyle desiredResultStyle) {
             switch (desiredResultStyle) {
             case ITERABLE:
+<<<<<<< HEAD
                 for (CrossJoinArg arg : this.args) {
                     if (arg.getLevel().getDimension().isHighCardinality()) {
                         // If any of the dimensions is a HCD,
@@ -192,16 +212,21 @@ public abstract class RolapNativeSet extends RolapNative {
                     return executeList(
                         new SqlTupleReader(constraint));
                 }
+=======
+>>>>>>> upstream/4.0
             case MUTABLE_LIST:
             case LIST:
-                return executeList(new SqlTupleReader(constraint));
+                DataServicesProvider provider =
+                    getDataServicesProvider(
+                        schemaReader.getSchema().getDataServiceProviderName());
+                return executeList(provider.getTupleReader(constraint));
             }
             throw ResultStyleException.generate(
                 ResultStyle.ITERABLE_MUTABLELIST_LIST,
                 Collections.singletonList(desiredResultStyle));
         }
 
-        protected TupleList executeList(final SqlTupleReader tr) {
+        protected TupleList executeList(final TupleReader tr) {
             tr.setMaxRows(maxRows);
             for (CrossJoinArg arg : args) {
                 addLevel(tr, arg);
@@ -247,14 +272,15 @@ public abstract class RolapNativeSet extends RolapNative {
                 newPartialResult = new ArrayList<List<RolapMember>>();
             }
             DataSource dataSource = schemaReader.getDataSource();
+            final Dialect dialect = schemaReader.getSchema().getDialect();
             if (args.length == 1) {
                 result =
                     tr.readMembers(
-                        dataSource, partialResult, newPartialResult);
+                        dialect, dataSource, partialResult, newPartialResult);
             } else {
                 result =
                     tr.readTuples(
-                        dataSource, partialResult, newPartialResult);
+                        dialect, dataSource, partialResult, newPartialResult);
             }
 
             if (!MondrianProperties.instance().DisableCaching.get()) {
@@ -270,6 +296,7 @@ public abstract class RolapNativeSet extends RolapNative {
                     cache.put(key, result);
                 }
             }
+<<<<<<< HEAD
             return filterTuplesWithHiddenMembers(result);
         }
 
@@ -283,11 +310,30 @@ public abstract class RolapNativeSet extends RolapNative {
                             (List<Member>) o, isMemberHiddenPredicate);
                     }
                 });
+=======
+            return filterInaccessibleTuples(result);
+        }
+
+        /**
+         * Checks access rights and hidden status on the members
+         * in each tuple in tupleList.
+         */
+        private TupleList filterInaccessibleTuples(TupleList tupleList) {
+            if (needsFiltering(tupleList)) {
+                final Predicate memberInaccessible =
+                    memberInaccessiblePredicate();
+                filter(
+                    tupleList, tupleAccessiblePredicate(memberInaccessible));
+>>>>>>> upstream/4.0
             }
             return tupleList;
         }
 
+<<<<<<< HEAD
         private boolean needsFilter(TupleList tupleList) {
+=======
+        private boolean needsFiltering(TupleList tupleList) {
+>>>>>>> upstream/4.0
             return tupleList.size() > 0
                    && exists(tupleList.get(0), needsFilterPredicate());
         }
@@ -296,7 +342,12 @@ public abstract class RolapNativeSet extends RolapNative {
             return new Predicate() {
                 public boolean evaluate(Object o) {
                     Member member = (Member) o;
+<<<<<<< HEAD
                     return isRaggedLevel(member.getLevel());
+=======
+                    return isRaggedLevel(member.getLevel())
+                           || isCustomAccess(member.getHierarchy());
+>>>>>>> upstream/4.0
                 }
             };
         }
@@ -309,20 +360,66 @@ public abstract class RolapNativeSet extends RolapNative {
             // don't know if it's ragged, so assume it is.
             // should not reach here
             return true;
+<<<<<<< HEAD
+=======
+        }
+
+        private boolean isCustomAccess(Hierarchy hierarchy) {
+            if (constraint.getEvaluator() == null) {
+                return false;
+            }
+            Access access =
+                constraint
+                    .getEvaluator()
+                    .getSchemaReader()
+                    .getRole()
+                    .getAccess(hierarchy);
+            return access == Access.CUSTOM;
+        }
+
+        private Predicate memberInaccessiblePredicate() {
+            if (constraint.getEvaluator() != null) {
+                return new Predicate() {
+                    public boolean evaluate(Object o) {
+                        Role role =
+                            constraint
+                                .getEvaluator().getSchemaReader().getRole();
+                        Member member = (Member) o;
+                        return member.isHidden() || !role.canAccess(member);
+                    }
+                };
+            }
+            return new Predicate() {
+                public boolean evaluate(Object o) {
+                    return ((Member) o).isHidden();
+                }
+            };
+        }
+
+        private Predicate tupleAccessiblePredicate(
+            final Predicate memberInaccessible)
+        {
+            return new Predicate() {
+                @SuppressWarnings("unchecked")
+                public boolean evaluate(Object o) {
+                    return !exists((List<Member>) o, memberInaccessible);
+                }};
+>>>>>>> upstream/4.0
         }
 
         private void addLevel(TupleReader tr, CrossJoinArg arg) {
-            RolapLevel level = arg.getLevel();
+            RolapCubeLevel level = arg.getLevel();
             if (level == null) {
                 // Level can be null if the CrossJoinArg represent
                 // an empty set.
-                // This is used to push down the "1 = 0" predicate
+                // This is used to push down the "false" predicate
                 // into the emerging CJ so that the entire CJ can
                 // be natively evaluated.
+                tr.incrementEmptySets();
                 return;
             }
 
-            RolapHierarchy hierarchy = level.getHierarchy();
+            RolapCubeHierarchy hierarchy = level.getHierarchy();
             MemberReader mr = schemaReader.getMemberReader(hierarchy);
             MemberBuilder mb = mr.getMemberBuilder();
             Util.assertTrue(mb != null, "MemberBuilder not found");
@@ -338,10 +435,6 @@ public abstract class RolapNativeSet extends RolapNative {
             } else {
                 tr.addLevelMembers(level, mb, null);
             }
-        }
-
-        int getMaxRows() {
-            return maxRows;
         }
 
         void setMaxRows(int maxRows) {
@@ -438,7 +531,7 @@ public abstract class RolapNativeSet extends RolapNative {
     public interface SchemaReaderWithMemberReaderAvailable
         extends SchemaReader
     {
-        MemberReader getMemberReader(Hierarchy hierarchy);
+        MemberReader getMemberReader(RolapCubeHierarchy hierarchy);
     }
 
     private static class SchemaReaderWithMemberReaderCache
@@ -452,12 +545,14 @@ public abstract class RolapNativeSet extends RolapNative {
             super(schemaReader);
         }
 
-        public synchronized MemberReader getMemberReader(Hierarchy hierarchy) {
+        public synchronized MemberReader getMemberReader(
+            RolapCubeHierarchy hierarchy)
+        {
             MemberReader memberReader = hierarchyReaders.get(hierarchy);
             if (memberReader == null) {
                 memberReader =
-                    ((RolapHierarchy) hierarchy).createMemberReader(
-                        schemaReader.getRole());
+                    RolapSchemaLoader.createMemberReader(
+                        hierarchy, schemaReader.getRole());
                 hierarchyReaders.put(hierarchy, memberReader);
             }
             return memberReader;

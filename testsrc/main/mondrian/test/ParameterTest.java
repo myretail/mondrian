@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2003-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho
+// Copyright (C) 2005-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.test;
@@ -26,7 +26,7 @@ import java.sql.Timestamp;
 import java.util.*;
 
 /**
- * A <code>ParameterTest</code> is a test suite for functionality relating to
+ * Test suite for functionality relating to
  * parameters.
  *
  * @author jhyde
@@ -73,7 +73,7 @@ public class ParameterTest extends FoodMartTestCase {
         assertEquals(m, p.getValue());
         mdx = query.toString();
         TestContext.assertEqualsVerbose(
-            "select {Parameter(\"Foo\", [Time], [Time].[1997].[Q2].[5], \"Foo\")} ON COLUMNS\n"
+            "select {Parameter(\"Foo\", [Time], [Time].[Time].[1997].[Q2].[5], \"Foo\")} ON COLUMNS\n"
             + "from [Sales]\n",
             mdx);
     }
@@ -114,7 +114,7 @@ public class ParameterTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Row #0: 135,215\n");
@@ -178,7 +178,8 @@ public class ParameterTest extends FoodMartTestCase {
         getTestContext().assertParameterizedExprReturns(
             "Parameter('foo', [Gender], [Gender].[F]).Name",
             "M",
-            "foo", "[Gender].[M]");
+            "foo",
+            "[Customer].[Gender].[M]");
         // explicitly set parameter to null and you should not get default value
         getTestContext().assertParameterizedExprReturns(
             "Parameter('foo', [Gender], [Gender].[F]).Name",
@@ -230,9 +231,9 @@ public class ParameterTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[F]}\n"
+            + "{[Customer].[Gender].[F]}\n"
             + "Row #0: 131,558\n";
         TestContext.assertEqualsVerbose(expected, TestContext.toString(result));
 
@@ -351,10 +352,7 @@ public class ParameterTest extends FoodMartTestCase {
             "Parameter(\"Foo\", [Time.Weekly], [Time.Weekly].[1997].[40],\"Foo\").Name",
             "40");
         // right dimension, wrong hierarchy
-        final String levelName =
-            MondrianProperties.instance().SsasCompatibleNaming.get()
-                ? "[Time].[Weekly]"
-                : "[Time.Weekly]";
+        final String levelName = "[Time].[Weekly]";
         assertExprThrows(
             "Parameter(\"Foo\",[Time.Weekly],[Time].[1997].[Q1],\"Foo\").Name",
             "Default value of parameter 'Foo' is not consistent with the parameter type 'MemberType<hierarchy="
@@ -378,7 +376,7 @@ public class ParameterTest extends FoodMartTestCase {
             "Q3");
         assertExprThrows(
             "Parameter(\"Foo\",[Time].[Quarter], [Time].[1997].[Q3].[8], \"Foo\").Name",
-            "Default value of parameter 'Foo' is not consistent with the parameter type 'MemberType<level=[Time].[Quarter]>");
+            "Default value of parameter 'Foo' is not consistent with the parameter type 'MemberType<level=[Time].[Time].[Quarter]>");
     }
 
     public void testParameterMemberFails() {
@@ -410,11 +408,11 @@ public class ParameterTest extends FoodMartTestCase {
         // "[Time]" is shorthand for "[Time].CurrentMember"
         assertExprReturns(
             "Parameter(\"Foo\", [Time], [Time].[Time], \"Description\").UniqueName",
-            "[Time].[1997]");
+            "[Time].[Time].[1997]");
 
         assertExprReturns(
             "Parameter(\"Foo\", [Time], [Time].[Time].Children.Item(2), \"Description\").UniqueName",
-            "[Time].[1997].[Q3]");
+            "[Time].[Time].[1997].[Q3]");
     }
 
     /**
@@ -442,13 +440,13 @@ public class ParameterTest extends FoodMartTestCase {
             + "     1),\n"
             + "   \"Description\")",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q4].[11]}\n"
+            + "{[Time].[Time].[1997].[Q4].[11]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: 2,344\n"
             + "Row #1: 18,278\n"
             + "Row #2: 4,648\n");
@@ -476,10 +474,10 @@ public class ParameterTest extends FoodMartTestCase {
             + " {[Marital Status].children} on columns\n"
             + "from Sales where Parameter(\"GenderParam\",[Gender],[Gender].[M],\"Which gender?\")",
             "Axis #0:\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Axis #1:\n"
-            + "{[Marital Status].[M]}\n"
-            + "{[Marital Status].[S]}\n"
+            + "{[Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Marital Status].[S]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Row #0: 66,460\n"
@@ -565,7 +563,7 @@ public class ParameterTest extends FoodMartTestCase {
         TestContext.assertEqualsVerbose(
             "with member [Measures].[A string] as 'Parameter(\"S\", STRING, (\"x\" || \"y\"), \"A string parameter\")'\n"
             + "  member [Measures].[A number] as 'Parameter(\"N\", NUMERIC, (2 + 3), \"A numeric parameter\")'\n"
-            + "select {Parameter(\"P\", [Gender], [Gender].[M], \"Which gender?\"), Parameter(\"Q\", [Gender], [Gender].DefaultMember, \"Another gender?\")} ON COLUMNS,\n"
+            + "select {Parameter(\"P\", [Customer].[Gender], [Customer].[Gender].[M], \"Which gender?\"), Parameter(\"Q\", [Customer].[Gender], [Customer].[Gender].DefaultMember, \"Another gender?\")} ON COLUMNS,\n"
             + "  {[Measures].[Unit Sales]} ON ROWS\n"
             + "from [Sales]\n",
             Util.unparse(query));
@@ -584,25 +582,25 @@ public class ParameterTest extends FoodMartTestCase {
         String resultString = TestContext.toString(result);
         TestContext.assertEqualsVerbose(
             "Axis #0:\n"
-            + "{[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Baked Goods]}\n"
-            + "{[Product].[Food].[Baking Goods]}\n"
-            + "{[Product].[Food].[Breakfast Foods]}\n"
-            + "{[Product].[Food].[Canned Foods]}\n"
-            + "{[Product].[Food].[Canned Products]}\n"
-            + "{[Product].[Food].[Dairy]}\n"
-            + "{[Product].[Food].[Deli]}\n"
-            + "{[Product].[Food].[Eggs]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
-            + "{[Product].[Food].[Meat]}\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Seafood]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
-            + "{[Product].[Food].[Snacks]}\n"
-            + "{[Product].[Food].[Starchy Foods]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods]}\n"
+            + "{[Product].[Products].[Food].[Baking Goods]}\n"
+            + "{[Product].[Products].[Food].[Breakfast Foods]}\n"
+            + "{[Product].[Products].[Food].[Canned Foods]}\n"
+            + "{[Product].[Products].[Food].[Canned Products]}\n"
+            + "{[Product].[Products].[Food].[Dairy]}\n"
+            + "{[Product].[Products].[Food].[Deli]}\n"
+            + "{[Product].[Products].[Food].[Eggs]}\n"
+            + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+            + "{[Product].[Products].[Food].[Meat]}\n"
+            + "{[Product].[Products].[Food].[Produce]}\n"
+            + "{[Product].[Products].[Food].[Seafood]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods]}\n"
+            + "{[Product].[Products].[Food].[Snacks]}\n"
+            + "{[Product].[Products].[Food].[Starchy Foods]}\n"
             + "Row #0: 1,932\n"
             + "Row #1: 5,045\n"
             + "Row #2: 820\n"
@@ -622,33 +620,33 @@ public class ParameterTest extends FoodMartTestCase {
 
         // Set one parameter and execute again.
         query.setParameter(
-            "ProductMember", "[Product].[All Products].[Food].[Eggs]");
+            "ProductMember", "[Product].[Products].[Food].[Eggs]");
         result = connection.execute(query);
         resultString = TestContext.toString(result);
         TestContext.assertEqualsVerbose(
             "Axis #0:\n"
-            + "{[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Eggs].[Eggs]}\n"
+            + "{[Product].[Products].[Food].[Eggs].[Eggs]}\n"
             + "Row #0: 918\n",
             resultString);
 
         // Now set both parameters and execute again.
         query.setParameter(
-            "ProductMember", "[Product].[All Products].[Food].[Deli]");
+            "ProductMember", "[Product].[Products].[Food].[Deli]");
         query.setParameter("Time", "[Time].[1997].[Q2].[4]");
         result = connection.execute(query);
         resultString = TestContext.toString(result);
         TestContext.assertEqualsVerbose(
             "Axis #0:\n"
-            + "{[Time].[1997].[Q2].[4]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Deli].[Meat]}\n"
-            + "{[Product].[Food].[Deli].[Side Dishes]}\n"
+            + "{[Product].[Products].[Food].[Deli].[Meat]}\n"
+            + "{[Product].[Products].[Food].[Deli].[Side Dishes]}\n"
             + "Row #0: 621\n"
             + "Row #1: 187\n",
             resultString);
@@ -714,24 +712,24 @@ public class ParameterTest extends FoodMartTestCase {
         assertAssignParameter(
             para, false, 8,
             "Invalid value '8' for parameter 'x',"
-            + " type MemberType<hierarchy=[Customers]>");
+            + " type MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, false, -8.56,
             "Invalid value '-8.56' for parameter 'x',"
-            + " type MemberType<hierarchy=[Customers]>");
+            + " type MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, false, new BigDecimal("12.345"),
             "Invalid value '12.345' for parameter 'x',"
-            + " type MemberType<hierarchy=[Customers]>");
+            + " type MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, false, new Date(),
-            "' for parameter 'x', type MemberType<hierarchy=[Customers]>");
+            "' for parameter 'x', type MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, false, new Timestamp(new Date().getTime()),
-            "' for parameter 'x', type MemberType<hierarchy=[Customers]>");
+            "' for parameter 'x', type MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, false, new Time(new Date().getTime()),
-            "' for parameter 'x', type MemberType<hierarchy=[Customers]>");
+            "' for parameter 'x', type MemberType<hierarchy=[Customer].[Customers]>");
 
         // string is OK
         assertAssignParameter(para, false, "[Customers].[Mexico]", null);
@@ -751,7 +749,7 @@ public class ParameterTest extends FoodMartTestCase {
         assertAssignParameter(para, false, null, null);
 
         SchemaReader sr =
-            TestContext.instance().getConnection()
+            getTestContext().getConnection()
                 .parseQuery("select from [Sales]").getSchemaReader(true)
                 .withLocus();
 
@@ -759,8 +757,8 @@ public class ParameterTest extends FoodMartTestCase {
         assertAssignParameter(
             para, false, sr.getMemberByUniqueName(
                 Id.Segment.toList("Time", "1997", "Q2", "5"), true),
-            "Invalid value '[Time].[1997].[Q2].[5]' for parameter 'x', "
-            + "type MemberType<hierarchy=[Customers]>");
+            "Invalid value '[Time].[Time].[1997].[Q2].[5]' for parameter 'x', "
+            + "type MemberType<hierarchy=[Customer].[Customers]>");
 
         // Member of right hierarchy.
         assertAssignParameter(
@@ -774,15 +772,15 @@ public class ParameterTest extends FoodMartTestCase {
             false,
             sr.getMemberByUniqueName(
                 Id.Segment.toList("Customers", "USA"), true),
-            "Invalid value '[Customers].[USA]' for parameter "
-            + "'x', type MemberType<level=[Customers].[State Province]>");
+            "Invalid value '[Customer].[Customers].[USA]' for parameter "
+            + "'x', type MemberType<level=[Customer].[Customers].[State Province]>");
 
         // Same, using string.
         assertAssignParameter(
             "Parameter(\"x\", [Customers].[State Province], [Customers].[USA].[CA])",
             false, "[Customers].[USA]",
-            "Invalid value '[Customers].[USA]' for parameter "
-            + "'x', type MemberType<level=[Customers].[State Province]>");
+            "Invalid value '[Customer].[Customers].[USA]' for parameter "
+            + "'x', type MemberType<level=[Customer].[Customers].[State Province]>");
 
         // Member of right level.
         assertAssignParameter(
@@ -808,22 +806,22 @@ public class ParameterTest extends FoodMartTestCase {
             "MDX object 'foobar' not found in cube 'Sales'");
         assertAssignParameter(
             para, true, 8,
-            "Invalid value '8' for parameter 'x', type SetType<MemberType<hierarchy=[Customers]>");
+            "Invalid value '8' for parameter 'x', type SetType<MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, true, -8.56,
-            "Invalid value '-8.56' for parameter 'x', type SetType<MemberType<hierarchy=[Customers]>");
+            "Invalid value '-8.56' for parameter 'x', type SetType<MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, true, new BigDecimal("12.345"),
-            "Invalid value '12.345' for parameter 'x', type SetType<MemberType<hierarchy=[Customers]>");
+            "Invalid value '12.345' for parameter 'x', type SetType<MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, true, new Date(),
-            "' for parameter 'x', type SetType<MemberType<hierarchy=[Customers]>");
+            "' for parameter 'x', type SetType<MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, true, new Timestamp(new Date().getTime()),
-            "' for parameter 'x', type SetType<MemberType<hierarchy=[Customers]>");
+            "' for parameter 'x', type SetType<MemberType<hierarchy=[Customer].[Customers]>");
         assertAssignParameter(
             para, true, new Time(new Date().getTime()),
-            "' for parameter 'x', type SetType<MemberType<hierarchy=[Customers]>");
+            "' for parameter 'x', type SetType<MemberType<hierarchy=[Customer].[Customers]>");
 
         // strings are OK
         assertAssignParameter(
@@ -848,7 +846,7 @@ public class ParameterTest extends FoodMartTestCase {
 
         List<Member> list;
         SchemaReader sr =
-            TestContext.instance().getConnection()
+            getTestContext().getConnection()
                 .parseQuery("select from [Sales]").getSchemaReader(true)
                 .withLocus();
 
@@ -868,7 +866,7 @@ public class ParameterTest extends FoodMartTestCase {
         // Not valid to set list to null.
         assertAssignParameter(
             para, true, null,
-            "Invalid value 'null' for parameter 'x', type SetType<MemberType<hierarchy=[Customers]>>");
+            "Invalid value 'null' for parameter 'x', type SetType<MemberType<hierarchy=[Customer].[Customers]>>");
 
         // List that contains one member of wrong hierarchy.
         list =
@@ -879,15 +877,15 @@ public class ParameterTest extends FoodMartTestCase {
                     Id.Segment.toList("Time", "1997", "Q2", "5"), true));
         assertAssignParameter(
             para, true, list,
-            "Invalid value '[Time].[1997].[Q2].[5]' for parameter 'x', "
-            + "type MemberType<hierarchy=[Customers]>");
+            "Invalid value '[Time].[Time].[1997].[Q2].[5]' for parameter 'x', "
+            + "type MemberType<hierarchy=[Customer].[Customers]>");
 
         // as above, strings
         assertAssignParameter(
             para, true,
             "{[Customers].[Mexico], [Time].[1997].[Q2].[5]}",
-            "Invalid value '[Time].[1997].[Q2].[5]' for parameter 'x', "
-            + "type MemberType<hierarchy=[Customers]>");
+            "Invalid value '[Time].[Time].[1997].[Q2].[5]' for parameter 'x', "
+            + "type MemberType<hierarchy=[Customer].[Customers]>");
 
         // List that contains members of correct hierarchy.
         list =
@@ -909,16 +907,16 @@ public class ParameterTest extends FoodMartTestCase {
             "Parameter(\"x\", [Customers].[State Province], {[Customers].[USA].[CA]})",
             true,
             list,
-            "Invalid value '[Customers].[Mexico]' for parameter "
-            + "'x', type MemberType<level=[Customers].[State Province]>");
+            "Invalid value '[Customer].[Customers].[Mexico]' for parameter "
+            + "'x', type MemberType<level=[Customer].[Customers].[State Province]>");
 
         // as above, strings
         assertAssignParameter(
             "Parameter(\"x\", [Customers].[State Province], {[Customers].[USA].[CA]})",
             true,
             "{[Customers].[USA].[CA], [Customers].[Mexico]}",
-            "Invalid value '[Customers].[Mexico]' for parameter "
-            + "'x', type MemberType<level=[Customers].[State Province]>");
+            "Invalid value '[Customer].[Customers].[Mexico]' for parameter "
+            + "'x', type MemberType<level=[Customer].[Customers].[State Province]>");
 
         // List that contains members of right level, and a null member.
         list =
@@ -995,7 +993,7 @@ public class ParameterTest extends FoodMartTestCase {
                 + " Parameter(\"Foo\", [Time], {}, \"Foo\") on 1\n"
                 + "from [Sales]";
             Query query = connection.parseQuery(mdx);
-            SchemaReader sr = query.getSchemaReader(false);
+            SchemaReader sr = query.getSchemaReader(false).withLocus();
             Member m1 =
                 sr.getMemberByUniqueName(
                     Id.Segment.toList("Time", "1997", "Q2", "5"), true);
@@ -1012,7 +1010,7 @@ public class ParameterTest extends FoodMartTestCase {
             mdx = query.toString();
             TestContext.assertEqualsVerbose(
                 "select {[Measures].[Unit Sales]} ON COLUMNS,\n"
-                + "  Parameter(\"Foo\", [Time], {[Time].[1997].[Q2].[5], [Time].[1997].[Q3]}, \"Foo\") ON ROWS\n"
+                + "  Parameter(\"Foo\", [Time], {[Time].[Time].[1997].[Q2].[5], [Time].[Time].[1997].[Q3]}, \"Foo\") ON ROWS\n"
                 + "from [Sales]\n",
                 mdx);
 
@@ -1023,8 +1021,8 @@ public class ParameterTest extends FoodMartTestCase {
                 + "Axis #1:\n"
                 + "{[Measures].[Unit Sales]}\n"
                 + "Axis #2:\n"
-                + "{[Time].[1997].[Q2].[5]}\n"
-                + "{[Time].[1997].[Q3]}\n"
+                + "{[Time].[Time].[1997].[Q2].[5]}\n"
+                + "{[Time].[Time].[1997].[Q3]}\n"
                 + "Row #0: 21,081\n"
                 + "Row #1: 65,848\n",
                 TestContext.toString(result));
@@ -1116,12 +1114,9 @@ public class ParameterTest extends FoodMartTestCase {
      * Tests a schema property with a default value.
      */
     public void testSchemaProp() {
-        final TestContext tc = TestContext.instance().create(
-            "<Parameter name=\"prop\" type=\"String\" "
-            + "defaultValue=\" 'foo bar' \" />",
-            null,
-            null,
-            null, null, null);
+        final TestContext tc = getTestContext().legacy().create(
+            "<Parameter name=\"prop\" type=\"String\" defaultValue=\" 'foo bar' \" />",
+            null, null, null, null, null);
         tc.assertExprReturns("ParamRef(\"prop\")", "foo bar");
     }
 
@@ -1129,7 +1124,7 @@ public class ParameterTest extends FoodMartTestCase {
      * Tests a schema property with a default value.
      */
     public void testSchemaPropDupFails() {
-        final TestContext tc = TestContext.instance().create(
+        final TestContext tc = getTestContext().legacy().create(
             "<Parameter name=\"foo\" type=\"Numeric\" defaultValue=\"1\" />\n"
             + "<Parameter name=\"bar\" type=\"Numeric\" defaultValue=\"2\" />\n"
             + "<Parameter name=\"foo\" type=\"Numeric\" defaultValue=\"3\" />\n",
@@ -1144,7 +1139,7 @@ public class ParameterTest extends FoodMartTestCase {
     }
 
     public void testSchemaPropIllegalTypeFails() {
-        final TestContext tc = TestContext.instance().create(
+        final TestContext tc = getTestContext().legacy().create(
             "<Parameter name=\"foo\" type=\"Bad type\" defaultValue=\"1\" />",
             null,
             null,
@@ -1159,7 +1154,7 @@ public class ParameterTest extends FoodMartTestCase {
     }
 
     public void testSchemaPropInvalidDefaultExpFails() {
-        final TestContext tc = TestContext.instance().create(
+        final TestContext tc = getTestContext().legacy().create(
             "<Parameter name=\"Product Current Member\" type=\"Member\" defaultValue=\"[Product].DefaultMember.Children(2) \" />",
             null,
             null,
@@ -1176,7 +1171,7 @@ public class ParameterTest extends FoodMartTestCase {
      * are not available.
      */
     public void testSchemaPropContext() {
-        final TestContext tc = TestContext.instance().create(
+        final TestContext tc = getTestContext().legacy().create(
             "<Parameter name=\"Customer Current Member\" type=\"Member\" defaultValue=\"[Customers].DefaultMember.Children.Item(2) \" />",
             null,
             null,

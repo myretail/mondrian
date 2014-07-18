@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.web.taglib;
@@ -317,15 +317,11 @@ public class DomBuilder {
     }
 
     private void addMemberProperties(Member m, Element e) {
-        Property[] props = m.getLevel().getProperties();
-        if (props != null) {
-            for (int i = 0; i < props.length; i++) {
-                String propName = props[i].getName();
-                String propValue = "" + m.getPropertyValue(propName);
-                Element propElem = elem("property", e);
-                propElem.setAttribute("name", propName);
-                propElem.setAttribute("value", propValue);
-            }
+        for (Property prop : m.getLevel().getProperties()) {
+            String propValue = "" + m.getPropertyValue(prop);
+            Element propElem = elem("property", e);
+            propElem.setAttribute("name", prop.getName());
+            propElem.setAttribute("value", propValue);
         }
     }
 

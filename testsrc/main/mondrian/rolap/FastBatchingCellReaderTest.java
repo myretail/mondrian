@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2012 Pentaho and others
+// Copyright (C) 2007-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -33,6 +33,8 @@ import java.util.concurrent.Future;
  * @since 24-May-2007
  */
 public class FastBatchingCellReaderTest extends BatchTestCase {
+
+    public static final List<String> ESL = Collections.emptyList();
 
     private Locus locus;
     private Execution e;
@@ -77,7 +79,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         Boolean useGroupingSets,
         RolapCube cube)
     {
-        Dialect dialect = cube.getStar().getSqlQueryDialect();
+        Dialect dialect = cube.getSchema().getDialect();
         if (useGroupingSets != null) {
             dialect = dialectWithGroupingSets(dialect, useGroupingSets);
         }
@@ -118,8 +120,8 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997], [Product].[Drink], [Education Level].[*CTX_MEMBER_SEL~SUM]}\n"
-            + "{[Time].[1997], [Product].[Drink], [Education Level].[Bachelors Degree]}\n"
+            + "{[Time].[Time].[1997], [Product].[Products].[Drink], [Customer].[Education Level].[*CTX_MEMBER_SEL~SUM]}\n"
+            + "{[Time].[Time].[1997], [Product].[Products].[Drink], [Customer].[Education Level].[Bachelors Degree]}\n"
             + "Row #0: 6,423\n"
             + "Row #1: 6,423\n");
     }
@@ -146,41 +148,33 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Store Cost]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink].[*CTX_MEMBER_SEL~SUM], [Education Level].[*CTX_MEMBER_SEL~SUM]}\n"
-            + "{[Product].[Food].[*CTX_MEMBER_SEL~SUM], [Education Level].[*CTX_MEMBER_SEL~SUM]}\n"
+            + "{[Product].[Products].[Drink].[*CTX_MEMBER_SEL~SUM], [Customer].[Education Level].[*CTX_MEMBER_SEL~SUM]}\n"
+            + "{[Product].[Products].[Food].[*CTX_MEMBER_SEL~SUM], [Customer].[Education Level].[*CTX_MEMBER_SEL~SUM]}\n"
             + "Row #0: 6,535.30\n"
             + "Row #1: 3,860.89\n");
     }
 
     public void testShouldUseGroupingFunctionOnPropertyTrueAndOnSupportedDB() {
-        propSaver.set(
-            MondrianProperties.instance().EnableGroupingSets,
-            true);
+        propSaver.set(propSaver.props.EnableGroupingSets, true);
         BatchLoader fbcr = createFbcr(true, salesCube);
         assertTrue(fbcr.shouldUseGroupingFunction());
     }
 
     public void testShouldUseGroupingFunctionOnPropertyTrueAndOnNonSupportedDB()
     {
-        propSaver.set(
-            MondrianProperties.instance().EnableGroupingSets,
-            true);
+        propSaver.set(propSaver.props.EnableGroupingSets, true);
         BatchLoader fbcr = createFbcr(false, salesCube);
         assertFalse(fbcr.shouldUseGroupingFunction());
     }
 
     public void testShouldUseGroupingFunctionOnPropertyFalseOnSupportedDB() {
-        propSaver.set(
-            MondrianProperties.instance().EnableGroupingSets,
-            false);
+        propSaver.set(propSaver.props.EnableGroupingSets, false);
         BatchLoader fbcr = createFbcr(true, salesCube);
         assertFalse(fbcr.shouldUseGroupingFunction());
     }
 
     public void testShouldUseGroupingFunctionOnPropertyFalseOnNonSupportedDB() {
-        propSaver.set(
-            MondrianProperties.instance().EnableGroupingSets,
-            false);
+        propSaver.set(propSaver.props.EnableGroupingSets, false);
         BatchLoader fbcr = createFbcr(false, salesCube);
         assertFalse(fbcr.shouldUseGroupingFunction());
     }
@@ -209,57 +203,67 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     }
 
     public void testGroupBatchesForNonGroupableBatchesWithSorting() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
         BatchLoader.Batch genderBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "gender", "F"));
         BatchLoader.Batch maritalStatusBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "marital_status", "M"));
         ArrayList<BatchLoader.Batch> batchList =
             new ArrayList<BatchLoader.Batch>();
         batchList.add(genderBatch);
         batchList.add(maritalStatusBatch);
-        List<BatchLoader.CompositeBatch> groupedBatches =
+        List<BatchLoader.Loadable> groupedBatches =
             BatchLoader.groupBatches(batchList);
         assertEquals(batchList.size(), groupedBatches.size());
-        assertEquals(genderBatch, groupedBatches.get(0).detailedBatch);
-        assertEquals(maritalStatusBatch, groupedBatches.get(1).detailedBatch);
+        assertEquals(genderBatch, groupedBatches.get(0).getDetailedBatch());
+        assertEquals(
+            maritalStatusBatch, groupedBatches.get(1).getDetailedBatch());
     }
 
     public void testGroupBatchesForNonGroupableBatchesWithConstraints() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
-        List<String[]> compoundMembers = new ArrayList<String[]>();
-        compoundMembers.add(new String[] {"USA", "CA"});
-        compoundMembers.add(new String[] {"Canada", "BC"});
+        List<List<String>> compoundMembers = list(
+            list("USA", "CA"),
+            list("Canada", "BC"));
         CellRequestConstraint constraint =
             makeConstraintCountryState(compoundMembers);
 
         BatchLoader.Batch genderBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "gender", "F", constraint));
         BatchLoader.Batch maritalStatusBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "marital_status", "M", constraint));
         ArrayList<BatchLoader.Batch> batchList =
             new ArrayList<BatchLoader.Batch>();
         batchList.add(genderBatch);
         batchList.add(maritalStatusBatch);
-        List<BatchLoader.CompositeBatch> groupedBatches =
+        List<BatchLoader.Loadable> groupedBatches =
             BatchLoader.groupBatches(batchList);
         assertEquals(batchList.size(), groupedBatches.size());
-        assertEquals(genderBatch, groupedBatches.get(0).detailedBatch);
-        assertEquals(maritalStatusBatch, groupedBatches.get(1).detailedBatch);
+        assertEquals(genderBatch, groupedBatches.get(0).getDetailedBatch());
+        assertEquals(
+            maritalStatusBatch, groupedBatches.get(1).getDetailedBatch());
     }
 
     public void testGroupBatchesForGroupableBatches() {
         final BatchLoader fbcr = createFbcr(null, salesCube);
+        final TestContext testContext = getTestContext();
         BatchLoader.Batch genderBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "gender", "F"))
             {
@@ -269,8 +273,9 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             };
         BatchLoader.Batch superBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
-                new String[0], new String[0], new String[0]))
+                ESL, ESL, ESL))
             {
                 boolean canBatch(BatchLoader.Batch batch) {
                     return true;
@@ -280,18 +285,21 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             new ArrayList<BatchLoader.Batch>();
         batchList.add(genderBatch);
         batchList.add(superBatch);
-        List<BatchLoader.CompositeBatch> groupedBatches =
+        List<BatchLoader.Loadable> groupedBatches =
             BatchLoader.groupBatches(batchList);
         assertEquals(1, groupedBatches.size());
-        assertEquals(superBatch, groupedBatches.get(0).detailedBatch);
-        assertTrue(
-            groupedBatches.get(0).summaryBatches.contains(genderBatch));
+        assertEquals(superBatch, groupedBatches.get(0).getDetailedBatch());
+        final BatchLoader.CompositeBatch batch0 =
+            (BatchLoader.CompositeBatch) groupedBatches.get(0);
+        assertTrue(batch0.summaryBatches.contains(genderBatch));
     }
 
     public void testGroupBatchesForGroupableBatchesAndNonGroupableBatches() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
         final BatchLoader.Batch group1Agg2 = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "gender", "F"))
             {
@@ -301,6 +309,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             };
         final BatchLoader.Batch group1Agg1 = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "country", "F"))
             {
@@ -310,8 +319,9 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             };
         BatchLoader.Batch group1Detailed = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
-                new String[0], new String[0], new String[0]))
+                ESL, ESL, ESL))
             {
                 boolean canBatch(BatchLoader.Batch batch) {
                     return batch.equals(group1Agg1);
@@ -320,6 +330,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
 
         final BatchLoader.Batch group2Agg1 = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "education", "F"))
             {
@@ -329,6 +340,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             };
         BatchLoader.Batch group2Detailed = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "yearly_income", ""))
             {
@@ -343,68 +355,77 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         batchList.add(group1Detailed);
         batchList.add(group2Agg1);
         batchList.add(group2Detailed);
-        List<BatchLoader.CompositeBatch> groupedBatches =
+        List<BatchLoader.Loadable> groupedBatches =
             BatchLoader.groupBatches(batchList);
         assertEquals(2, groupedBatches.size());
-        assertEquals(group1Detailed, groupedBatches.get(0).detailedBatch);
-        assertTrue(groupedBatches.get(0).summaryBatches.contains(group1Agg1));
-        assertTrue(groupedBatches.get(0).summaryBatches.contains(group1Agg2));
-        assertEquals(group2Detailed, groupedBatches.get(1).detailedBatch);
-        assertTrue(groupedBatches.get(1).summaryBatches.contains(group2Agg1));
+        final BatchLoader.CompositeBatch batch0 =
+            (BatchLoader.CompositeBatch) groupedBatches.get(0);
+        assertEquals(group1Detailed, batch0.getDetailedBatch());
+        assertTrue(batch0.summaryBatches.contains(group1Agg1));
+        assertTrue(batch0.summaryBatches.contains(group1Agg2));
+        final BatchLoader.CompositeBatch batch1 =
+            (BatchLoader.CompositeBatch) groupedBatches.get(1);
+        assertEquals(group2Detailed, batch1.detailedBatch);
+        assertTrue(batch1.summaryBatches.contains(group2Agg1));
     }
 
     public void testGroupBatchesForTwoSetOfGroupableBatches() {
-        String[] fieldValuesStoreType = {
+        final TestContext testContext = getTestContext();
+        List<String> fieldValuesStoreType = list(
             "Deluxe Supermarket", "Gourmet Supermarket", "HeadQuarters",
-            "Mid-Size Grocery", "Small Grocery", "Supermarket"
-        };
+            "Mid-Size Grocery", "Small Grocery", "Supermarket");
         String fieldStoreType = "store_type";
         String tableStore = "store";
 
-        String[] fieldValuesWarehouseCountry = {"Canada", "Mexico", "USA"};
+        List<String> fieldValuesWarehouseCountry =
+            list("Canada", "Mexico", "USA");
         String fieldWarehouseCountry = "warehouse_country";
         String tableWarehouse = "warehouse";
 
         final BatchLoader fbcr = createFbcr(null, salesCube);
         BatchLoader.Batch batch1RollupOnGender =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableStore, tableProductClass},
-                new String[] {fieldYear, fieldStoreType, fieldProductFamily},
-                new String[][] {
+                list(tableTime, tableStore, tableProductClass),
+                list(fieldYear, fieldStoreType, fieldProductFamily),
+                list(
                     fieldValuesYear,
                     fieldValuesStoreType,
-                    fieldValuesProductFamily},
+                    fieldValuesProductFamily),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch batch1RollupOnGenderAndProductDepartment =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableProductClass},
-                new String[] {fieldYear, fieldProductFamily},
-                new String[][] {fieldValuesYear, fieldValuesProductFamily},
+                list(tableTime, tableProductClass),
+                list(fieldYear, fieldProductFamily),
+                list(fieldValuesYear, fieldValuesProductFamily),
                 cubeNameSales, measureUnitSales);
 
         BatchLoader.Batch
             batch1RollupOnStoreTypeAndProductDepartment =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableCustomer},
-                new String[] {fieldYear, fieldGender},
-                new String[][] {fieldValuesYear, fieldValuesGender},
+                list(tableTime, tableCustomer),
+                list(fieldYear, fieldGender),
+                list(fieldValuesYear, fieldValuesGender),
                 cubeNameSales, measureUnitSales);
 
         BatchLoader.Batch batch1Detailed =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableTime, tableStore, tableProductClass, tableCustomer},
-                new String[] {
-                    fieldYear, fieldStoreType, fieldProductFamily, fieldGender},
-                new String[][] {
+                list(
+                    tableTime, tableStore, tableProductClass, tableCustomer),
+                list(
+                    fieldYear, fieldStoreType, fieldProductFamily, fieldGender),
+                list(
                     fieldValuesYear, fieldValuesStoreType,
-                    fieldValuesProductFamily, fieldValuesGender},
+                    fieldValuesProductFamily, fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -412,48 +433,47 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         String measure2 = "[Measures].[Warehouse Sales]";
         BatchLoader.Batch batch2RollupOnStoreType =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableWarehouse, tableTime, tableProductClass
-                },
-                new String[] {
-                    fieldWarehouseCountry, fieldYear,
-                    fieldProductFamily
-                },
-                new String[][] {
+                list(tableWarehouse, tableTime, tableProductClass),
+                list(fieldWarehouseCountry, fieldYear, fieldProductFamily),
+                list(
                     fieldValuesWarehouseCountry, fieldValuesYear,
-                    fieldValuesProductFamily}, warehouseCube,
+                    fieldValuesProductFamily),
+                warehouseCube,
                 measure2);
 
         BatchLoader.Batch
             batch2RollupOnStoreTypeAndWareHouseCountry =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableProductClass},
-                new String[] {fieldYear, fieldProductFamily},
-                new String[][] {fieldValuesYear, fieldValuesProductFamily},
+                list(tableTime, tableProductClass),
+                list(fieldYear, fieldProductFamily),
+                list(fieldValuesYear, fieldValuesProductFamily),
                 warehouseCube, measure2);
 
         BatchLoader.Batch
             batch2RollupOnProductFamilyAndWareHouseCountry =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableStore},
-                new String[] {fieldYear, fieldStoreType},
-                new String[][] {fieldValuesYear, fieldValuesStoreType},
+                list(tableTime, tableStore),
+                list(fieldYear, fieldStoreType),
+                list(fieldValuesYear, fieldValuesStoreType),
                 warehouseCube, measure2);
 
         BatchLoader.Batch batch2Detailed =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableWarehouse, tableTime, tableStore, tableProductClass},
-                new String[] {
+                list(tableWarehouse, tableTime, tableStore, tableProductClass),
+                list(
                     fieldWarehouseCountry, fieldYear, fieldStoreType,
-                    fieldProductFamily},
-                new String[][] {
+                    fieldProductFamily),
+                list(
                     fieldValuesWarehouseCountry, fieldValuesYear,
-                    fieldValuesStoreType, fieldValuesProductFamily},
+                    fieldValuesStoreType, fieldValuesProductFamily),
                 warehouseCube,
                 measure2);
 
@@ -468,8 +488,8 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         batchList.add(batch1RollupOnStoreTypeAndProductDepartment);
         batchList.add(batch2Detailed);
         batchList.add(batch1Detailed);
-        List<BatchLoader.CompositeBatch> groupedBatches =
-            fbcr.groupBatches(batchList);
+        List<BatchLoader.Loadable> groupedBatches =
+            BatchLoader.groupBatches(batchList);
         final int groupedBatchCount = groupedBatches.size();
 
         // Until MONDRIAN-1001 is fixed, behavior is flaky due to interaction
@@ -489,18 +509,21 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
 
     public void testAddToCompositeBatchForBothBatchesNotPartOfCompositeBatch() {
         final BatchLoader fbcr = createFbcr(null, salesCube);
+        final TestContext testContext = getTestContext();
         BatchLoader.Batch batch1 = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "country", "F"));
         BatchLoader.Batch batch2 = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "gender", "F"));
         Map<AggregationKey, BatchLoader.CompositeBatch> batchGroups =
             new HashMap<
                 AggregationKey, BatchLoader.CompositeBatch>();
-        fbcr.addToCompositeBatch(batchGroups, batch1, batch2);
+        BatchLoader.addToCompositeBatch(batchGroups, batch1, batch2);
         assertEquals(1, batchGroups.size());
         BatchLoader.CompositeBatch compositeBatch =
             batchGroups.get(batch1.batchKey);
@@ -512,18 +535,22 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     public void
         testAddToCompositeBatchForDetailedBatchAlreadyPartOfACompositeBatch()
     {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
         BatchLoader.Batch detailedBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "country", "F"));
         BatchLoader.Batch aggBatch1 = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "gender", "F"));
         BatchLoader.Batch aggBatchAlreadyInComposite =
             fbcr.new Batch(
                 createRequest(
+                    testContext,
                     cubeNameSales,
                     measureUnitSales, "customer", "gender", "F"));
         Map<AggregationKey, BatchLoader.CompositeBatch> batchGroups =
@@ -549,19 +576,23 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     public void
         testAddToCompositeBatchForAggregationBatchAlreadyPartOfACompositeBatch()
     {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
         BatchLoader.Batch detailedBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "country", "F"));
         BatchLoader.Batch aggBatchToAddToDetailedBatch =
             fbcr.new Batch(
                 createRequest(
+                    testContext,
                     cubeNameSales,
                     measureUnitSales, "customer", "gender", "F"));
         BatchLoader.Batch aggBatchAlreadyInComposite =
             fbcr.new Batch(
                 createRequest(
+                    testContext,
                     cubeNameSales,
                     measureUnitSales, "customer", "city", "F"));
         Map<AggregationKey, BatchLoader.CompositeBatch> batchGroups =
@@ -574,7 +605,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             aggBatchToAddToDetailedBatch.batchKey,
             existingCompositeBatch);
 
-        fbcr.addToCompositeBatch(
+        BatchLoader.addToCompositeBatch(
             batchGroups, detailedBatch,
             aggBatchToAddToDetailedBatch);
 
@@ -592,24 +623,29 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     public void
         testAddToCompositeBatchForBothBatchAlreadyPartOfACompositeBatch()
     {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
         BatchLoader.Batch detailedBatch = fbcr.new Batch(
             createRequest(
+                testContext,
                 cubeNameSales, measureUnitSales,
                 "customer", "country", "F"));
         BatchLoader.Batch aggBatchToAddToDetailedBatch =
             fbcr.new Batch(
                 createRequest(
+                    testContext,
                     cubeNameSales,
                     measureUnitSales, "customer", "gender", "F"));
         BatchLoader.Batch aggBatchAlreadyInCompositeOfAgg =
             fbcr.new Batch(
                 createRequest(
+                    testContext,
                     cubeNameSales,
                     measureUnitSales, "customer", "city", "F"));
         BatchLoader.Batch aggBatchAlreadyInCompositeOfDetail =
             fbcr.new Batch(
                 createRequest(
+                    testContext,
                     cubeNameSales,
                     measureUnitSales, "customer", "state_province", "F"));
 
@@ -650,34 +686,35 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
      * column bit key and all values for additional condition.
      */
     public void testCanBatchForSuperSet() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableTime, tableProductClass, tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                list(tableTime, tableProductClass, tableProductClass),
+                list(fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear, fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass, tableCustomer},
-                new String[] {
+                    tableProductClass, tableCustomer),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment, fieldGender},
-                new String[][] {
+                    fieldProductDepartment, fieldGender),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment, fieldValuesGender},
+                    fieldValueProductDepartment, fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -686,42 +723,44 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     }
 
     public void testCanBatchForBatchWithConstraint() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
-        List<String[]> compoundMembers = new ArrayList<String[]>();
-        compoundMembers.add(new String[] {"USA", "CA"});
-        compoundMembers.add(new String[] {"Canada", "BC"});
+        List<List<String>> compoundMembers = list(
+            list("USA", "CA"),
+            list("Canada", "BC"));
         CellRequestConstraint constraint =
             makeConstraintCountryState(compoundMembers);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableTime, tableProductClass, tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                list(tableTime, tableProductClass, tableProductClass),
+                list(
+                    fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales,
                 constraint);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass, tableCustomer},
-                new String[] {
+                    tableProductClass, tableCustomer),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment, fieldGender},
-                new String[][] {
+                    fieldProductDepartment, fieldGender),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment, fieldValuesGender},
+                    fieldValueProductDepartment, fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales, constraint);
 
@@ -730,50 +769,53 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     }
 
     public void testCanBatchForBatchWithConstraint2() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
-        List<String[]> compoundMembers1 = new ArrayList<String[]>();
-        compoundMembers1.add(new String[] {"USA", "CA"});
-        compoundMembers1.add(new String[] {"Canada", "BC"});
+        List<List<String>> compoundMembers1 = list(
+            list("USA", "CA"),
+            list("Canada", "BC"));
         CellRequestConstraint constraint1 =
             makeConstraintCountryState(compoundMembers1);
 
         // Different constraint will cause the Batch not to match.
-        List<String[]> compoundMembers2 = new ArrayList<String[]>();
-        compoundMembers2.add(new String[] {"USA", "CA"});
-        compoundMembers2.add(new String[] {"USA", "OR"});
+        List<List<String>> compoundMembers2 = list(
+            list("USA", "CA"),
+            list("USA", "OR"));
         CellRequestConstraint constraint2 =
             makeConstraintCountryState(compoundMembers2);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                    tableProductClass),
+                list(
+                    fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales,
                 constraint1);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass, tableCustomer},
-                new String[] {
+                    tableProductClass, tableCustomer),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment, fieldGender},
-                new String[][] {
+                    fieldProductDepartment, fieldGender),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment, fieldValuesGender},
+                    fieldValueProductDepartment, fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales,
                 constraint2);
@@ -788,36 +830,39 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         {
             return;
         }
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass},
-                new String[] {
+                    tableProductClass),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment},
-                new String[][] {
+                    fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales, measureUnitSales);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass},
-                new String[] {
+                    tableProductClass),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment},
-                new String[][] {
+                    fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 "[Measures].[Customer Count]");
 
@@ -831,37 +876,40 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         {
             return;
         }
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass},
-                new String[] {
+                    tableProductClass),
+                list(
                     fieldYear,
-                    fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                    fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 "[Measures].[Customer Count]");
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass},
-                new String[] {
+                    tableProductClass),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment},
-                new String[][] {
+                    fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -875,28 +923,31 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         {
             return;
         }
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime},
-                new String[] {fieldYear},
-                new String[][] {fieldValuesYear},
+                list(tableTime),
+                list(fieldYear),
+                list(fieldValuesYear),
                 cubeNameSales,
                 "[Measures].[Customer Count]");
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableTime, tableProductClass, tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                list(
+                    tableTime, tableProductClass, tableProductClass),
+                list(
+                    fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales, measureUnitSales);
 
         assertFalse(detailedBatch.canBatch(aggregationBatch));
@@ -909,34 +960,37 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
      * column bit key and all values for additional condition.
      */
     public void testNonSuperSet() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableTime, tableProductClass, tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                list(
+                    tableTime, tableProductClass, tableProductClass),
+                list(
+                    fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableProductClass,
-                    tableProductClass, tableCustomer},
-                new String[] {
+                    tableProductClass, tableCustomer),
+                list(
                     fieldProductFamily,
-                    fieldProductDepartment, fieldGender},
-                new String[][] {
+                    fieldProductDepartment, fieldGender),
+                list(
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment, fieldValuesGender},
+                    fieldValueProductDepartment, fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -949,36 +1003,39 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
      * column bit key and NOT all values for additional condition.
      */
     public void testSuperSetAndNotAllValues() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableTime, tableProductClass, tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                list(
+                    tableTime, tableProductClass, tableProductClass),
+                list(
+                    fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass, tableCustomer},
-                new String[] {
+                    tableProductClass, tableCustomer),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment, fieldGender},
-                new String[][] {
+                    fieldProductDepartment, fieldGender),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
                     fieldValueProductDepartment,
-                    new String[] {"M"}},
+                    list("M")),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -989,28 +1046,31 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     public void
         testCanBatchForBatchesFromSameAggregationButDifferentRollupOption()
     {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch batch1 =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime},
-                new String[] {fieldYear},
-                new String[][] {fieldValuesYear},
+                list(tableTime),
+                list(fieldYear),
+                list(fieldValuesYear),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch batch2 =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableTime, tableTime},
-                new String[] {fieldYear, "quarter", "month_of_year"},
-                new String[][] {
+                list(tableTime, tableTime, tableTime),
+                list(fieldYear, "quarter", "month_of_year"),
+                list(
                     fieldValuesYear,
-                    new String[] {"Q1", "Q2", "Q3", "Q4"},
-                    new String[] {
+                    list("Q1", "Q2", "Q3", "Q4"),
+                    list(
                         "1", "2", "3", "4", "5", "6", "7", "8",
-                        "9", "10", "11", "12"}},
+                        "9", "10", "11", "12")),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -1035,35 +1095,38 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
      * Column Bit Key And Different Values For Overlapping Columns.
      */
     public void testSuperSetDifferentValues() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch aggregationBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
-                    tableTime, tableProductClass, tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
-                    new String[] {"1997"},
+                list(
+                    tableTime, tableProductClass, tableProductClass),
+                list(
+                    fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
+                    list("1997"),
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime, tableProductClass,
-                    tableProductClass, tableCustomer},
-                new String[] {
+                    tableProductClass, tableCustomer),
+                list(
                     fieldYear, fieldProductFamily,
-                    fieldProductDepartment, fieldGender},
-                new String[][] {
-                    new String[] {"1998"},
+                    fieldProductDepartment, fieldGender),
+                list(
+                    list("1998"),
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment, fieldValuesGender},
+                    fieldValueProductDepartment, fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -1072,7 +1135,8 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     }
 
     public void testCanBatchForBatchWithDifferentAggregationTable() {
-        final Dialect dialect = getTestContext().getDialect();
+        final TestContext testContext = getTestContext();
+        final Dialect dialect = testContext.getDialect();
         final Dialect.DatabaseProduct product = dialect.getDatabaseProduct();
         switch (product) {
         case TERADATA:
@@ -1087,19 +1151,21 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
 
         BatchLoader.Batch summaryBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime},
-                new String[] {fieldYear},
-                new String[][] {fieldValuesYear},
+                list(tableTime),
+                list(fieldYear),
+                list(fieldValuesYear),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableCustomer},
-                new String[] {fieldYear, fieldGender},
-                new String[][] {fieldValuesYear, fieldValuesGender},
+                list(tableTime, tableCustomer),
+                list(fieldYear, fieldGender),
+                list(fieldValuesYear, fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -1115,41 +1181,44 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     }
 
     public void testCannotBatchTwoBatchesAtTheSameLevel() {
+        final TestContext testContext = getTestContext();
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch firstBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime,
                     tableProductClass,
-                    tableProductClass},
-                new String[] {
+                    tableProductClass),
+                list(
                     fieldYear,
                     fieldProductFamily,
-                    fieldProductDepartment},
-                new String[][] {
+                    fieldProductDepartment),
+                list(
                     fieldValuesYear,
-                    new String[] {"Food"},
-                    fieldValueProductDepartment},
+                    list("Food"),
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 "[Measures].[Customer Count]");
 
         BatchLoader.Batch secondBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime,
                     tableProductClass,
-                    tableProductClass},
-                new String[] {
+                    tableProductClass),
+                list(
                     fieldYear,
                     fieldProductFamily,
-                    fieldProductDepartment},
-                new String[][] {
+                    fieldProductDepartment),
+                list(
                     fieldValuesYear,
-                    new String[] {"Drink"},
-                    fieldValueProductDepartment},
+                    list("Drink"),
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 "[Measures].[Customer Count]");
 
@@ -1158,42 +1227,44 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     }
 
     public void testCompositeBatchLoadAggregation() throws Exception {
-        if (!getTestContext().getDialect().supportsGroupingSets()) {
+        final TestContext testContext = getTestContext();
+        if (!testContext.getDialect().supportsGroupingSets()) {
             return;
         }
         final BatchLoader fbcr = createFbcr(null, salesCube);
 
         BatchLoader.Batch summaryBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {tableTime, tableProductClass, tableProductClass},
-                new String[] {
-                    fieldYear, fieldProductFamily, fieldProductDepartment},
-                new String[][] {
+                list(tableTime, tableProductClass, tableProductClass),
+                list(fieldYear, fieldProductFamily, fieldProductDepartment),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
-                    fieldValueProductDepartment},
+                    fieldValueProductDepartment),
                 cubeNameSales,
                 measureUnitSales);
 
         BatchLoader.Batch detailedBatch =
             createBatch(
+                testContext,
                 fbcr,
-                new String[] {
+                list(
                     tableTime,
                     tableProductClass,
                     tableProductClass,
-                    tableCustomer},
-                new String[] {
+                    tableCustomer),
+                list(
                     fieldYear,
                     fieldProductFamily,
                     fieldProductDepartment,
-                    fieldGender},
-                new String[][] {
+                    fieldGender),
+                list(
                     fieldValuesYear,
                     fieldValuesProductFamily,
                     fieldValueProductDepartment,
-                    fieldValuesGender},
+                    fieldValuesGender),
                 cubeNameSales,
                 measureUnitSales);
 
@@ -1205,7 +1276,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         final List<Future<Map<Segment, SegmentWithData>>> segmentFutures =
             new ArrayList<Future<Map<Segment, SegmentWithData>>>();
         MondrianServer.forConnection(
-            getTestContext().getConnection())
+            testContext.getConnection())
                 .getAggregationManager().cacheMgr.execute(
                     new SegmentCacheManager.Command<Void>() {
                         private final Locus locus =
@@ -1298,10 +1369,10 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "       </MeasureExpression>"
             + "   </Measure>"
             + "   <Measure name=\"Count Distinct Store+Warehouse\" aggregator=\"distinct count\" formatString=\"#,##0\">"
-            + "       <MeasureExpression><SQL dialect=\"generic\">`store_id`+`warehouse_id`</SQL></MeasureExpression>"
+            + "       <MeasureExpression><SQL dialect=\"generic\">`stores_id`+`warehouse_id`</SQL></MeasureExpression>"
             + "   </Measure>"
             + "   <Measure name=\"Count All Store+Warehouse\" aggregator=\"count\" formatString=\"#,##0\">"
-            + "       <MeasureExpression><SQL dialect=\"generic\">`store_id`+`warehouse_id`</SQL></MeasureExpression>"
+            + "       <MeasureExpression><SQL dialect=\"generic\">`stores_id`+`warehouse_id`</SQL></MeasureExpression>"
             + "   </Measure>"
             + "   <Measure name=\"Store Count\" column=\"stores_id\" aggregator=\"count\" formatString=\"#,###\"/>"
             + "</Cube>";
@@ -1322,7 +1393,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "from [Warehouse2]";
 
         TestContext testContext =
-            TestContext.instance().create(
+            TestContext.instance().legacy().create(
                 null,
                 cube,
                 null,
@@ -1341,12 +1412,12 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "{[Measures].[Count All Store+Warehouse]}\n"
             + "{[Measures].[Store Count]}\n"
             + "Axis #2:\n"
-            + "{[Store Type].[Deluxe Supermarket]}\n"
-            + "{[Store Type].[Gourmet Supermarket]}\n"
-            + "{[Store Type].[HeadQuarters]}\n"
-            + "{[Store Type].[Mid-Size Grocery]}\n"
-            + "{[Store Type].[Small Grocery]}\n"
-            + "{[Store Type].[Supermarket]}\n"
+            + "{[Store Type].[Store Type].[Deluxe Supermarket]}\n"
+            + "{[Store Type].[Store Type].[Gourmet Supermarket]}\n"
+            + "{[Store Type].[Store Type].[HeadQuarters]}\n"
+            + "{[Store Type].[Store Type].[Mid-Size Grocery]}\n"
+            + "{[Store Type].[Store Type].[Small Grocery]}\n"
+            + "{[Store Type].[Store Type].[Supermarket]}\n"
             + "Row #0: 1\n"
             + "Row #0: 0\n"
             + "Row #0: 0\n"
@@ -1434,18 +1505,21 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
 
         // MySQL does it in one statement.
         String load_mysql =
-            "select"
-            + " `store`.`store_type` as `c0`,"
-            + " count(distinct (select `warehouse_class`.`warehouse_class_id` AS `warehouse_class_id` from `warehouse_class` AS `warehouse_class` where `warehouse_class`.`warehouse_class_id` = `warehouse`.`warehouse_class_id` and `warehouse_class`.`description` = 'Large Owned')) as `m0`,"
-            + " count(distinct (select `warehouse_class`.`warehouse_class_id` AS `warehouse_class_id` from `warehouse_class` AS `warehouse_class` where `warehouse_class`.`warehouse_class_id` = `warehouse`.`warehouse_class_id` and `warehouse_class`.`description` = 'Large Independent')) as `m1`,"
-            + " count((select `warehouse_class`.`warehouse_class_id` AS `warehouse_class_id` from `warehouse_class` AS `warehouse_class` where `warehouse_class`.`warehouse_class_id` = `warehouse`.`warehouse_class_id` and `warehouse_class`.`description` = 'Large Independent')) as `m2`,"
-            + " count(distinct `store_id`+`warehouse_id`) as `m3`,"
-            + " count(`store_id`+`warehouse_id`) as `m4`,"
-            + " count(`warehouse`.`stores_id`) as `m5` "
-            + "from `store` as `store`,"
-            + " `warehouse` as `warehouse` "
-            + "where `warehouse`.`stores_id` = `store`.`store_id` "
-            + "group by `store`.`store_type`";
+            "select\n"
+            + "    `store`.`store_type` as `c0`,\n"
+            + "    count(distinct (select `warehouse_class`.`warehouse_class_id` AS `warehouse_class_id` from `warehouse_class` AS `warehouse_class` where `warehouse_class`.`warehouse_class_id` = `warehouse`.`warehouse_class_id` and `warehouse_class`.`description` = 'Large Owned')) as `m0`,\n"
+            + "    count(distinct (select `warehouse_class`.`warehouse_class_id` AS `warehouse_class_id` from `warehouse_class` AS `warehouse_class` where `warehouse_class`.`warehouse_class_id` = `warehouse`.`warehouse_class_id` and `warehouse_class`.`description` = 'Large Independent')) as `m1`,\n"
+            + "    count((select `warehouse_class`.`warehouse_class_id` AS `warehouse_class_id` from `warehouse_class` AS `warehouse_class` where `warehouse_class`.`warehouse_class_id` = `warehouse`.`warehouse_class_id` and `warehouse_class`.`description` = 'Large Independent')) as `m2`,\n"
+            + "    count(distinct `stores_id`+`warehouse_id`) as `m3`,\n"
+            + "    count(`stores_id`+`warehouse_id`) as `m4`,\n"
+            + "    count(`warehouse`.`stores_id`) as `m5`\n"
+            + "from\n"
+            + "    `warehouse` as `warehouse`,\n"
+            + "    `store` as `store`\n"
+            + "where\n"
+            + "    `warehouse`.`stores_id` = `store`.`store_id`\n"
+            + "group by\n"
+            + "    `store`.`store_type`";
 
         SqlPattern[] patterns = {
             new SqlPattern(
@@ -1497,13 +1571,13 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "FROM Sales\n"
             + "WHERE ([Store].[USA].[CA])",
             "Axis #0:\n"
-            + "{[Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
-            + "{[Time].[1997 Q1 plus Q2]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997 Q1 plus Q2]}\n"
             + "Row #0: 1,110\n"
             + "Row #1: 1,173\n"
             + "Row #2: 1,854\n");
@@ -1525,15 +1599,15 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "FROM Sales\n"
             + "WHERE ([Store].[USA].[CA])",
             "Axis #0:\n"
-            + "{[Store].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
-            + "{[Time].[1997].[Q3].[7]}\n"
-            + "{[Time].[1997 Q1 plus July]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q3].[7]}\n"
+            + "{[Time].[Time].[1997 Q1 plus July]}\n"
             + "Row #0: 16,890\n"
             + "Row #0: 1,110\n"
             + "Row #1: 18,052\n"
@@ -1553,11 +1627,11 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     public void testAggregateDistinctCount3() {
         assertQueryReturns(
             "WITH\n"
-            + "  MEMBER [Promotion Media].[TV plus Radio] AS 'AGGREGATE({[Promotion Media].[TV], [Promotion Media].[Radio]})', solve_order=1\n"
+            + "  MEMBER [Promotion].[Media Type].[TV plus Radio] AS 'AGGREGATE({[Promotion].[Media Type].[TV], [Promotion].[Media Type].[Radio]})', solve_order=1\n"
             + "  MEMBER [Time].[Time].[1997 Q1 plus July] AS 'AGGREGATE({[Time].[1997].[Q1], [Time].[1997].[Q3].[7]})', solve_order=1\n"
-            + "SELECT {[Promotion Media].[TV plus Radio],\n"
-            + "        [Promotion Media].[TV],\n"
-            + "        [Promotion Media].[Radio]} ON COLUMNS,\n"
+            + "SELECT {[Promotion].[Media Type].[TV plus Radio],\n"
+            + "        [Promotion].[Media Type].[TV],\n"
+            + "        [Promotion].[Media Type].[Radio]} ON COLUMNS,\n"
             + "       {[Time].[1997],\n"
             + "        [Time].[1997].[Q1],\n"
             + "        [Time].[1997 Q1 plus July]} ON ROWS\n"
@@ -1566,13 +1640,13 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             "Axis #0:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #1:\n"
-            + "{[Promotion Media].[TV plus Radio]}\n"
-            + "{[Promotion Media].[TV]}\n"
-            + "{[Promotion Media].[Radio]}\n"
+            + "{[Promotion].[Media Type].[TV plus Radio]}\n"
+            + "{[Promotion].[Media Type].[TV]}\n"
+            + "{[Promotion].[Media Type].[Radio]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997]}\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997 Q1 plus July]}\n"
+            + "{[Time].[Time].[1997]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997 Q1 plus July]}\n"
             + "Row #0: 455\n"
             + "Row #0: 274\n"
             + "Row #0: 186\n"
@@ -1618,19 +1692,29 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "\"promotion\".\"media_type\"";
 
         final String mysqlSql =
-            "select "
-            + "`time_by_day`.`the_year` as `c0`, `time_by_day`.`quarter` as `c1`, "
-            + "`promotion`.`media_type` as `c2`, count(distinct `sales_fact_1997`.`customer_id`) as `m0` "
-            + "from "
-            + "`time_by_day` as `time_by_day`, `sales_fact_1997` as `sales_fact_1997`, "
-            + "`promotion` as `promotion` "
-            + "where "
-            + "`sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and "
-            + "`time_by_day`.`the_year` = 1997 and `time_by_day`.`quarter` = 'Q1' and `"
-            + "sales_fact_1997`.`promotion_id` = `promotion`.`promotion_id` and "
-            + "`promotion`.`media_type` in ('Radio', 'TV') "
-            + "group by "
-            + "`time_by_day`.`the_year`, `time_by_day`.`quarter`, `promotion`.`media_type`";
+            "select\n"
+            + "    `time_by_day`.`the_year` as `c0`,\n"
+            + "    `time_by_day`.`quarter` as `c1`,\n"
+            + "    `promotion`.`media_type` as `c2`,\n"
+            + "    count(distinct `sales_fact_1997`.`customer_id`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `time_by_day` as `time_by_day`,\n"
+            + "    `promotion` as `promotion`\n"
+            + "where\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `time_by_day`.`quarter` = 'Q1'\n"
+            + "and\n"
+            + "    `promotion`.`media_type` in ('Radio', 'TV')\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`promotion_id` = `promotion`.`promotion_id`\n"
+            + "group by\n"
+            + "    `time_by_day`.`the_year`,\n"
+            + "    `time_by_day`.`quarter`,\n"
+            + "    `promotion`.`media_type`";
 
         final String derbySql =
             "select "
@@ -1650,17 +1734,19 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "\"promotion\".\"media_type\"";
 
         assertQuerySql(
+            getTestContext(),
             "WITH\n"
-            + "  MEMBER [Promotion Media].[TV plus Radio] AS 'AGGREGATE({[Promotion Media].[TV], [Promotion Media].[Radio]})', solve_order=1\n"
+            + "  MEMBER [Promotion].[Media Type].[TV plus Radio] AS 'AGGREGATE({[Promotion].[Media Type].[TV], [Promotion].[Media Type].[Radio]})', solve_order=1\n"
             + "  MEMBER [Time].[Time].[1997 Q1 plus July] AS 'AGGREGATE({[Time].[1997].[Q1], [Time].[1997].[Q3].[7]})', solve_order=1\n"
-            + "SELECT {[Promotion Media].[TV plus Radio],\n"
-            + "        [Promotion Media].[TV],\n"
-            + "        [Promotion Media].[Radio]} ON COLUMNS,\n"
+            + "SELECT {[Promotion].[Media Type].[TV plus Radio],\n"
+            + "        [Promotion].[Media Type].[TV],\n"
+            + "        [Promotion].[Media Type].[Radio]} ON COLUMNS,\n"
             + "       {[Time].[1997],\n"
             + "        [Time].[1997].[Q1],\n"
             + "        [Time].[1997 Q1 plus July]} ON ROWS\n"
             + "FROM Sales\n"
-            + "WHERE [Measures].[Customer Count]", new SqlPattern[] {
+            + "WHERE [Measures].[Customer Count]",
+            new SqlPattern[] {
                 new SqlPattern(
                     Dialect.DatabaseProduct.ORACLE, oracleSql, oracleSql),
                 new SqlPattern(
@@ -1680,7 +1766,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         // CA and USA are overlapping members
         final String mdxQuery =
             "WITH\n"
-            + "  MEMBER [Store].[CA plus USA] AS 'AGGREGATE({[Store].[USA].[CA], [Store].[USA]})', solve_order=1\n"
+            + "  MEMBER [Store].[Stores].[CA plus USA] AS 'AGGREGATE({[Store].[USA].[CA], [Store].[USA]})', solve_order=1\n"
             + "  MEMBER [Time].[Time].[Q1 plus July] AS 'AGGREGATE({[Time].[1997].[Q1], [Time].[1997].[Q3].[7]})', solve_order=1\n"
             + "SELECT {[Measures].[Customer Count], [Measures].[Unit Sales]} ON COLUMNS,\n"
             + "      Union({[Store].[CA plus USA]} * {[Time].[Q1 plus July]}, "
@@ -1697,11 +1783,11 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "{[Measures].[Customer Count]}\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[CA plus USA], [Time].[Q1 plus July]}\n"
-            + "{[Store].[USA].[CA], [Time].[Q1 plus July]}\n"
-            + "{[Store].[USA], [Time].[Q1 plus July]}\n"
-            + "{[Store].[CA plus USA], [Time].[1997].[Q1]}\n"
-            + "{[Store].[CA plus USA], [Time].[1997].[Q3].[7]}\n"
+            + "{[Store].[Stores].[CA plus USA], [Time].[Time].[Q1 plus July]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Time].[Time].[Q1 plus July]}\n"
+            + "{[Store].[Stores].[USA], [Time].[Time].[Q1 plus July]}\n"
+            + "{[Store].[Stores].[CA plus USA], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Store].[Stores].[CA plus USA], [Time].[Time].[1997].[Q3].[7]}\n"
             + "Row #0: 3,505\n"
             + "Row #0: 112,347\n"
             + "Row #1: 1,386\n"
@@ -1717,7 +1803,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
     }
 
     /**
-     * Fix a problem when genergating predicates for distinct count aggregate
+     * Fix a problem when generating predicates for distinct count aggregate
      * loading and using the aggregate function in the slicer.
      */
     public void testAggregateDistinctCount5() {
@@ -1735,32 +1821,27 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "From [Sales] "
             + "Where ([Product].[Selected Products])";
 
-        String derbySql =
-            "select \"store\".\"store_state\" as \"c0\", "
-            + "\"time_by_day\".\"the_year\" as \"c1\", "
-            + "count(distinct \"sales_fact_1997\".\"customer_id\") as \"m0\" "
-            + "from \"store\" as \"store\", \"sales_fact_1997\" as \"sales_fact_1997\", "
-            + "\"time_by_day\" as \"time_by_day\" "
-            + "where \"sales_fact_1997\".\"store_id\" = \"store\".\"store_id\" "
-            + "and \"sales_fact_1997\".\"time_id\" = \"time_by_day\".\"time_id\" "
-            + "and \"time_by_day\".\"the_year\" = 1997 "
-            + "group by \"store\".\"store_state\", \"time_by_day\".\"the_year\"";
+        String sql =
+            "select\n"
+            + "    `store`.`store_state` as `c0`,\n"
+            + "    `time_by_day`.`the_year` as `c1`,\n"
+            + "    count(distinct `sales_fact_1997`.`customer_id`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `store` as `store`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`store_id` = `store`.`store_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "group by\n"
+            + "    `store`.`store_state`,\n"
+            + "    `time_by_day`.`the_year`";
 
-        String mysqlSql =
-            "select `store`.`store_state` as `c0`, `time_by_day`.`the_year` as `c1`, "
-            + "count(distinct `sales_fact_1997`.`customer_id`) as `m0` "
-            + "from `store` as `store`, `sales_fact_1997` as `sales_fact_1997`, "
-            + "`time_by_day` as `time_by_day` "
-            + "where `sales_fact_1997`.`store_id` = `store`.`store_id` "
-            + "and `sales_fact_1997`.`time_id` = `time_by_day`.`time_id` "
-            + "and `time_by_day`.`the_year` = 1997 "
-            + "group by `store`.`store_state`, `time_by_day`.`the_year`";
-
-        SqlPattern[] patterns = {
-            new SqlPattern(Dialect.DatabaseProduct.DERBY, derbySql, derbySql),
-            new SqlPattern(Dialect.DatabaseProduct.MYSQL, mysqlSql, mysqlSql)};
-
-        assertQuerySql(query, patterns);
+        final TestContext testContext = getTestContext();
+        assertQuerySql(testContext, query, sql);
     }
 
     // Test for multiple members on different levels within the same hierarchy.
@@ -1768,7 +1849,7 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         // CA and USA are overlapping members
         final String mdxQuery =
             "WITH "
-            + " MEMBER [Store].[Select Region] AS "
+            + " MEMBER [Store].[Stores].[Select Region] AS "
             + " 'AGGREGATE({[Store].[USA].[CA], [Store].[Mexico], [Store].[Canada], [Store].[USA].[OR]})', solve_order=1\n"
             + " MEMBER [Time].[Time].[Select Time Period] AS "
             + " 'AGGREGATE({[Time].[1997].[Q1], [Time].[1997].[Q3].[7], [Time].[1997].[Q4], [Time].[1997]})', solve_order=1\n"
@@ -1788,11 +1869,11 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             + "{[Measures].[Customer Count]}\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[Select Region], [Time].[Select Time Period]}\n"
-            + "{[Store].[Select Region], [Time].[1997].[Q1]}\n"
-            + "{[Store].[Select Region], [Time].[1997].[Q3].[7]}\n"
-            + "{[Store].[Select Region], [Time].[1997].[Q4]}\n"
-            + "{[Store].[Select Region], [Time].[1997]}\n"
+            + "{[Store].[Stores].[Select Region], [Time].[Time].[Select Time Period]}\n"
+            + "{[Store].[Stores].[Select Region], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Store].[Stores].[Select Region], [Time].[Time].[1997].[Q3].[7]}\n"
+            + "{[Store].[Stores].[Select Region], [Time].[Time].[1997].[Q4]}\n"
+            + "{[Store].[Stores].[Select Region], [Time].[Time].[1997]}\n"
             + "Row #0: 3,753\n"
             + "Row #0: 229,496\n"
             + "Row #1: 1,877\n"
@@ -1832,31 +1913,41 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         assertQueryReturns(
             query,
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[WA], [Product].[*CTX_MEMBER_SEL~SUM]}\n"
+            + "{[Store].[Stores].[USA].[WA], [Product].[Products].[*CTX_MEMBER_SEL~SUM]}\n"
             + "Row #0: 889\n");
 
         String mysqlSql =
-            "select "
-            + "`store`.`store_state` as `c0`, `time_by_day`.`the_year` as `c1`, "
-            + "count(distinct `sales_fact_1997`.`customer_id`) as `m0` "
-            + "from "
-            + "`store` as `store`, `sales_fact_1997` as `sales_fact_1997`, "
-            + "`time_by_day` as `time_by_day`, `product_class` as `product_class`, "
-            + "`product` as `product` "
-            + "where "
-            + "`sales_fact_1997`.`store_id` = `store`.`store_id` "
-            + "and `store`.`store_state` = 'WA' "
-            + "and `sales_fact_1997`.`time_id` = `time_by_day`.`time_id` "
-            + "and `time_by_day`.`the_year` = 1997 "
-            + "and `sales_fact_1997`.`product_id` = `product`.`product_id` "
-            + "and `product`.`product_class_id` = `product_class`.`product_class_id` "
-            + "and (`product_class`.`product_department` = 'Deli' "
-            + "and `product_class`.`product_family` = 'Food') "
-            + "group by `store`.`store_state`, `time_by_day`.`the_year`";
+            "select\n"
+            + "    `store`.`store_state` as `c0`,\n"
+            + "    `time_by_day`.`the_year` as `c1`,\n"
+            + "    count(distinct `sales_fact_1997`.`customer_id`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `store` as `store`,\n"
+            + "    `time_by_day` as `time_by_day`,\n"
+            + "    `product` as `product`,\n"
+            + "    `product_class` as `product_class`\n"
+            + "where\n"
+            + "    `store`.`store_state` = 'WA'\n"
+            + "and\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    (`product_class`.`product_family` = 'Food' and `product_class`.`product_department` = 'Deli')\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`store_id` = `store`.`store_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`product_id` = `product`.`product_id`\n"
+            + "and\n"
+            + "    `product`.`product_class_id` = `product_class`.`product_class_id`\n"
+            + "group by\n"
+            + "    `store`.`store_state`,\n"
+            + "    `time_by_day`.`the_year`";
 
         String accessSql =
             "select `d0` as `c0`,"
@@ -1908,7 +1999,8 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             new SqlPattern(Dialect.DatabaseProduct.DERBY, derbySql, derbySql),
             new SqlPattern(Dialect.DatabaseProduct.MYSQL, mysqlSql, mysqlSql)};
 
-        assertQuerySql(query, patterns);
+        final TestContext testContext = getTestContext();
+        assertQuerySql(testContext, query, patterns);
     }
 
     public void testDistinctCountBug1785406_2() {
@@ -1924,53 +2016,29 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Gender].[All Gender]}\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[M]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[M]}\n"
             + "Row #0: 266,773\n"
             + "Row #0: 131,558\n"
             + "Row #0: 135,215\n");
 
-        String mysqlSql =
-            "select "
-            + "`time_by_day`.`the_year` as `c0`, "
-            + "count(distinct `sales_fact_1997`.`customer_id`) as `m0` "
-            + "from "
-            + "`time_by_day` as `time_by_day`, "
-            + "`sales_fact_1997` as `sales_fact_1997` "
-            + "where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id` "
-            + "and `time_by_day`.`the_year` = 1997 "
-            + "group by `time_by_day`.`the_year`";
+        String sql =
+            "select\n"
+            + "    `time_by_day`.`the_year` as `c0`,\n"
+            + "    count(distinct `sales_fact_1997`.`customer_id`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "group by\n"
+            + "    `time_by_day`.`the_year`";
 
-        String accessSql =
-            "select `d0` as `c0`,"
-            + " count(`m0`) as `c1` "
-            + "from (select distinct `time_by_day`.`the_year` as `d0`,"
-            + " `sales_fact_1997`.`customer_id` as `m0` "
-            + "from `time_by_day` as `time_by_day`, "
-            + "`sales_fact_1997` as `sales_fact_1997` "
-            + "where `sales_fact_1997`.`time_id` = `time_by_day`.`time_id` "
-            + "and `time_by_day`.`the_year` = 1997) as `dummyname` group by `d0`";
-
-        String derbySql =
-            "select "
-            + "\"time_by_day\".\"the_year\" as \"c0\", "
-            + "count(distinct \"sales_fact_1997\".\"customer_id\") as \"m0\" "
-            + "from "
-            + "\"time_by_day\" as \"time_by_day\", "
-            + "\"sales_fact_1997\" as \"sales_fact_1997\" "
-            + "where "
-            + "\"sales_fact_1997\".\"time_id\" = \"time_by_day\".\"time_id\" "
-            + "and \"time_by_day\".\"the_year\" = 1997 "
-            + "group by \"time_by_day\".\"the_year\"";
-
-        SqlPattern[] patterns = {
-            new SqlPattern(
-                Dialect.DatabaseProduct.ACCESS, accessSql, accessSql),
-            new SqlPattern(Dialect.DatabaseProduct.DERBY, derbySql, derbySql),
-            new SqlPattern(Dialect.DatabaseProduct.MYSQL, mysqlSql, mysqlSql)};
-
-        assertQuerySql(query, patterns);
+        final TestContext testContext = getTestContext();
+        assertQuerySql(testContext, query, sql);
     }
 
     public void testAggregateDistinctCountInDimensionFilter() {
@@ -1988,58 +2056,46 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
         assertQueryReturns(
             query,
             "Axis #0:\n"
-            + "{[Product].[Selected Products]}\n"
+            + "{[Product].[Products].[Selected Products]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA]}\n"
-            + "{[Store].[USA].[OR]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[OR]}\n"
             + "Row #0: 2,692\n"
             + "Row #1: 1,036\n");
 
-        String mysqlSql =
-            "select "
-            + "`store`.`store_state` as `c0`, `time_by_day`.`the_year` as `c1`, "
-            + "count(distinct `sales_fact_1997`.`customer_id`) as `m0` "
-            + "from "
-            + "`store` as `store`, `sales_fact_1997` as `sales_fact_1997`, "
-            + "`time_by_day` as `time_by_day`, `product_class` as `product_class`, "
-            + "`product` as `product` "
-            + "where "
-            + "`sales_fact_1997`.`store_id` = `store`.`store_id` and "
-            + "`store`.`store_state` in ('CA', 'OR') and "
-            + "`sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and "
-            + "`time_by_day`.`the_year` = 1997 and "
-            + "`sales_fact_1997`.`product_id` = `product`.`product_id` and "
-            + "`product`.`product_class_id` = `product_class`.`product_class_id` and "
-            + "`product_class`.`product_family` in ('Drink', 'Food') "
-            + "group by "
-            + "`store`.`store_state`, `time_by_day`.`the_year`";
+        String sql =
+            "select\n"
+            + "    `store`.`store_state` as `c0`,\n"
+            + "    `time_by_day`.`the_year` as `c1`,\n"
+            + "    count(distinct `sales_fact_1997`.`customer_id`) as `m0`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `store` as `store`,\n"
+            + "    `time_by_day` as `time_by_day`,\n"
+            + "    `product` as `product`,\n"
+            + "    `product_class` as `product_class`\n"
+            + "where\n"
+            + "    `store`.`store_state` in ('CA', 'OR')\n"
+            + "and\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    ((`product_class`.`product_family` in ('Drink', 'Food')))\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`store_id` = `store`.`store_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`product_id` = `product`.`product_id`\n"
+            + "and\n"
+            + "    `product`.`product_class_id` = `product_class`.`product_class_id`\n"
+            + "group by\n"
+            + "    `store`.`store_state`,\n"
+            + "    `time_by_day`.`the_year`";
 
-        String derbySql =
-            "select "
-            + "\"store\".\"store_state\" as \"c0\", \"time_by_day\".\"the_year\" as \"c1\", "
-            + "count(distinct \"sales_fact_1997\".\"customer_id\") as \"m0\" "
-            + "from "
-            + "\"store\" as \"store\", \"sales_fact_1997\" as \"sales_fact_1997\", "
-            + "\"time_by_day\" as \"time_by_day\", \"product_class\" as \"product_class\", "
-            + "\"product\" as \"product\" "
-            + "where "
-            + "\"sales_fact_1997\".\"store_id\" = \"store\".\"store_id\" and "
-            + "\"store\".\"store_state\" in ('CA', 'OR') and "
-            + "\"sales_fact_1997\".\"time_id\" = \"time_by_day\".\"time_id\" and "
-            + "\"time_by_day\".\"the_year\" = 1997 and "
-            + "\"sales_fact_1997\".\"product_id\" = \"product\".\"product_id\" and "
-            + "\"product\".\"product_class_id\" = \"product_class\".\"product_class_id\" and "
-            + "\"product_class\".\"product_family\" in ('Drink', 'Food') "
-            + "group by "
-            + "\"store\".\"store_state\", \"time_by_day\".\"the_year\"";
-
-        SqlPattern[] patterns = {
-            new SqlPattern(Dialect.DatabaseProduct.DERBY, derbySql, derbySql),
-            new SqlPattern(Dialect.DatabaseProduct.MYSQL, mysqlSql, mysqlSql)};
-
-        assertQuerySql(query, patterns);
+        final TestContext testContext = getTestContext();
+        assertQuerySql(testContext, query, sql);
     }
 
     public static class MyDelegatingInvocationHandler
@@ -2286,6 +2342,13 @@ public class FastBatchingCellReaderTest extends BatchTestCase {
                 Arrays.asList(intSet4),
                 Dialect.Datatype.Integer));
     }
+<<<<<<< HEAD
+=======
+
+    private static class Bacon {
+        // It's just bacon.
+    };
+>>>>>>> upstream/4.0
 }
 
 // End FastBatchingCellReaderTest.java

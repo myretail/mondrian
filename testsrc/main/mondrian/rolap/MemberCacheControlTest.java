@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2012 Pentaho and others
+// Copyright (C) 2006-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -55,9 +55,12 @@ public class MemberCacheControlTest extends FoodMartTestCase {
 
     protected void setUp() throws Exception {
         super.setUp();
+<<<<<<< HEAD
         propSaver.set(
             MondrianProperties.instance().EnableRolapCubeMemberCache,
             false);
+=======
+>>>>>>> upstream/4.0
         RolapSchemaPool.instance().clear();
 
         final RolapConnection conn = (RolapConnection) getConnection();
@@ -81,7 +84,7 @@ public class MemberCacheControlTest extends FoodMartTestCase {
     }
 
     public TestContext getTestContext() {
-        TestContext testContext = TestContext.instance().createSubstitutingCube(
+        return TestContext.instance().legacy().createSubstitutingCube(
             "Sales",
             // Reduced size Store dimension. Omits the 'Store Country' level,
             // and adds properties to non-leaf levels.
@@ -103,7 +106,6 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             + "      </Level>\n"
             + "    </Hierarchy>\n"
             + "   </Dimension>");
-        return testContext;
     }
 
     /**
@@ -162,7 +164,7 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             }
             pw.println();
             String name = p.getName();
-            Object value = member.getPropertyValue(name);
+            Object value = member.getPropertyValue(p);
 
             // Fixup value for different database representations of boolean and
             // numeric values.
@@ -277,30 +279,6 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         final CacheControl.MemberSet filteredMemberSet =
             cc.filter(orMember.getLevel(), memberSet);
         dr.assertEquals("after", "${after}", filteredMemberSet.toString());
-    }
-
-    /**
-     * Tests that member operations fail if cache is enabled.
-     */
-    public void testMemberOpsFailIfCacheEnabled() {
-        propSaver.set(
-            MondrianProperties.instance().EnableRolapCubeMemberCache,
-            true);
-        final TestContext tc = getTestContext();
-        final Connection conn = tc.getConnection();
-        final CacheControl cc = conn.getCacheControl(null);
-        final CacheControl.MemberEditCommand command =
-            cc.createDeleteCommand(findMember(tc, "Sales", "Retail", "OR"));
-        try {
-            cc.execute(command);
-            fail("expected exception");
-        } catch (IllegalArgumentException e) {
-            assertEquals(
-                "Member cache control operations are not allowed unless "
-                + "property mondrian.rolap.EnableRolapCubeMemberCache is "
-                + "false",
-                e.getMessage());
-        }
     }
 
     /**
@@ -429,13 +407,12 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         final TestContext tc = getTestContext();
         final Connection conn = tc.getConnection();
         final CacheControl cc = conn.getCacheControl(null);
-        final RolapCubeMember caCubeMember =
-            (RolapCubeMember) findMember(tc, "Sales", "Retail", "CA");
-        final RolapMember caMember = caCubeMember.member;
+        final RolapMember caMember =
+            findMember(tc, "Sales", "Retail", "CA");
         final RolapMember rootMember = caMember.getParentMember();
-        final RolapHierarchy hierarchy = caMember.getHierarchy();
+        final RolapCubeHierarchy hierarchy = caMember.getHierarchy();
         final RolapMember berkeleyMember =
-            (RolapMember) hierarchy.createMember(
+            hierarchy.createMember(
                 caMember,
                 caMember.getLevel().getChildLevel(),
                 "Berkeley",
@@ -443,14 +420,14 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         final RolapBaseCubeMeasure unitSalesCubeMember =
             (RolapBaseCubeMeasure) findMember(
                 tc, "Sales", "Measures", "Unit Sales");
-        final RolapCubeMember yearCubeMember =
-            (RolapCubeMember) findMember(
+        final RolapMember yearMember =
+            findMember(
                 tc, "Sales", "Time", "Year", "1997");
         final Member[] cacheRegionMembers =
             new Member[] {
                 unitSalesCubeMember,
-                caCubeMember,
-                yearCubeMember
+                caMember,
+                yearMember
             };
 
         tc.assertQueryReturns(
@@ -458,30 +435,30 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Retail].[BC].[Vancouver]}\n"
-            + "{[Retail].[BC].[Victoria]}\n"
-            + "{[Retail].[CA].[Alameda]}\n"
-            + "{[Retail].[CA].[Beverly Hills]}\n"
-            + "{[Retail].[CA].[Los Angeles]}\n"
-            + "{[Retail].[CA].[San Diego]}\n"
-            + "{[Retail].[CA].[San Francisco]}\n"
-            + "{[Retail].[DF].[Mexico City]}\n"
-            + "{[Retail].[DF].[San Andres]}\n"
-            + "{[Retail].[Guerrero].[Acapulco]}\n"
-            + "{[Retail].[Jalisco].[Guadalajara]}\n"
-            + "{[Retail].[OR].[Portland]}\n"
-            + "{[Retail].[OR].[Salem]}\n"
-            + "{[Retail].[Veracruz].[Orizaba]}\n"
-            + "{[Retail].[WA].[Bellingham]}\n"
-            + "{[Retail].[WA].[Bremerton]}\n"
-            + "{[Retail].[WA].[Seattle]}\n"
-            + "{[Retail].[WA].[Spokane]}\n"
-            + "{[Retail].[WA].[Tacoma]}\n"
-            + "{[Retail].[WA].[Walla Walla]}\n"
-            + "{[Retail].[WA].[Yakima]}\n"
-            + "{[Retail].[Yucatan].[Merida]}\n"
-            + "{[Retail].[Zacatecas].[Camacho]}\n"
-            + "{[Retail].[Zacatecas].[Hidalgo]}\n"
+            + "{[Retail].[Retail].[BC].[Vancouver]}\n"
+            + "{[Retail].[Retail].[BC].[Victoria]}\n"
+            + "{[Retail].[Retail].[CA].[Alameda]}\n"
+            + "{[Retail].[Retail].[CA].[Beverly Hills]}\n"
+            + "{[Retail].[Retail].[CA].[Los Angeles]}\n"
+            + "{[Retail].[Retail].[CA].[San Diego]}\n"
+            + "{[Retail].[Retail].[CA].[San Francisco]}\n"
+            + "{[Retail].[Retail].[DF].[Mexico City]}\n"
+            + "{[Retail].[Retail].[DF].[San Andres]}\n"
+            + "{[Retail].[Retail].[Guerrero].[Acapulco]}\n"
+            + "{[Retail].[Retail].[Jalisco].[Guadalajara]}\n"
+            + "{[Retail].[Retail].[OR].[Portland]}\n"
+            + "{[Retail].[Retail].[OR].[Salem]}\n"
+            + "{[Retail].[Retail].[Veracruz].[Orizaba]}\n"
+            + "{[Retail].[Retail].[WA].[Bellingham]}\n"
+            + "{[Retail].[Retail].[WA].[Bremerton]}\n"
+            + "{[Retail].[Retail].[WA].[Seattle]}\n"
+            + "{[Retail].[Retail].[WA].[Spokane]}\n"
+            + "{[Retail].[Retail].[WA].[Tacoma]}\n"
+            + "{[Retail].[Retail].[WA].[Walla Walla]}\n"
+            + "{[Retail].[Retail].[WA].[Yakima]}\n"
+            + "{[Retail].[Retail].[Yucatan].[Merida]}\n"
+            + "{[Retail].[Retail].[Zacatecas].[Camacho]}\n"
+            + "{[Retail].[Retail].[Zacatecas].[Hidalgo]}\n"
             + "Row #0: \n"
             + "Row #0: \n"
             + "Row #0: \n"
@@ -508,11 +485,11 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             + "Row #0: \n");
         tc.assertAxisReturns(
             "[Retail].[CA].Children",
-            "[Retail].[CA].[Alameda]\n"
-            + "[Retail].[CA].[Beverly Hills]\n"
-            + "[Retail].[CA].[Los Angeles]\n"
-            + "[Retail].[CA].[San Diego]\n"
-            + "[Retail].[CA].[San Francisco]");
+            "[Retail].[Retail].[CA].[Alameda]\n"
+            + "[Retail].[Retail].[CA].[Beverly Hills]\n"
+            + "[Retail].[Retail].[CA].[Los Angeles]\n"
+            + "[Retail].[Retail].[CA].[San Diego]\n"
+            + "[Retail].[Retail].[CA].[San Francisco]");
         final MemberReader memberReader = hierarchy.getMemberReader();
         final MemberCache memberCache =
             ((SmartMemberReader) memberReader).getMemberCache();
@@ -542,43 +519,43 @@ public class MemberCacheControlTest extends FoodMartTestCase {
 
         tc.assertAxisReturns(
             "[Retail].[CA].Children",
-            "[Retail].[CA].[Alameda]\n"
-            + "[Retail].[CA].[Beverly Hills]\n"
-            + "[Retail].[CA].[Los Angeles]\n"
-            + "[Retail].[CA].[San Diego]\n"
-            + "[Retail].[CA].[San Francisco]\n"
-            + "[Retail].[CA].[Berkeley]");
+            "[Retail].[Retail].[CA].[Alameda]\n"
+            + "[Retail].[Retail].[CA].[Beverly Hills]\n"
+            + "[Retail].[Retail].[CA].[Los Angeles]\n"
+            + "[Retail].[Retail].[CA].[San Diego]\n"
+            + "[Retail].[Retail].[CA].[San Francisco]\n"
+            + "[Retail].[Retail].[CA].[Berkeley]");
 
         tc.assertQueryReturns(
             "select {[Retail].[City].Members} on columns from [Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Retail].[BC].[Vancouver]}\n"
-            + "{[Retail].[BC].[Victoria]}\n"
-            + "{[Retail].[CA].[Alameda]}\n"
-            + "{[Retail].[CA].[Berkeley]}\n"
-            + "{[Retail].[CA].[Beverly Hills]}\n"
-            + "{[Retail].[CA].[Los Angeles]}\n"
-            + "{[Retail].[CA].[San Diego]}\n"
-            + "{[Retail].[CA].[San Francisco]}\n"
-            + "{[Retail].[DF].[Mexico City]}\n"
-            + "{[Retail].[DF].[San Andres]}\n"
-            + "{[Retail].[Guerrero].[Acapulco]}\n"
-            + "{[Retail].[Jalisco].[Guadalajara]}\n"
-            + "{[Retail].[OR].[Portland]}\n"
-            + "{[Retail].[OR].[Salem]}\n"
-            + "{[Retail].[Veracruz].[Orizaba]}\n"
-            + "{[Retail].[WA].[Bellingham]}\n"
-            + "{[Retail].[WA].[Bremerton]}\n"
-            + "{[Retail].[WA].[Seattle]}\n"
-            + "{[Retail].[WA].[Spokane]}\n"
-            + "{[Retail].[WA].[Tacoma]}\n"
-            + "{[Retail].[WA].[Walla Walla]}\n"
-            + "{[Retail].[WA].[Yakima]}\n"
-            + "{[Retail].[Yucatan].[Merida]}\n"
-            + "{[Retail].[Zacatecas].[Camacho]}\n"
-            + "{[Retail].[Zacatecas].[Hidalgo]}\n"
+            + "{[Retail].[Retail].[BC].[Vancouver]}\n"
+            + "{[Retail].[Retail].[BC].[Victoria]}\n"
+            + "{[Retail].[Retail].[CA].[Alameda]}\n"
+            + "{[Retail].[Retail].[CA].[Berkeley]}\n"
+            + "{[Retail].[Retail].[CA].[Beverly Hills]}\n"
+            + "{[Retail].[Retail].[CA].[Los Angeles]}\n"
+            + "{[Retail].[Retail].[CA].[San Diego]}\n"
+            + "{[Retail].[Retail].[CA].[San Francisco]}\n"
+            + "{[Retail].[Retail].[DF].[Mexico City]}\n"
+            + "{[Retail].[Retail].[DF].[San Andres]}\n"
+            + "{[Retail].[Retail].[Guerrero].[Acapulco]}\n"
+            + "{[Retail].[Retail].[Jalisco].[Guadalajara]}\n"
+            + "{[Retail].[Retail].[OR].[Portland]}\n"
+            + "{[Retail].[Retail].[OR].[Salem]}\n"
+            + "{[Retail].[Retail].[Veracruz].[Orizaba]}\n"
+            + "{[Retail].[Retail].[WA].[Bellingham]}\n"
+            + "{[Retail].[Retail].[WA].[Bremerton]}\n"
+            + "{[Retail].[Retail].[WA].[Seattle]}\n"
+            + "{[Retail].[Retail].[WA].[Spokane]}\n"
+            + "{[Retail].[Retail].[WA].[Tacoma]}\n"
+            + "{[Retail].[Retail].[WA].[Walla Walla]}\n"
+            + "{[Retail].[Retail].[WA].[Yakima]}\n"
+            + "{[Retail].[Retail].[Yucatan].[Merida]}\n"
+            + "{[Retail].[Retail].[Zacatecas].[Camacho]}\n"
+            + "{[Retail].[Retail].[Zacatecas].[Hidalgo]}\n"
             + "Row #0: \n"
             + "Row #0: \n"
             + "Row #0: \n"
@@ -610,16 +587,16 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Retail].[BC]}\n"
-            + "{[Retail].[CA]}\n"
-            + "{[Retail].[DF]}\n"
-            + "{[Retail].[Guerrero]}\n"
-            + "{[Retail].[Jalisco]}\n"
-            + "{[Retail].[OR]}\n"
-            + "{[Retail].[Veracruz]}\n"
-            + "{[Retail].[WA]}\n"
-            + "{[Retail].[Yucatan]}\n"
-            + "{[Retail].[Zacatecas]}\n"
+            + "{[Retail].[Retail].[BC]}\n"
+            + "{[Retail].[Retail].[CA]}\n"
+            + "{[Retail].[Retail].[DF]}\n"
+            + "{[Retail].[Retail].[Guerrero]}\n"
+            + "{[Retail].[Retail].[Jalisco]}\n"
+            + "{[Retail].[Retail].[OR]}\n"
+            + "{[Retail].[Retail].[Veracruz]}\n"
+            + "{[Retail].[Retail].[WA]}\n"
+            + "{[Retail].[Retail].[Yucatan]}\n"
+            + "{[Retail].[Retail].[Zacatecas]}\n"
             + "Row #0: \n"
             + "Row #0: 74,748\n"
             + "Row #0: \n"
@@ -643,31 +620,31 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         final TestContext tc = getTestContext();
         final Connection conn = tc.getConnection();
         final CacheControl cc = conn.getCacheControl(null);
-        final RolapCubeMember sfCubeMember =
-            (RolapCubeMember) findMember(
+        final RolapMember sfMember =
+            findMember(
                 tc, "Sales", "Retail", "CA", "San Francisco");
-        final RolapMember caMember = sfCubeMember.member.getParentMember();
-        final RolapHierarchy hierarchy = caMember.getHierarchy();
+        final RolapMember caMember = sfMember.getParentMember();
+        final RolapCubeHierarchy hierarchy = caMember.getHierarchy();
         final RolapBaseCubeMeasure unitSalesCubeMember =
             (RolapBaseCubeMeasure) findMember(
                 tc, "Sales", "Measures", "Unit Sales");
-        final RolapCubeMember yearCubeMember =
-            (RolapCubeMember) findMember(
+        final RolapMember yearMember =
+            findMember(
                 tc, "Sales", "Time", "Year", "1997");
         final Member[] cacheRegionMembers =
             new Member[] {
                 unitSalesCubeMember,
-                sfCubeMember,
-                yearCubeMember
+                sfMember,
+                yearMember
             };
 
         tc.assertAxisReturns(
             "[Retail].[CA].Children",
-            "[Retail].[CA].[Alameda]\n"
-            + "[Retail].[CA].[Beverly Hills]\n"
-            + "[Retail].[CA].[Los Angeles]\n"
-            + "[Retail].[CA].[San Diego]\n"
-            + "[Retail].[CA].[San Francisco]");
+            "[Retail].[Retail].[CA].[Alameda]\n"
+            + "[Retail].[Retail].[CA].[Beverly Hills]\n"
+            + "[Retail].[Retail].[CA].[Los Angeles]\n"
+            + "[Retail].[Retail].[CA].[San Diego]\n"
+            + "[Retail].[Retail].[CA].[San Francisco]");
 
         final MemberReader memberReader = hierarchy.getMemberReader();
         final MemberCache memberCache =
@@ -688,7 +665,7 @@ public class MemberCacheControlTest extends FoodMartTestCase {
 
         // Now tell the cache that [CA].[San Francisco] has been removed.
         final CacheControl.MemberEditCommand command =
-            cc.createDeleteCommand(sfCubeMember);
+            cc.createDeleteCommand(sfMember);
         cc.execute(command);
 
         // Children of CA should be 4
@@ -704,37 +681,36 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         // The list of children should be updated.
         tc.assertAxisReturns(
             "[Retail].[CA].Children",
-            "[Retail].[CA].[Alameda]\n"
-            + "[Retail].[CA].[Beverly Hills]\n"
-            + "[Retail].[CA].[Los Angeles]\n"
-            + "[Retail].[CA].[San Diego]");
+            "[Retail].[Retail].[CA].[Alameda]\n"
+            + "[Retail].[Retail].[CA].[Beverly Hills]\n"
+            + "[Retail].[Retail].[CA].[Los Angeles]\n"
+            + "[Retail].[Retail].[CA].[San Diego]");
     }
 
     public void testMoveCommand() {
         final TestContext tc = getTestContext();
         final Connection conn = tc.getConnection();
         final CacheControl cc = conn.getCacheControl(null);
-        final RolapCubeMember caCubeMember =
-            (RolapCubeMember) findMember(tc, "Sales", "Retail", "CA");
-        final RolapMember caMember = caCubeMember.member;
-        final RolapHierarchy hierarchy = caMember.getHierarchy();
+        final RolapMember caMember =
+            findMember(tc, "Sales", "Retail", "CA");
+        final RolapCubeHierarchy hierarchy = caMember.getHierarchy();
         final MemberReader memberReader = hierarchy.getMemberReader();
         final MemberCache memberCache =
             ((SmartMemberReader) memberReader).getMemberCache();
         final RolapMember alamedaMember =
-            (RolapMember) hierarchy.createMember(
+            hierarchy.createMember(
                 caMember,
                 caMember.getLevel().getChildLevel(),
                 "Alameda",
                 null);
         final RolapMember sfMember =
-            (RolapMember) hierarchy.createMember(
+            hierarchy.createMember(
                 caMember,
                 caMember.getLevel().getChildLevel(),
                 "San Francisco",
                 null);
         final RolapMember storeMember =
-            (RolapMember) hierarchy.createMember(
+            hierarchy.createMember(
                 sfMember,
                 sfMember.getLevel().getChildLevel(),
                 "Store 14",
@@ -743,17 +719,17 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         // test axis contents
         tc.assertAxisReturns(
             "[Retail].[CA].Children",
-            "[Retail].[CA].[Alameda]\n"
-            + "[Retail].[CA].[Beverly Hills]\n"
-            + "[Retail].[CA].[Los Angeles]\n"
-            + "[Retail].[CA].[San Diego]\n"
-            + "[Retail].[CA].[San Francisco]");
+            "[Retail].[Retail].[CA].[Alameda]\n"
+            + "[Retail].[Retail].[CA].[Beverly Hills]\n"
+            + "[Retail].[Retail].[CA].[Los Angeles]\n"
+            + "[Retail].[Retail].[CA].[San Diego]\n"
+            + "[Retail].[Retail].[CA].[San Francisco]");
         tc.assertAxisReturns(
             "[Retail].[CA].[Alameda].Children",
-            "[Retail].[CA].[Alameda].[HQ]");
+            "[Retail].[Retail].[CA].[Alameda].[HQ]");
         tc.assertAxisReturns(
             "[Retail].[CA].[San Francisco].Children",
-            "[Retail].[CA].[San Francisco].[Store 14]");
+            "[Retail].[Retail].[CA].[San Francisco].[Store 14]");
 
         List<RolapMember> sfChildren =
             memberCache.getChildrenFromCache(sfMember, null);
@@ -786,8 +762,8 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             "");
         tc.assertAxisReturns(
             "[Retail].[CA].[Alameda].Children",
-            "[Retail].[CA].[Alameda].[HQ]\n"
-            + "[Retail].[CA].[Alameda].[Store 14]");
+            "[Retail].[Retail].[CA].[Alameda].[HQ]\n"
+            + "[Retail].[Retail].[CA].[Alameda].[Store 14]");
 
         // Test parent object
         assertTrue(
@@ -798,21 +774,20 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         final TestContext tc = getTestContext();
         final Connection conn = tc.getConnection();
         final CacheControl cc = conn.getCacheControl(null);
-        final RolapCubeMember caCubeMember =
-            (RolapCubeMember) findMember(tc, "Sales", "Retail", "CA");
-        final RolapMember caMember = caCubeMember.member;
-        final RolapHierarchy hierarchy = caMember.getHierarchy();
+        final RolapMember caMember =
+            findMember(tc, "Sales", "Retail", "CA");
+        final RolapCubeHierarchy hierarchy = caMember.getHierarchy();
         final MemberReader memberReader = hierarchy.getMemberReader();
         final MemberCache memberCache =
             ((SmartMemberReader) memberReader).getMemberCache();
         final RolapMember sfMember =
-            (RolapMember) hierarchy.createMember(
+            hierarchy.createMember(
                 caMember,
                 caMember.getLevel().getChildLevel(),
                 "San Francisco",
                 null);
         final RolapMember storeMember =
-            (RolapMember) hierarchy.createMember(
+            hierarchy.createMember(
                 sfMember,
                 sfMember.getLevel().getChildLevel(),
                 "Store 14",
@@ -821,14 +796,14 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         // test axis contents
         tc.assertAxisReturns(
             "[Retail].[CA].Children",
-            "[Retail].[CA].[Alameda]\n"
-            + "[Retail].[CA].[Beverly Hills]\n"
-            + "[Retail].[CA].[Los Angeles]\n"
-            + "[Retail].[CA].[San Diego]\n"
-            + "[Retail].[CA].[San Francisco]");
+            "[Retail].[Retail].[CA].[Alameda]\n"
+            + "[Retail].[Retail].[CA].[Beverly Hills]\n"
+            + "[Retail].[Retail].[CA].[Los Angeles]\n"
+            + "[Retail].[Retail].[CA].[San Diego]\n"
+            + "[Retail].[Retail].[CA].[San Francisco]");
         tc.assertAxisReturns(
             "[Retail].[CA].[San Francisco].Children",
-            "[Retail].[CA].[San Francisco].[Store 14]");
+            "[Retail].[Retail].[CA].[San Francisco].[Store 14]");
 
         List<RolapMember> sfChildren =
             memberCache.getChildrenFromCache(sfMember, null);
@@ -856,14 +831,14 @@ public class MemberCacheControlTest extends FoodMartTestCase {
         // test axis contents. should not have been modified
         tc.assertAxisReturns(
             "[Retail].[CA].[San Francisco].Children",
-            "[Retail].[CA].[San Francisco].[Store 14]");
+            "[Retail].[Retail].[CA].[San Francisco].[Store 14]");
         tc.assertAxisReturns(
             "[Retail].[CA].Children",
-            "[Retail].[CA].[Alameda]\n"
-            + "[Retail].[CA].[Beverly Hills]\n"
-            + "[Retail].[CA].[Los Angeles]\n"
-            + "[Retail].[CA].[San Diego]\n"
-            + "[Retail].[CA].[San Francisco]");
+            "[Retail].[Retail].[CA].[Alameda]\n"
+            + "[Retail].[Retail].[CA].[Beverly Hills]\n"
+            + "[Retail].[Retail].[CA].[Los Angeles]\n"
+            + "[Retail].[Retail].[CA].[San Diego]\n"
+            + "[Retail].[Retail].[CA].[San Francisco]");
 
         // Test parent object. should be the same
         assertTrue(
@@ -874,7 +849,7 @@ public class MemberCacheControlTest extends FoodMartTestCase {
      * Tests a variety of negative cases including add/delete/move null members
      * add/delete/move members in parent-child hierarchies.
      */
-    public void testAddCommandNegative() {
+    public void _testAddCommandNegative() {
         final TestContext tc = getTestContext();
         final Connection conn = tc.getConnection();
         final CacheControl cc = conn.getCacheControl(null);
@@ -887,16 +862,14 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             assertEquals("cannot add null member", e.getMessage());
         }
 
-        final RolapCubeMember alamedaCubeMember =
-            (RolapCubeMember) findMember(
+        final RolapMember alamedaMember =
+            findMember(
                 tc, "Sales", "Retail", "CA", "Alameda");
-        final RolapMember alamedaMember = alamedaCubeMember.member;
         final RolapMember caMember = alamedaMember.getParentMember();
 
-        final RolapCubeMember empCubeMember =
-            (RolapCubeMember) findMember(
+        final RolapMember empMember =
+            findMember(
                 tc, "HR", "Employees", "Sheri Nowmer", "Michael Spence");
-        final RolapMember empMember = empCubeMember.member;
 
         try {
             command = cc.createMoveCommand(null, alamedaMember);
@@ -1002,7 +975,7 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             logger.addAppender(appender);
 
             final Hierarchy storeHierarchy =
-                salesCube.getDimensions()[1].getHierarchies()[0];
+                salesCube.getDimensionList().get(1).getHierarchyList().get(0);
             assertEquals("Store", storeHierarchy.getName());
             final CacheControl.MemberSet storeMemberSet =
                 cacheControl.createMemberSet(
@@ -1037,9 +1010,9 @@ public class MemberCacheControlTest extends FoodMartTestCase {
                         // to an 'all' member.
                         testContext.assertAxisReturns(
                             "[Store].Children",
-                            "[Store].[Canada]\n"
-                            + "[Store].[Mexico]\n"
-                            + "[Store].[USA]");
+                            "[Store].[Store].[Canada]\n"
+                            + "[Store].[Store].[Mexico]\n"
+                            + "[Store].[Store].[USA]");
                     }
                 });
             checkFlushHierarchy(
@@ -1049,12 +1022,12 @@ public class MemberCacheControlTest extends FoodMartTestCase {
                         // Check that <Member>.Children uses cache when applied
                         // to regular member.
                         testContext.assertAxisReturns(
-                            "[Store].[USA].[CA].Children",
-                            "[Store].[USA].[CA].[Alameda]\n"
-                            + "[Store].[USA].[CA].[Beverly Hills]\n"
-                            + "[Store].[USA].[CA].[Los Angeles]\n"
-                            + "[Store].[USA].[CA].[San Diego]\n"
-                            + "[Store].[USA].[CA].[San Francisco]");
+                            "[Store].[Store].[USA].[CA].Children",
+                            "[Store].[Store].[USA].[CA].[Alameda]\n"
+                            + "[Store].[Store].[USA].[CA].[Beverly Hills]\n"
+                            + "[Store].[Store].[USA].[CA].[Los Angeles]\n"
+                            + "[Store].[Store].[USA].[CA].[San Diego]\n"
+                            + "[Store].[Store].[USA].[CA].[San Francisco]");
                     }
                 });
 
@@ -1067,12 +1040,12 @@ public class MemberCacheControlTest extends FoodMartTestCase {
                         // Check that <Member>.Children uses cache when applied
                         // to regular member.
                         testContext.assertAxisReturns(
-                            "[Store].[USA].[CA].Children",
-                            "[Store].[USA].[CA].[Alameda]\n"
-                            + "[Store].[USA].[CA].[Beverly Hills]\n"
-                            + "[Store].[USA].[CA].[Los Angeles]\n"
-                            + "[Store].[USA].[CA].[San Diego]\n"
-                            + "[Store].[USA].[CA].[San Francisco]");
+                            "[Store].[Store].[USA].[CA].Children",
+                            "[Store].[Store].[USA].[CA].[Alameda]\n"
+                            + "[Store].[Store].[USA].[CA].[Beverly Hills]\n"
+                            + "[Store].[Store].[USA].[CA].[Los Angeles]\n"
+                            + "[Store].[Store].[USA].[CA].[San Diego]\n"
+                            + "[Store].[Store].[USA].[CA].[San Francisco]");
                     }
                 });
 
@@ -1098,7 +1071,7 @@ public class MemberCacheControlTest extends FoodMartTestCase {
             // But you can still use the private all member for purposes like
             // flushing.
             final Hierarchy timeHierarchy =
-                salesCube.getDimensions()[4].getHierarchies()[0];
+                salesCube.getDimensionList().get(4).getHierarchyList().get(0);
             assertEquals("Time", timeHierarchy.getName());
             final CacheControl.MemberSet timeMemberSet =
                 cacheControl.createMemberSet(
@@ -1126,10 +1099,10 @@ public class MemberCacheControlTest extends FoodMartTestCase {
                     public void run() {
                         // Check that <Level>.Members uses cache.
                         testContext.assertAxisReturns(
-                            "[Time].[1997].[Q2].Children",
-                            "[Time].[1997].[Q2].[4]\n"
-                            + "[Time].[1997].[Q2].[5]\n"
-                            + "[Time].[1997].[Q2].[6]");
+                            "[Time].[Time].[1997].[Q2].Children",
+                            "[Time].[Time].[1997].[Q2].[4]\n"
+                            + "[Time].[Time].[1997].[Q2].[5]\n"
+                            + "[Time].[Time].[1997].[Q2].[6]");
                     }
                 });
         } finally {

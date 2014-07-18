@@ -24,6 +24,7 @@ import org.apache.log4j.Logger;
 
 import org.olap4j.AllocationPolicy;
 import org.olap4j.Scenario;
+import org.olap4j.metadata.XmlaConstants;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -34,12 +35,6 @@ import java.util.*;
  * {@link RolapResult}.
  */
 public class RolapCell implements Cell {
-    /**
-     * @see mondrian.util.Bug#olap4jUpgrade Use
-     * {@link mondrian.xmla.XmlaConstants}.ActionType.DRILLTHROUGH when present
-     */
-    private static final int MDACTION_TYPE_DRILLTHROUGH = 0x100;
-
     private final RolapResult result;
     protected final int[] pos;
     protected RolapResult.CellInfo ci;
@@ -111,7 +106,7 @@ public class RolapCell implements Cell {
                     MondrianProperties.instance()
                         .EnableDrillThrough.getPath());
         }
-        final Member[] currentMembers = getMembersForDrillThrough();
+        final List<RolapMember> currentMembers = getMembersForDrillThrough();
         // Create a StarPredicate to represent the compound slicer
         // (if necessary)
         // NOTE: the method buildDrillthroughSlicerPredicate modifies
@@ -141,7 +136,7 @@ public class RolapCell implements Cell {
     }
 
     public int getDrillThroughCount() {
-        final Member[] currentMembers = getMembersForDrillThrough();
+        final List<RolapMember> currentMembers = getMembersForDrillThrough();
         // Create a StarPredicate to represent the compound
         // slicer (if necessary)
         // NOTE: the method buildDrillthroughSlicerPredicate modifies
@@ -215,7 +210,7 @@ public class RolapCell implements Cell {
      * or <code>null</code> otherwise.
      */
     private StarPredicate buildDrillthroughSlicerPredicate(
-        Member[] membersForDrillthrough,
+        List<RolapMember> membersForDrillthrough,
         Axis slicerAxis)
     {
         List<Position> listOfPositions = slicerAxis.getPositions();
@@ -229,18 +224,19 @@ public class RolapCell implements Cell {
         // "membersForDrillthrough" array if any position member is not
         // in the array
         for (Position position : listOfPositions) {
-            for (Member member : position) {
-                RolapHierarchy rolapHierarchy =
-                    (RolapHierarchy) member.getHierarchy();
+            List<RolapMember> members = Util.cast(position);
+            for (RolapMember member : members) {
+                RolapCubeHierarchy hierarchy = member.getHierarchy();
                 // Check if the membersForDrillthrough constraint is identical
                 // to that of the position member
-                if (!membersForDrillthrough[rolapHierarchy.getOrdinalInCube()]
+                if (!membersForDrillthrough.get(hierarchy.getOrdinalInCube())
                     .equals(member))
                 {
                     // There is a discrepancy, so un-constrain the
                     // membersForDrillthrough array
-                    membersForDrillthrough[rolapHierarchy.getOrdinalInCube()] =
-                        rolapHierarchy.getAllMember();
+                    membersForDrillthrough.set(
+                        hierarchy.getOrdinalInCube(),
+                        hierarchy.getAllMember());
                 }
             }
         }
@@ -257,13 +253,13 @@ public class RolapCell implements Cell {
             List<StarPredicate> listOfStarPredicatesForCurrentPosition =
                 new ArrayList<StarPredicate>();
             // Iterate the members of the current position
-            for (Member member : position) {
-                RolapHierarchy rolapHierarchy =
-                    (RolapHierarchy) member.getHierarchy();
+            List<RolapMember> members = Util.cast(position);
+            for (RolapMember member : members) {
+                RolapCubeHierarchy hierarchy = member.getHierarchy();
                 // If the membersForDrillthrough is already constraining to
                 // this member, then there is no need to create additional
                 // predicate(s) for this member
-                if (!membersForDrillthrough[rolapHierarchy.getOrdinalInCube()]
+                if (!membersForDrillthrough.get(hierarchy.getOrdinalInCube())
                    .equals(member))
                 {
                     // Walk up the member's hierarchy, adding a
@@ -276,15 +272,17 @@ public class RolapCell implements Cell {
                         // however it still suffers from the following bug:
                         //  http://jira.pentaho.com/browse/MONDRIAN-318
                         if (memberWalk.getLevel() != levelLast) {
-                            RolapCubeMember rolapCubeMember =
-                                (RolapCubeMember) memberWalk;
-                            RolapStar.Column column =
-                                rolapCubeMember.getLevel()
-                                    .getBaseStarKeyColumn(result.getCube());
+                            RolapMember rolapCubeMember =
+                                (RolapMember) memberWalk;
+                            final RolapStoredMeasure measure =
+                                (RolapStoredMeasure)
+                                    result.getCellMembers(pos)[0];
                             // Add a predicate for the member at this level
                             listOfStarPredicatesForCurrentPosition.add(
-                                new MemberColumnPredicate(
-                                    column,
+                                Predicates.memberPredicate(
+                                    new RolapSchema.CubeRouter(
+                                        measure.getMeasureGroup(),
+                                        rolapCubeMember.getDimension()),
                                     rolapCubeMember));
                         }
                         levelLast = memberWalk.getLevel();
@@ -320,7 +318,7 @@ public class RolapCell implements Cell {
             return false;
         }
         // get current members
-        final Member[] currentMembers = getMembersForDrillThrough();
+        final List<RolapMember> currentMembers = getMembersForDrillThrough();
         if (containsCalcMembers(currentMembers)) {
             return false;
         }
@@ -328,14 +326,13 @@ public class RolapCell implements Cell {
         return x != null;
     }
 
-    private boolean containsCalcMembers(Member[] currentMembers) {
+    private boolean containsCalcMembers(List<RolapMember> currentMembers) {
         // Any calculated members which are not measures, we can't drill
         // through. Trivial calculated members should have been converted
         // already. We allow simple calculated measures such as
         // [Measures].[Unit Sales] / [Measures].[Store Sales] provided that both
         // are from the same cube.
-        for (int i = 1; i < currentMembers.length; i++) {
-            final Member currentMember = currentMembers[i];
+        for (RolapMember currentMember : Util.subList(currentMembers, 1)) {
             if (currentMember.isCalculated()) {
                 return true;
             }
@@ -344,21 +341,9 @@ public class RolapCell implements Cell {
     }
 
     public static RolapCube chooseDrillThroughCube(
-        Member[] currentMembers,
+        List<RolapMember> currentMembers,
         RolapCube defaultCube)
     {
-        if (defaultCube != null && defaultCube.isVirtual()) {
-            List<RolapCube> cubes = new ArrayList<RolapCube>();
-            for (RolapMember member : defaultCube.getMeasuresMembers()) {
-                if (member instanceof RolapVirtualCubeMeasure) {
-                    RolapVirtualCubeMeasure measure =
-                        (RolapVirtualCubeMeasure) member;
-                    cubes.add(measure.getCube());
-                }
-            }
-            defaultCube = cubes.get(0);
-            assert !defaultCube.isVirtual();
-        }
         final DrillThroughVisitor visitor =
             new DrillThroughVisitor();
         try {
@@ -378,31 +363,29 @@ public class RolapCell implements Cell {
              : visitor.cube;
     }
 
-    private Member[] getMembersForDrillThrough() {
-        final Member[] currentMembers = result.getCellMembers(pos);
+    private List<RolapMember> getMembersForDrillThrough() {
+        final RolapMember[] currentMembers = result.getCellMembers(pos);
 
         // replace member if we're dealing with a trivial formula
-        List<Member> memberList = Arrays.asList(currentMembers);
+        List<RolapMember> memberList = Arrays.asList(currentMembers);
         for (int i = 0; i < currentMembers.length; i++) {
             replaceTrivialCalcMember(i, memberList);
         }
-        return currentMembers;
+        return memberList;
     }
 
-    private void replaceTrivialCalcMember(int i, List<Member> members) {
+    private void replaceTrivialCalcMember(int i, List<RolapMember> members) {
         Member member = members.get(i);
         if (!member.isCalculated()) {
             return;
         }
-        member = RolapUtil.strip((RolapMember) member);
         // if "cm" is a calc member defined by
         // "with member cm as m" then
         // "cm" is equivalent to "m"
         final Exp expr = member.getExpression();
         if (expr instanceof MemberExpr) {
-            members.set(
-                i,
-                ((MemberExpr) expr).getMember());
+            final MemberExpr memberExpr = (MemberExpr) expr;
+            members.set(i, (RolapMember) memberExpr.getMember());
             return;
         }
         // "Aggregate({m})" is equivalent to "m"
@@ -412,14 +395,13 @@ public class RolapCell implements Cell {
                 final Exp[] args = call.getArgs();
                 if (args[0] instanceof ResolvedFunCall) {
                     final ResolvedFunCall arg0 = (ResolvedFunCall) args[0];
-                    if (arg0.getFunDef() instanceof SetFunDef) {
-                        if (arg0.getArgCount() == 1
-                            && arg0.getArg(0) instanceof MemberExpr)
-                        {
-                            final MemberExpr memberExpr =
-                                (MemberExpr) arg0.getArg(0);
-                            members.set(i, memberExpr.getMember());
-                        }
+                    if (arg0.getFunDef() instanceof SetFunDef
+                        && arg0.getArgCount() == 1
+                        && arg0.getArg(0) instanceof MemberExpr)
+                    {
+                        final MemberExpr memberExpr =
+                            (MemberExpr) arg0.getArg(0);
+                        members.set(i, (RolapMember) memberExpr.getMember());
                     }
                 }
             }
@@ -533,7 +515,9 @@ public class RolapCell implements Cell {
                 defaultValue = 0;
                 break;
             case Property.ACTION_TYPE_ORDINAL:
-                return canDrillThrough() ? MDACTION_TYPE_DRILLTHROUGH : 0;
+                return canDrillThrough()
+                    ? XmlaConstants.ActionType.DRILLTHROUGH.xmlaOrdinal()
+                    : 0;
             case Property.DRILLTHROUGH_COUNT_ORDINAL:
                 return canDrillThrough() ? getDrillThroughCount() : -1;
             default:
@@ -544,7 +528,7 @@ public class RolapCell implements Cell {
         final int savepoint = evaluator.savepoint();
         try {
             result.populateEvaluator(evaluator, pos);
-            return evaluator.getProperty(propertyName, defaultValue);
+            return evaluator.getProperty(property, defaultValue);
         } finally {
             evaluator.restore(savepoint);
         }
@@ -567,11 +551,11 @@ public class RolapCell implements Cell {
         }
         final RolapMember[] members = result.getCellMembers(pos);
         for (int i = 0; i < members.length; i++) {
-            Member member = members[i];
-            if (ScenarioImpl.isScenario(member.getHierarchy())) {
+            RolapMember member = members[i];
+            if (member.getHierarchy().isScenario) {
                 scenario =
-                    (Scenario) member.getPropertyValue(Property.SCENARIO.name);
-                members[i] = (RolapMember) member.getHierarchy().getAllMember();
+                    (Scenario) member.getPropertyValue(Property.SCENARIO);
+                members[i] = member.getHierarchy().getAllMember();
             } else if (member.isCalculated()) {
                 throw Util.newError(
                     "Cannot write to cell: one of the coordinates ("
@@ -664,10 +648,7 @@ public class RolapCell implements Cell {
                     // measures we have seen
                     throw bomb;
                 }
-            } else if (member instanceof RolapCubeMember) {
-                handleMember(((RolapCubeMember) member).member);
-            } else if (member
-                instanceof RolapHierarchy.RolapCalculatedMeasure)
+            } else if (member instanceof RolapHierarchy.RolapCalculatedMeasure)
             {
                 RolapHierarchy.RolapCalculatedMeasure measure =
                     (RolapHierarchy.RolapCalculatedMeasure) member;

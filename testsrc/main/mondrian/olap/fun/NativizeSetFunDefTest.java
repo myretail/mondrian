@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2009-2012 Pentaho and others
+// Copyright (C) 2009-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -16,6 +16,7 @@ import mondrian.server.Locus;
 import mondrian.spi.Dialect;
 import mondrian.test.SqlPattern;
 import mondrian.test.TestContext;
+import mondrian.util.Bug;
 
 /**
  * Unit test for the {@code NativizeSet} function.
@@ -26,23 +27,11 @@ import mondrian.test.TestContext;
 public class NativizeSetFunDefTest extends BatchTestCase {
     public void setUp() throws Exception {
         super.setUp();
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, true);
-        propSaver.set(
-            MondrianProperties.instance().NativizeMinThreshold, 0);
-        propSaver.set(
-            MondrianProperties.instance().UseAggregates, false);
-        propSaver.set(
-            MondrianProperties.instance().ReadAggregates, false);
-        propSaver.set(
-            MondrianProperties.instance().EnableNativeCrossJoin, true);
-        // SSAS-compatible naming causes <dimension>.<level>.members to be
-        // interpreted as <dimension>.<hierarchy>.members, and that happens a
-        // lot in this test. There is little to be gained by having this test
-        // run for both values. When SSAS-compatible naming is the standard, we
-        // should upgrade all the MDX.
-        propSaver.set(
-            MondrianProperties.instance().SsasCompatibleNaming, false);
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, true);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 0);
+        propSaver.set(propSaver.props.UseAggregates, false);
+        propSaver.set(propSaver.props.ReadAggregates, false);
+        propSaver.set(propSaver.props.EnableNativeCrossJoin, true);
     }
 
     public void tearDown() throws Exception {
@@ -50,10 +39,8 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testIsNoOpWithAggregatesTablesOn() {
-        propSaver.set(
-            MondrianProperties.instance().UseAggregates, true);
-        propSaver.set(
-            MondrianProperties.instance().UseAggregates, true);
+        propSaver.set(propSaver.props.UseAggregates, true);
+        propSaver.set(propSaver.props.ReadAggregates, true);
         checkNotNative(
             "with  member [gender].[agg] as"
             + "  'aggregate({[gender].[gender].members},[measures].[unit sales])'"
@@ -68,7 +55,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
         //    Year: 2 (level * gender cardinality:2)
         //    Quarter: 16 (level * gender cardinality:2)
         //    Month: 48 (level * gender cardinality:2)
-        propSaver.set(MondrianProperties.instance().NativizeMinThreshold, 17);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 17);
         String mdx =
             "select NativizeSet("
             + "CrossJoin( "
@@ -86,7 +73,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
         //    Year: 2 (level * gender cardinality:2)
         //    Quarter: 16 (level * gender cardinality:2)
         //    Month: 48 (level * gender cardinality:2)
-        propSaver.set(MondrianProperties.instance().NativizeMinThreshold, 50);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 50);
         String mdx =
             "select NativizeSet("
             + "CrossJoin( "
@@ -100,9 +87,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testNamedSetLowCardinality() {
-        propSaver.set(
-            MondrianProperties.instance().NativizeMinThreshold,
-            Integer.MAX_VALUE);
+        propSaver.set(propSaver.props.NativizeMinThreshold, Integer.MAX_VALUE);
         checkNotNative(
             "with "
             + "set [levelMembers] as 'crossjoin( gender.gender.members, "
@@ -112,9 +97,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testCrossjoinWithNamedSetLowCardinality() {
-        propSaver.set(
-            MondrianProperties.instance().NativizeMinThreshold,
-            Integer.MAX_VALUE);
+        propSaver.set(propSaver.props.NativizeMinThreshold, Integer.MAX_VALUE);
         checkNotNative(
             "with "
             + "set [genderMembers] as 'gender.gender.members'"
@@ -148,7 +131,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + ")) on 0 from sales";
 
         // Set limit to zero (effectively, no limit)
-        propSaver.set(MondrianProperties.instance().NativizeMaxResults, 0);
+        propSaver.set(propSaver.props.NativizeMaxResults, 0);
         checkNative(mdx);
     }
 
@@ -164,7 +147,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + ")) on 0 from sales";
 
         // Set limit to exact size of result
-        propSaver.set(MondrianProperties.instance().NativizeMaxResults, 6);
+        propSaver.set(propSaver.props.NativizeMaxResults, 6);
         checkNative(mdx);
 
         try {
@@ -172,7 +155,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             // so it will have 4 rows.  Setting the limit to 3 means
             // that the exception will be thrown before calculated
             // members are merged into the result.
-            propSaver.set(MondrianProperties.instance().NativizeMaxResults, 3);
+            propSaver.set(propSaver.props.NativizeMaxResults, 3);
             checkNative(mdx);
             fail("Should have thrown ResourceLimitExceededException.");
         } catch (ResourceLimitExceededException expected) {
@@ -192,14 +175,14 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + ")) on 0 from sales";
 
         // Set limit to exact size of result
-        propSaver.set(MondrianProperties.instance().NativizeMaxResults, 6);
+        propSaver.set(propSaver.props.NativizeMaxResults, 6);
         checkNative(mdx);
 
         try {
             // The native list doesn't contain the calculated members,
             // so setting the limit to 5 means the exception won't be
             // thrown until calculated members are merged into the result.
-            propSaver.set(MondrianProperties.instance().NativizeMaxResults, 5);
+            propSaver.set(propSaver.props.NativizeMaxResults, 5);
             checkNative(mdx);
             fail("Should have thrown ResourceLimitExceededException.");
         } catch (ResourceLimitExceededException expected) {
@@ -285,8 +268,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
 
         // Set the threshold high; same mdx should no longer be natively
         // evaluated.
-        propSaver.set(
-            MondrianProperties.instance().NativizeMinThreshold, 200000);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 200000);
         checkNotNative(mdx);
     }
 
@@ -1046,49 +1028,42 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testDoesNoHarmToPlainEnumeratedMembers() {
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, false);
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, false);
 
         assertQueryIsReWritten(
             "SELECT NativizeSet({Gender.M,Gender.F}) on 0 from sales",
             "select "
-            + "NativizeSet({[Gender].[M], [Gender].[F]}) "
+            + "NativizeSet({[Customer].[Gender].[M], [Customer].[Gender].[F]}) "
             + "ON COLUMNS\n"
             + "from [Sales]\n");
     }
 
     public void testDoesNoHarmToPlainDotMembers() {
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, false);
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, false);
 
         assertQueryIsReWritten(
             "select NativizeSet({[Marital Status].[Marital Status].members}) "
             + "on 0 from sales",
-            "select NativizeSet({[Marital Status].[Marital Status].Members}) "
+            "select NativizeSet({[Customer].[Marital Status].[Marital Status].Members}) "
             + "ON COLUMNS\n"
             + "from [Sales]\n");
     }
 
     public void testTransformsCallToRemoveDotMembersInCrossJoin() {
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, false);
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, false);
 
         assertQueryIsReWritten(
-            "select NativizeSet(CrossJoin({Gender.M,Gender.F},{[Marital Status].[Marital Status].members})) "
-            + "on 0 from sales",
-            "with member [Marital Status].[_Nativized_Member_Marital Status_Marital Status_] as '[Marital Status].DefaultMember'\n"
-            + "  set [_Nativized_Set_Marital Status_Marital Status_] as "
-            + "'{[Marital Status].[_Nativized_Member_Marital Status_Marital Status_]}'\n"
-            + "  member [Gender].[_Nativized_Sentinel_Gender_(All)_] as '101010'\n"
-            + "  member [Marital Status].[_Nativized_Sentinel_Marital Status_(All)_] as '101010'\n"
-            + "select NativizeSet(Crossjoin({[Gender].[M], [Gender].[F]}, "
-            + "{[_Nativized_Set_Marital Status_Marital Status_]})) ON COLUMNS\n"
+            "select NativizeSet(CrossJoin({Gender.M,Gender.F},{[Marital Status].[Marital Status].members})) on 0 from sales",
+            "with member [Customer].[Marital Status].[_Nativized_Member_Customer_Marital Status_Marital Status_] as '[Customer].[Marital Status].DefaultMember'\n"
+            + "  set [_Nativized_Set_Customer_Marital Status_Marital Status_] as '{[Customer].[Marital Status].[_Nativized_Member_Customer_Marital Status_Marital Status_]}'\n"
+            + "  member [Customer].[Gender].[_Nativized_Sentinel_Customer_Gender_(All)_] as '101010'\n"
+            + "  member [Customer].[Marital Status].[_Nativized_Sentinel_Customer_Marital Status_(All)_] as '101010'\n"
+            + "select NativizeSet(Crossjoin({[Customer].[Gender].[M], [Customer].[Gender].[F]}, {[_Nativized_Set_Customer_Marital Status_Marital Status_]})) ON COLUMNS\n"
             + "from [Sales]\n");
     }
 
     public void DISABLED_testTransformsWithSeveralDimensionsNestedOnRows() {
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, false);
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, false);
 
         assertQueryIsReWritten(
             "WITH SET [COG_OQP_INT_s4] AS 'CROSSJOIN({[Education Level].[Graduate Degree]},"
@@ -1118,8 +1093,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testTransformsComplexQueryWithGenerateAndAggregate() {
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, false);
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, false);
 
         assertQueryIsReWritten(
             "WITH MEMBER [Product].[COG_OQP_INT_umg1] AS "
@@ -1139,21 +1113,21 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "IIF(COUNT([COG_OQP_INT_s4], INCLUDEEMPTY) > 0, 1, 0)), [COG_OQP_INT_s3]), ALL)), ALL))"
             + " DIMENSION PROPERTIES PARENT_LEVEL, CHILDREN_CARDINALITY, PARENT_UNIQUE_NAME ON AXIS(1)"
             + " FROM [Sales]  CELL PROPERTIES VALUE, FORMAT_STRING",
-            "with member [Product].[COG_OQP_INT_umg1] as "
-            + "'IIf(([Measures].CurrentMember IS [Measures].[Unit Sales]), ([Product].[COG_OQP_INT_m2], [Measures].[Unit Sales]), "
-            + "Aggregate({[Product].[Product Name].Members}))', SOLVE_ORDER = 4\n"
-            + "  member [Product].[COG_OQP_INT_m2] as "
-            + "'Aggregate({[Product].[Product Name].Members}, [Measures].[Unit Sales])', SOLVE_ORDER = 4\n"
-            + "  set [COG_OQP_INT_s5] as 'Crossjoin({[Marital Status].[S]}, [COG_OQP_INT_s4])'\n"
-            + "  set [COG_OQP_INT_s4] as 'Crossjoin({[Gender].[F]}, [COG_OQP_INT_s2])'\n"
-            + "  set [COG_OQP_INT_s3] as 'Crossjoin({[Gender].[F]}, {[COG_OQP_INT_s2], [COG_OQP_INT_s1]})'\n"
-            + "  set [COG_OQP_INT_s2] as 'Crossjoin({[Product].[Product Name].Members}, {[Customers].[Name].Members})'\n"
-            + "  set [COG_OQP_INT_s1] as 'Crossjoin({[Product].[COG_OQP_INT_umg1]}, {[Customers].DefaultMember})'\n"
+            "with member [Product].[Products].[COG_OQP_INT_umg1] as "
+            + "'IIf(([Measures].CurrentMember IS [Measures].[Unit Sales]), ([Product].[Products].[COG_OQP_INT_m2], [Measures].[Unit Sales]), "
+            + "Aggregate({[Product].[Products].[Product Name].Members}))', SOLVE_ORDER = 4\n"
+            + "  member [Product].[Products].[COG_OQP_INT_m2] as "
+            + "'Aggregate({[Product].[Products].[Product Name].Members}, [Measures].[Unit Sales])', SOLVE_ORDER = 4\n"
+            + "  set [COG_OQP_INT_s5] as 'Crossjoin({[Customer].[Marital Status].[S]}, [COG_OQP_INT_s4])'\n"
+            + "  set [COG_OQP_INT_s4] as 'Crossjoin({[Customer].[Gender].[F]}, [COG_OQP_INT_s2])'\n"
+            + "  set [COG_OQP_INT_s3] as 'Crossjoin({[Customer].[Gender].[F]}, {[COG_OQP_INT_s2], [COG_OQP_INT_s1]})'\n"
+            + "  set [COG_OQP_INT_s2] as 'Crossjoin({[Product].[Products].[Product Name].Members}, {[Customer].[Customers].[Name].Members})'\n"
+            + "  set [COG_OQP_INT_s1] as 'Crossjoin({[Product].[Products].[COG_OQP_INT_umg1]}, {[Customer].[Customers].DefaultMember})'\n"
             + "select {[Measures].[Unit Sales]} DIMENSION PROPERTIES PARENT_LEVEL, CHILDREN_CARDINALITY, PARENT_UNIQUE_NAME ON COLUMNS,\n"
-            + "  NativizeSet(Generate({[Education Level].[Graduate Degree]}, "
-            + "Crossjoin(Head({[Education Level].CurrentMember}, IIf((Count([COG_OQP_INT_s5], INCLUDEEMPTY) > 0), 1, 0)), "
-            + "Generate({[Marital Status].[S]}, "
-            + "Crossjoin(Head({[Marital Status].CurrentMember}, "
+            + "  NativizeSet(Generate({[Customer].[Education Level].[Graduate Degree]}, "
+            + "Crossjoin(Head({[Customer].[Education Level].CurrentMember}, IIf((Count([COG_OQP_INT_s5], INCLUDEEMPTY) > 0), 1, 0)), "
+            + "Generate({[Customer].[Marital Status].[S]}, "
+            + "Crossjoin(Head({[Customer].[Marital Status].CurrentMember}, "
             + "IIf((Count([COG_OQP_INT_s4], INCLUDEEMPTY) > 0), 1, 0)), [COG_OQP_INT_s3]), ALL)), ALL)) "
             + "DIMENSION PROPERTIES PARENT_LEVEL, CHILDREN_CARDINALITY, PARENT_UNIQUE_NAME ON ROWS\n"
             + "from [Sales]\n");
@@ -1169,10 +1143,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testMultipleHierarchySsasTrue() {
-        propSaver.set(
-            MondrianProperties.instance().SsasCompatibleNaming, true);
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, false);
+        propSaver.set(propSaver.props.EnableNonEmptyOnAllAxis, false);
 
         // Ssas compatible: time.[weekly].[week]
         // Use fresh connection -- unique names are baked in when schema is
@@ -1183,27 +1154,9 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "from sales",
             "with member [Time].[Weekly].[_Nativized_Member_Time_Weekly_Week_] as '[Time].[Weekly].DefaultMember'\n"
             + "  set [_Nativized_Set_Time_Weekly_Week_] as '{[Time].[Weekly].[_Nativized_Member_Time_Weekly_Week_]}'\n"
-            + "  member [Time].[_Nativized_Sentinel_Time_Year_] as '101010'\n"
-            + "  member [Gender].[_Nativized_Sentinel_Gender_(All)_] as '101010'\n"
-            + "select NativizeSet(Crossjoin([_Nativized_Set_Time_Weekly_Week_], {[Gender].[M]})) ON COLUMNS\n"
-            + "from [Sales]\n");
-    }
-
-    public void testMultipleHierarchySsasFalse() {
-        propSaver.set(
-            MondrianProperties.instance().SsasCompatibleNaming, false);
-        propSaver.set(
-            MondrianProperties.instance().EnableNonEmptyOnAllAxis, false);
-
-        // Ssas compatible: [time.weekly].week
-        assertQueryIsReWritten(
-            "select nativizeSet(crossjoin( [time.weekly].week.members, { gender.m })) on 0 "
-            + "from sales",
-            "with member [Time].[_Nativized_Member_Time_Weekly_Week_] as '[Time].DefaultMember'\n"
-            + "  set [_Nativized_Set_Time_Weekly_Week_] as '{[Time].[_Nativized_Member_Time_Weekly_Week_]}'\n"
-            + "  member [Time].[_Nativized_Sentinel_Time_Year_] as '101010'\n"
-            + "  member [Gender].[_Nativized_Sentinel_Gender_(All)_] as '101010'\n"
-            + "select NativizeSet(Crossjoin([_Nativized_Set_Time_Weekly_Week_], {[Gender].[M]})) ON COLUMNS\n"
+            + "  member [Time].[Weekly].[_Nativized_Sentinel_Time_Weekly_(All)_] as '101010'\n"
+            + "  member [Customer].[Gender].[_Nativized_Sentinel_Customer_Gender_(All)_] as '101010'\n"
+            + "select NativizeSet(Crossjoin([_Nativized_Set_Time_Weekly_Week_], {[Customer].[Gender].[M]})) ON COLUMNS\n"
             + "from [Sales]\n");
     }
 
@@ -1223,7 +1176,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "SET\n"
             + "\t[COG_OQP_INT_s8] AS 'CROSSJOIN({[Store Type].[Store Type].MEMBERS}, [COG_OQP_INT_s7])' \n"
             + "SET\n"
-            + "\t[COG_OQP_INT_s7] AS 'CROSSJOIN({[Promotions].[Promotions].MEMBERS}, "
+            + "\t[COG_OQP_INT_s7] AS 'CROSSJOIN({[Promotion].[Promotions].MEMBERS}, "
             + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl].[Pearl Imported Beer]})' \n"
             + "SET\n"
             + "\t[COG_OQP_INT_s6] AS 'CROSSJOIN({[Store Type].[COG_OQP_INT_umg1]}, [COG_OQP_INT_s1])' \n"
@@ -1263,11 +1216,10 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "TopCount({[Marital Status].[Marital Status].members},1,[Measures].[Unit Sales]))"
             + " ) on 0,"
             + "{[Measures].[Unit Sales]} on 1 FROM [Sales]",
-            "with member [Gender].[_Nativized_Member_Gender_Gender_] as '[Gender].DefaultMember'\n"
-            + "  set [_Nativized_Set_Gender_Gender_] as '{[Gender].[_Nativized_Member_Gender_Gender_]}'\n"
-            + "  member [Gender].[_Nativized_Sentinel_Gender_(All)_] as '101010'\n"
-            + "select NON EMPTY NativizeSet(Crossjoin([_Nativized_Set_Gender_Gender_], "
-            + "TopCount({[Marital Status].[Marital Status].Members}, 1, [Measures].[Unit Sales]))) ON COLUMNS,\n"
+            "with member [Customer].[Gender].[_Nativized_Member_Customer_Gender_Gender_] as '[Customer].[Gender].DefaultMember'\n"
+            + "  set [_Nativized_Set_Customer_Gender_Gender_] as '{[Customer].[Gender].[_Nativized_Member_Customer_Gender_Gender_]}'\n"
+            + "  member [Customer].[Gender].[_Nativized_Sentinel_Customer_Gender_(All)_] as '101010'\n"
+            + "select NON EMPTY NativizeSet(Crossjoin([_Nativized_Set_Customer_Gender_Gender_], TopCount({[Customer].[Marital Status].[Marital Status].Members}, 1, [Measures].[Unit Sales]))) ON COLUMNS,\n"
             + "  NON EMPTY {[Measures].[Unit Sales]} ON ROWS\n"
             + "from [Sales]\n");
     }
@@ -1284,13 +1236,12 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997], [Gender].[F]}\n"
+            + "{[Time].[Time].[1997], [Customer].[Gender].[F]}\n"
             + "Row #0: 131,558\n");
     }
 
     public void testEvaluationIsNonNativeWhenBelowHighcardThreshoold() {
-        propSaver.set(
-            MondrianProperties.instance().NativizeMinThreshold, 10000);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 10000);
         SqlPattern[] patterns = {
             new SqlPattern(
                 Dialect.DatabaseProduct.ACCESS,
@@ -1315,7 +1266,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "  Nativizeset"
             + "  ("
             + "    {"
-            + "      [Store].Levels(0).MEMBERS"
+            + "      [Stores].Levels(0).MEMBERS"
             + "    }"
             + "  ) ON COLUMNS"
             + " FROM [Sales]";
@@ -1338,8 +1289,8 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "  NON EMPTY "
             + "  NativizeSet("
             + "    Except("
-            + "      {[Promotion Media].[Promotion Media].Members},\n"
-            + "      {[Promotion Media].[Bulk Mail],[Promotion Media].[All Media].[Daily Paper]}"
+            + "      {[Promotion].[Media Type].Members},\n"
+            + "      {[Promotion].[Media Type].[Bulk Mail],[Promotion].[Media Type].[All Media].[Daily Paper]}"
             + "    )"
             + "  ) ON COLUMNS,"
             + "  NON EMPTY "
@@ -1361,7 +1312,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testOneAxisHighAndOneLowGetsNativeEvaluation() {
-        propSaver.set(MondrianProperties.instance().NativizeMinThreshold, 19);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 19);
         checkNative(
             "select NativizeSet("
             + "Crossjoin([Gender].[Gender].members,"
@@ -1372,11 +1323,11 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void disabled_testAggregatesInSparseResultsGetSortedCorrectly() {
-        propSaver.set(MondrianProperties.instance().NativizeMinThreshold, 0);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 0);
         checkNative(
             "select non empty NativizeSet("
             + "Crossjoin({[Store Type].[Store Type].members,[Store Type].[all store types]},"
-            + "{ [Promotion Media].[Media Type].members }"
+            + "{ [Promotion].[Media Type].members }"
             + ")) on 0 from sales");
     }
 
@@ -1397,7 +1348,7 @@ public class NativizeSetFunDefTest extends BatchTestCase {
     }
 
     public void testAggregatedCrossjoinWithZeroMembersInNativeList() {
-        propSaver.set(MondrianProperties.instance().NativizeMinThreshold, 0);
+        propSaver.set(propSaver.props.NativizeMinThreshold, 0);
         checkNative(
             "with"
             + " member [gender].[agg] as"
@@ -1478,8 +1429,9 @@ public class NativizeSetFunDefTest extends BatchTestCase {
             + "\"fname\" || ' ' || \"lname\" ASC NULLS LAST";
         SqlPattern oraclePattern =
             new SqlPattern(Dialect.DatabaseProduct.ORACLE, sql, sql.length());
-        assertQuerySql(mdx1, new SqlPattern[]{oraclePattern});
-        assertQuerySql(mdx2, new SqlPattern[]{oraclePattern});
+        TestContext testContext = getTestContext();
+        assertQuerySql(testContext, mdx1, new SqlPattern[]{oraclePattern});
+        assertQuerySql(testContext, mdx2, new SqlPattern[]{oraclePattern});
     }
 
     // ~ ====== Helper methods =================================================
@@ -1531,6 +1483,265 @@ public class NativizeSetFunDefTest extends BatchTestCase {
         }
         assertEquals(expectedQuery, actualOutput);
     }
+
+
+    public void testCompoundSlicerNativeEval() {
+        if (!Bug.BugMondrian1420Fixed) {
+            return;
+        }
+        // MONDRIAN-1404 use case
+        propSaver.set(
+            propSaver.props.GenerateFormattedSql,
+            true);
+        propSaver.set(
+            propSaver.props.UseAggregates,
+            false);
+        final String mdx =
+            "select NON EMPTY [Customers].[USA].[CA].[San Francisco].Children ON COLUMNS \n"
+            + "from [Sales] \n"
+            + "where ([Time].[1997].[Q1] : [Time].[1997].[Q3]) \n";
+
+        final String mysql =
+            "select\n"
+            + "    `customer`.`customer_id` as `c0`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) as `c1`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) as `c2`,\n"
+            + "    `customer`.`gender` as `c3`,\n"
+            + "    `customer`.`marital_status` as `c4`,\n"
+            + "    `customer`.`education` as `c5`,\n"
+            + "    `customer`.`yearly_income` as `c6`\n"
+            + "from\n"
+            + "    `time_by_day` as `time_by_day`,\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `customer` as `customer`\n"
+            + "where\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "and\n"
+            +    "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `time_by_day`.`quarter` in ('Q1', 'Q2', 'Q3')\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`customer_id` = `customer`.`customer_id`\n"
+            + "and\n"
+            + "    `customer`.`state_province` = 'CA'\n"
+            + "and\n"
+            + "    `customer`.`city` = 'San Francisco'\n"
+            + "group by\n"
+            + "    `customer`.`customer_id`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`),\n"
+            + "    `customer`.`gender`,\n"
+            + "    `customer`.`marital_status`,\n"
+            + "    `customer`.`education`,\n"
+            + "    `customer`.`yearly_income`\n"
+            + "order by\n"
+            + "    ISNULL(CONCAT(`customer`.`fname`, ' ', `customer`.`lname`)) ASC, CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) ASC";
+        SqlPattern mysqlPattern =
+            new SqlPattern(
+                Dialect.DatabaseProduct.MYSQL,
+                mysql,
+                mysql);
+
+        assertQuerySql(getTestContext(), mdx, new SqlPattern[]{mysqlPattern});
+
+        assertQueryReturns(
+            mdx,
+            "Axis #0:\n"
+            + "{[Time].[1997].[Q1]}\n"
+            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[1997].[Q3]}\n"
+            + "Axis #1:\n"
+            + "{[Customers].[USA].[CA].[San Francisco].[Dennis Messer]}\n"
+            + "{[Customers].[USA].[CA].[San Francisco].[Esther Logsdon]}\n"
+            + "{[Customers].[USA].[CA].[San Francisco].[Karen Moreland]}\n"
+            + "{[Customers].[USA].[CA].[San Francisco].[Kent Brant]}\n"
+            + "{[Customers].[USA].[CA].[San Francisco].[Louise Wakefield]}\n"
+            + "{[Customers].[USA].[CA].[San Francisco].[Reta Mikalas]}\n"
+            + "{[Customers].[USA].[CA].[San Francisco].[Tammy Mihalek]}\n"
+            + "Row #0: 8\n"
+            + "Row #0: 3\n"
+            + "Row #0: 13\n"
+            + "Row #0: 5\n"
+            + "Row #0: 13\n"
+            + "Row #0: 10\n"
+            + "Row #0: 1\n");
+    }
+
+    public void testSnowflakeDimInSlicerBug1407() {
+        // MONDRIAN-1407 use case
+        if (!Bug.BugMondrian1420Fixed) {
+            return;
+        }
+        propSaver.set(
+            propSaver.props.GenerateFormattedSql,
+            true);
+        propSaver.set(
+            propSaver.props.UseAggregates,
+            false);
+        final String mdx =
+            "select TopCount([Customers].[Name].members, 5, measures.[unit sales]) ON COLUMNS \n"
+            + "  from sales where \n"
+            + " { [Time].[1997]} * {[Product].[All Products].[Drink], [Product].[All Products].[Food] }";
+
+        final String mysql =
+            "select\n"
+            + "    `customer`.`country` as `c0`,\n"
+            + "    `customer`.`state_province` as `c1`,\n"
+            + "    `customer`.`city` as `c2`,\n"
+            + "    `customer`.`customer_id` as `c3`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) as `c4`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) as `c5`,\n"
+            + "    `customer`.`gender` as `c6`,\n"
+            + "    `customer`.`marital_status` as `c7`,\n"
+            + "    `customer`.`education` as `c8`,\n"
+            + "    `customer`.`yearly_income` as `c9`,\n"
+            + "    sum(`sales_fact_1997`.`unit_sales`) as `c10`\n"
+            + "from\n"
+            + "    `customer` as `customer`,\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `time_by_day` as `time_by_day`,\n"
+            + "    `product_class` as `product_class`,\n"
+            + "    `product` as `product`\n"
+            + "where\n"
+            + "    `sales_fact_1997`.`customer_id` = `customer`.`customer_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "and\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`product_id` = `product`.`product_id`\n"
+            + "and\n"
+            + "    `product`.`product_class_id` = `product_class`.`product_class_id`\n"
+            + "and\n"
+            + "    `product_class`.`product_family` in ('Drink', 'Food')\n"
+            + "group by\n"
+            + "    `customer`.`country`,\n"
+            + "    `customer`.`state_province`,\n"
+            + "    `customer`.`city`,\n"
+            + "    `customer`.`customer_id`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`),\n"
+            + "    `customer`.`gender`,\n"
+            + "    `customer`.`marital_status`,\n"
+            + "    `customer`.`education`,\n"
+            + "    `customer`.`yearly_income`\n"
+            + "order by\n"
+            + "    `c10` DESC,\n"
+            + "    ISNULL(`customer`.`country`) ASC, `customer`.`country` ASC,\n"
+            + "    ISNULL(`customer`.`state_province`) ASC, `customer`.`state_province` ASC,\n"
+            + "    ISNULL(`customer`.`city`) ASC, `customer`.`city` ASC,\n"
+            + "    ISNULL(CONCAT(`customer`.`fname`, ' ', `customer`.`lname`)) ASC, CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) ASC";
+        SqlPattern mysqlPattern =
+            new SqlPattern(
+                Dialect.DatabaseProduct.MYSQL,
+                mysql,
+                mysql);
+
+        assertQuerySql(getTestContext(), mdx, new SqlPattern[]{mysqlPattern});
+        assertQueryReturns(
+            mdx,
+            "Axis #0:\n"
+            + "{[Time].[1997], [Product].[Drink]}\n"
+            + "{[Time].[1997], [Product].[Food]}\n"
+            + "Axis #1:\n"
+            + "{[Customers].[USA].[WA].[Spokane].[Mary Francis Benigar]}\n"
+            + "{[Customers].[USA].[WA].[Spokane].[James Horvat]}\n"
+            + "{[Customers].[USA].[WA].[Spokane].[Wildon Cameron]}\n"
+            + "{[Customers].[USA].[WA].[Spokane].[Ida Rodriguez]}\n"
+            + "{[Customers].[USA].[WA].[Spokane].[Joann Mramor]}\n"
+            + "Row #0: 427\n"
+            + "Row #0: 384\n"
+            + "Row #0: 366\n"
+            + "Row #0: 357\n"
+            + "Row #0: 324\n");
+    }
+
+    public void testCompoundSlicerNonUniqueMemberNames1413() {
+        // MONDRIAN-1413 use case
+        if (!Bug.BugMondrian1420Fixed) {
+            return;
+        }
+        propSaver.set(
+            propSaver.props.GenerateFormattedSql,
+            true);
+        propSaver.set(
+            propSaver.props.UseAggregates,
+            false);
+        final String mdx =
+            "select TopCount([Customers].[Name].members, 5, "
+            + "measures.[unit sales]) ON COLUMNS \n"
+            + "  from sales where \n"
+            + "  {[Time.Weekly].[1997].[48].[17] :[Time.Weekly].[1997].[48].[20]} ";
+
+        final String mysql =
+            "select\n"
+            + "    `customer`.`country` as `c0`,\n"
+            + "    `customer`.`state_province` as `c1`,\n"
+            + "    `customer`.`city` as `c2`,\n"
+            + "    `customer`.`customer_id` as `c3`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) as `c4`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) as `c5`,\n"
+            + "    `customer`.`gender` as `c6`,\n"
+            + "    `customer`.`marital_status` as `c7`,\n"
+            + "    `customer`.`education` as `c8`,\n"
+            + "    `customer`.`yearly_income` as `c9`,\n"
+            + "    sum(`sales_fact_1997`.`unit_sales`) as `c10`\n"
+            + "from\n"
+            + "    `customer` as `customer`,\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    `sales_fact_1997`.`customer_id` = `customer`.`customer_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "and\n"
+            + "    `time_by_day`.`the_year` = 1997\n"
+            + "and\n"
+            + "    `time_by_day`.`week_of_year` = 48\n"
+            + "and\n"
+            + "    `time_by_day`.`day_of_month` in (17, 18, 19, 20)\n"
+            + "group by\n"
+            + "    `customer`.`country`,\n"
+            + "    `customer`.`state_province`,\n"
+            + "    `customer`.`city`,\n"
+            + "    `customer`.`customer_id`,\n"
+            + "    CONCAT(`customer`.`fname`, ' ', `customer`.`lname`),\n"
+            + "    `customer`.`gender`,\n"
+            + "    `customer`.`marital_status`,\n"
+            + "    `customer`.`education`,\n"
+            + "    `customer`.`yearly_income`\n"
+            + "order by\n"
+            + "    `c10` DESC,\n"
+            + "    ISNULL(`customer`.`country`) ASC, `customer`.`country` ASC,\n"
+            + "    ISNULL(`customer`.`state_province`) ASC, `customer`.`state_province` ASC,\n"
+            + "    ISNULL(`customer`.`city`) ASC, `customer`.`city` ASC,\n"
+            + "    ISNULL(CONCAT(`customer`.`fname`, ' ', `customer`.`lname`)) ASC, CONCAT(`customer`.`fname`, ' ', `customer`.`lname`) ASC";
+        SqlPattern mysqlPattern =
+            new SqlPattern(
+                Dialect.DatabaseProduct.MYSQL,
+                mysql,
+                mysql);
+        assertQuerySql(getTestContext(), mdx, new SqlPattern[]{mysqlPattern});
+
+        assertQueryReturns(
+            mdx,
+            "Axis #0:\n"
+            + "{[Time].[Weekly].[1997].[48].[17]}\n"
+            + "{[Time].[Weekly].[1997].[48].[18]}\n"
+            + "{[Time].[Weekly].[1997].[48].[19]}\n"
+            + "{[Time].[Weekly].[1997].[48].[20]}\n"
+            + "Axis #1:\n"
+            + "{[Customers].[USA].[WA].[Yakima].[Joanne Skuderna]}\n"
+            + "{[Customers].[USA].[WA].[Yakima].[Paula Stevens]}\n"
+            + "{[Customers].[USA].[WA].[Everett].[Sarah Miller]}\n"
+            + "{[Customers].[USA].[OR].[Albany].[Kathryn Chamberlin]}\n"
+            + "{[Customers].[USA].[OR].[Salem].[Scott Pavicich]}\n"
+            + "Row #0: 37\n"
+            + "Row #0: 32\n"
+            + "Row #0: 29\n"
+            + "Row #0: 28\n"
+            + "Row #0: 28\n");
+    }
+
+
 }
 
 // End NativizeSetFunDefTest.java

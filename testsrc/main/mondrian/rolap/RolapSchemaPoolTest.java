@@ -4,14 +4,22 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2012-2012 Pentaho
+=======
+// Copyright (C) 2012-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.olap.Util;
 import mondrian.olap.Util.PropertyList;
+<<<<<<< HEAD
 import mondrian.spi.DynamicSchemaProcessor;
+=======
+import mondrian.spi.*;
+>>>>>>> upstream/4.0
 import mondrian.test.FoodMartTestCase;
 import mondrian.test.TestContext;
 
@@ -52,7 +60,11 @@ public class RolapSchemaPoolTest extends FoodMartTestCase {
                 "joeTheUser",
                 "aDataSource",
                 connectInfo);
+<<<<<<< HEAD
         //same arguments, same object
+=======
+        // same arguments, same object
+>>>>>>> upstream/4.0
         assertTrue(schema == schemaA);
     }
 
@@ -90,7 +102,11 @@ public class RolapSchemaPoolTest extends FoodMartTestCase {
                 "mrDoeTheOtherUser",
                 "someDataSource",
                 connectInfoA);
+<<<<<<< HEAD
         //must fetch the same object
+=======
+        // must fetch the same object
+>>>>>>> upstream/4.0
         assertTrue(schema == sameSchema);
 
         connectInfo.put(
@@ -103,7 +119,11 @@ public class RolapSchemaPoolTest extends FoodMartTestCase {
                 "joeTheUser",
                 "aDataSource",
                 connectInfo);
+<<<<<<< HEAD
         //must create a new object
+=======
+        // must create a new object
+>>>>>>> upstream/4.0
         assertTrue(schema != aNewSchema);
     }
 
@@ -161,8 +181,15 @@ public class RolapSchemaPoolTest extends FoodMartTestCase {
 
         Util.PropertyList connectInfoDS = connectInfo.clone();
         final StringBuilder buf = new StringBuilder();
+<<<<<<< HEAD
         DataSource dataSource =
             RolapConnection.createDataSource(null, connectInfoDS, buf);
+=======
+        DataServicesProvider provider =
+            DataServicesLocator.getDataServicesProvider("");
+        DataSource dataSource =
+            provider.createDataSource(null, connectInfoDS, buf);
+>>>>>>> upstream/4.0
         RolapSchema schemaDS = pool.get(catalogUrl, dataSource, connectInfoDS);
 
         assertTrue(schema == schemaDS);
@@ -171,10 +198,17 @@ public class RolapSchemaPoolTest extends FoodMartTestCase {
 
     protected URL getFoodmartCatalogUrl() {
         // Works if we are running in root directory of source tree
+<<<<<<< HEAD
         File file = new File("demo/FoodMart.xml");
         if (!file.exists()) {
             // Works if we are running in bin directory of runtime env
             file = new File("../demo/FoodMart.xml");
+=======
+        File file = new File("demo/FoodMart.mondrian.xml");
+        if (!file.exists()) {
+            // Works if we are running in bin directory of runtime env
+            file = new File("../demo/FoodMart.mondrian.xml");
+>>>>>>> upstream/4.0
         }
         try {
             return Util.toURL(file);
@@ -192,5 +226,11 @@ public class RolapSchemaPoolTest extends FoodMartTestCase {
             return Util.readVirtualFileAsString(schemaUrl);
         }
     }
+<<<<<<< HEAD
 }
+=======
+
+}
+
+>>>>>>> upstream/4.0
 // End RolapSchemaPoolTest.java

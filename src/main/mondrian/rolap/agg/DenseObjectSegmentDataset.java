@@ -18,14 +18,13 @@ import java.util.List;
 import java.util.SortedSet;
 
 /**
- * Implementation of {@link mondrian.rolap.agg.DenseSegmentDataset} that stores
+ * Implementation of {@link SegmentDataset} that stores
  * values of type {@link Object}.
  *
  * <p>The storage requirements are as follows. Table requires 1 word per
- * cell.</p>
+ * cell (a pointer), plus the storage for the value.</p>
  *
  * @author jhyde
- * @since 21 March, 2002
  */
 class DenseObjectSegmentDataset extends DenseSegmentDataset {
     final Object[] values; // length == m[0] * ... * m[axes.length-1]

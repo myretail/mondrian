@@ -5,13 +5,12 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2006-2012 Pentaho
+// Copyright (C) 2006-2014 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.olap.Id;
-import mondrian.rolap.aggmatcher.AggStar;
 import mondrian.rolap.sql.SqlQuery;
 
 import java.util.Arrays;
@@ -25,7 +24,7 @@ import java.util.Arrays;
  * @author avix
  */
 class ChildByNameConstraint extends DefaultMemberChildrenConstraint {
-    private final String childName;
+    final String childName;
     private final Object cacheKey;
 
     /**
@@ -52,14 +51,14 @@ class ChildByNameConstraint extends DefaultMemberChildrenConstraint {
 
     public void addLevelConstraint(
         SqlQuery query,
-        RolapCube baseCube,
-        AggStar aggStar,
-        RolapLevel level)
+        RolapStarSet starSet,
+        RolapCubeLevel level)
     {
-        super.addLevelConstraint(query, baseCube, aggStar, level);
+        super.addLevelConstraint(query, starSet, level);
         query.addWhere(
             SqlConstraintUtils.constrainLevel(
-                level, query, baseCube, aggStar, childName, true));
+                level.attribute.getNameExp(), query.getDialect(), childName,
+                true));
     }
 
     public String toString() {

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 //
 // jhyde, 22 December, 2001
@@ -24,49 +24,31 @@ import java.util.List;
  * @author jhyde
  * @since 22 December, 2001
  */
-interface MemberCache {
-    /**
-     * Creates a key with which to {@link #getMember(Object)} or
-     * {@link #putMember(Object, RolapMember)} the
-     * {@link RolapMember} with a given parent and key.
-     *
-     * @param parent Parent member
-     * @param key Key of member within parent
-     * @return key with which to address this member in the cache
-     */
-    Object makeKey(RolapMember parent, Object key);
-
+public interface MemberCache {
     /**
      * Retrieves the {@link RolapMember} with a given key.
      *
-     * @param key cache key, created by {@link #makeKey}
+     * @param level Level
+     * @param key Member key
      * @return member with a given cache key
      */
-    RolapMember getMember(Object key);
-
-    /**
-     * Retrieves the {@link RolapMember} with a given key.
-     *
-     * @param key cache key, created by {@link #makeKey}
-     * @param mustCheckCacheStatus If {@code true}, do not check cache status
-     * @return member with a given cache key
-     */
-    RolapMember getMember(Object key, boolean mustCheckCacheStatus);
+    RolapMember getMember(RolapCubeLevel level, Object key);
 
     /**
      * Replaces the {@link RolapMember} with a given key and returns the
      * previous member if any.
      *
-     * @param key cache key, created by {@link #makeKey}
+     * @param level Level
+     * @param key Member key
      * @param member new member
      * @return Previous member with that key, or null.
      */
-    Object putMember(Object key, RolapMember member);
+    Object putMember(RolapCubeLevel level, Object key, RolapMember member);
 
     /**
      * Returns whether the cache supports removing selected items. If it does,
-     * it is valid to call the {@link #removeMember(Object)} and
-     * {@link #removeMemberAndDescendants(Object)} methods.
+     * it is valid to call the {@link #removeMember(RolapCubeLevel, Object)}
+     * method.
      *
      * <p>REVIEW: remove isMutable and move removeMember and
      * removeMemberAndDescendants to new interface MutableMemberCache
@@ -80,20 +62,11 @@ interface MemberCache {
      * Returns the previous member with that key, or null.
      * Optional operation: see {@link #isMutable}.
      *
-     * @param key cache key, created by {@link #makeKey}
+     * @param level Level
+     * @param key Member key
      * @return previous member with that key, or null
      */
-    RolapMember removeMember(Object key);
-
-    /**
-     * Removes the designated {@link RolapMember} and all its descendants.
-     * Returns the previous member with that key, or null.
-     * Optional operation: see {@link #isMutable}.
-     *
-     * @param key cache key, created by {@link #makeKey}
-     * @return previous member with that key, or null
-     */
-    RolapMember removeMemberAndDescendants(Object key);
+    RolapMember removeMember(RolapCubeLevel level, Object key);
 
     /**
      * Returns the children of <code>member</code> if they are currently in the
@@ -124,7 +97,7 @@ interface MemberCache {
      * @return members of level, or null if not in cache
      */
     List<RolapMember> getLevelMembersFromCache(
-        RolapLevel level,
+        RolapCubeLevel level,
         TupleConstraint constraint);
 
     /**
@@ -151,7 +124,7 @@ interface MemberCache {
      * @param children list of children
      */
     void putChildren(
-        RolapLevel level,
+        RolapCubeLevel level,
         TupleConstraint constraint,
         List<RolapMember> children);
 }

@@ -27,8 +27,11 @@ public class SlotFuture<V> implements Future<V> {
     private final ReentrantReadWriteLock stateLock =
         new ReentrantReadWriteLock();
     private static final Logger LOG = Logger.getLogger(SlotFuture.class);
+<<<<<<< HEAD
 
     private final String thisString;
+=======
+>>>>>>> upstream/4.0
 
     /**
      * Creates a SlotFuture.

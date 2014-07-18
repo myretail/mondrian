@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2010-2012 Pentaho and others
+// Copyright (C) 2010-2014 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
@@ -18,14 +18,13 @@ import mondrian.util.Pair;
 import java.util.*;
 
 /**
- * Implementation of {@link DenseSegmentDataset} that stores
- * values of type {@link Object}.
+ * Implementation of {@link SegmentDataset} that stores
+ * values of type {@code int}.
  *
  * <p>The storage requirements are as follows. Table requires 1 word per
  * cell.</p>
  *
  * @author jhyde
- * @since 21 March, 2002
  */
 class DenseIntSegmentDataset extends DenseNativeSegmentDataset {
     final int[] values; // length == m[0] * ... * m[axes.length-1]

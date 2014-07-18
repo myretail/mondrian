@@ -10,11 +10,15 @@
 package mondrian.test;
 
 import mondrian.olap.*;
-import mondrian.xmla.XmlaHandler;
+import mondrian.olap4j.MondrianOlap4jDriver;
 
 import org.olap4j.*;
 import org.olap4j.Cell;
 import org.olap4j.Position;
+<<<<<<< HEAD
+=======
+import org.olap4j.impl.ArrayMap;
+>>>>>>> upstream/4.0
 import org.olap4j.mdx.IdentifierNode;
 import org.olap4j.mdx.SelectNode;
 import org.olap4j.mdx.parser.*;
@@ -26,10 +30,16 @@ import org.olap4j.metadata.Member;
 import org.olap4j.metadata.Property;
 
 import java.lang.reflect.Method;
+<<<<<<< HEAD
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+=======
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.*;
+>>>>>>> upstream/4.0
 
 /**
  * Tests mondrian's olap4j API.
@@ -136,12 +146,20 @@ public class Olap4jTest extends FoodMartTestCase {
         final Cube salesCube = metaData.getCube();
         Annotated annotated = ((OlapWrapper) salesCube).unwrap(Annotated.class);
         final Annotation annotation =
-            annotated.getAnnotationMap().get("caption.fr_FR");
+            annotated.getAnnotationMap().get("caption+fr_FR");
         assertEquals("Ventes", annotation.getValue());
 
+        // the annotation that indicated a localized resource has been removed
+        // from the annotation map
+        assertNull(annotated.getAnnotationMap().get("caption.fr_FR"));
+        assertEquals(
+            "Ventes",
+            ((OlapWrapper) salesCube).unwrap(OlapElement.class)
+                .getLocalized(LocalizedProperty.CAPTION, Locale.FRANCE));
+
         final Map<String, Object> map =
-            XmlaHandler.getExtra(connection).getAnnotationMap(salesCube);
-        assertEquals("Ventes", map.get("caption.fr_FR"));
+            MondrianOlap4jDriver.EXTRA.getAnnotationMap(salesCube);
+        assertEquals("Ventes", map.get("caption+fr_FR"));
     }
 
     public void testFormatString() throws SQLException {
@@ -253,12 +271,12 @@ public class Olap4jTest extends FoodMartTestCase {
             + "Set [*BASE_MEMBERS_Dates] as '{[Time].[1997].[Q1], [Time].[1997].[Q2], [Time].[1997].[Q3], [Time].[1997].[Q4]}' "
             + "Set [*GENERATED_MEMBERS_Dates] as 'Generate([*NATIVE_CJ_SET], {[Time].[Time].CurrentMember})' "
             + "Set [*GENERATED_MEMBERS_Measures] as '{[Measures].[*SUMMARY_METRIC_0]}' "
-            + "Set [*BASE_MEMBERS_Stores] as '{[Store].[USA].[CA], [Store].[USA].[WA], [Store].[USA].[OR]}' "
-            + "Set [*GENERATED_MEMBERS_Stores] as 'Generate([*NATIVE_CJ_SET], {[Store].CurrentMember})' "
+            + "Set [*BASE_MEMBERS_Stores] as '{[Stores].[USA].[CA], [Store].[USA].[WA], [Stores].[USA].[OR]}' "
+            + "Set [*GENERATED_MEMBERS_Stores] as 'Generate([*NATIVE_CJ_SET], {[Stores].CurrentMember})' "
             + "Member [Time].[Time].[*SM_CTX_SEL] as 'Aggregate([*GENERATED_MEMBERS_Dates])' "
             + "Member [Measures].[*SUMMARY_METRIC_0] as '[Measures].[Unit Sales]/([Measures].[Unit Sales],[Time].[*SM_CTX_SEL])' "
             + "Member [Time].[Time].[*SUBTOTAL_MEMBER_SEL~SUM] as 'sum([*GENERATED_MEMBERS_Dates])' "
-            + "Member [Store].[*SUBTOTAL_MEMBER_SEL~SUM] as 'sum([*GENERATED_MEMBERS_Stores])' "
+            + "Member [Stores].[*SUBTOTAL_MEMBER_SEL~SUM] as 'sum([*GENERATED_MEMBERS_Stores])' "
             + "select crossjoin({[Time].[*SUBTOTAL_MEMBER_SEL~SUM]}, {[Store].[*SUBTOTAL_MEMBER_SEL~SUM]}) "
             + "on columns from [Sales]";
 
@@ -327,6 +345,7 @@ public class Olap4jTest extends FoodMartTestCase {
         method.invoke(statement);
     }
 
+<<<<<<< HEAD
     public void testDrillThrough() throws Exception {
         final OlapConnection connection =
             getTestContext().getOlap4jConnection();
@@ -524,6 +543,8 @@ public class Olap4jTest extends FoodMartTestCase {
         }
     }
 
+=======
+>>>>>>> upstream/4.0
     /**
      * Test case for bug <a href="http://jira.pentaho.com/browse/MONDRIAN-1123">
      * MONDRIAN-1123, "ClassCastException for calculated members that are not
@@ -533,7 +554,11 @@ public class Olap4jTest extends FoodMartTestCase {
      */
     public void testCalcMemberInCube() throws SQLException {
         final OlapConnection testContext =
+<<<<<<< HEAD
             TestContext.instance().createSubstitutingCube(
+=======
+            TestContext.instance().legacy().createSubstitutingCube(
+>>>>>>> upstream/4.0
                 "Sales",
                 null,
                 "<CalculatedMember name='H1 1997' formula='Aggregate([Time].[1997].[Q1]:[Time].[1997].[Q2])' dimension='Time' />")
@@ -579,6 +604,248 @@ public class Olap4jTest extends FoodMartTestCase {
         assertEquals(1, n);
         assertEquals(1, n2);
     }
+<<<<<<< HEAD
+=======
+
+    /**
+     * Test case for bug <a href="http://jira.pentaho.com/browse/MONDRIAN-1124">
+     * MONDRIAN-1124, "Unique name of hierarchy should always have 2 parts, even
+     * if dimension &amp; hierarchy have same name"</a>.
+     *
+     * @throws java.sql.SQLException on error
+     */
+    public void testUniqueName() throws SQLException {
+        // Things are straightforward if dimension, hierarchy, level have
+        // distinct names. This worked even before MONDRIAN-1124 was fixed.
+        CellSet x =
+            getTestContext().getOlap4jConnection().createStatement()
+                .executeOlapQuery(
+                    "select [Store].[Stores] on 0\n"
+                    + "from [Sales]");
+        Member member =
+            x.getAxes().get(0).getPositions().get(0).getMembers().get(0);
+        assertEquals("[Store]", member.getDimension().getUniqueName());
+        assertEquals("[Store].[Stores]", member.getHierarchy().getUniqueName());
+        assertEquals(
+            "[Store].[Stores].[(All)]", member.getLevel().getUniqueName());
+        assertEquals("[Store].[Stores].[All Stores]", member.getUniqueName());
+
+        CellSet y =
+            getTestContext()
+                .createSubstitutingCube(
+                    "Sales",
+                    "<Dimension name='Store Type' key='Store Id' table='store'>\n"
+                    + "  <Attributes>\n"
+                    + "    <Attribute name='Store Id' keyColumn='store_id'/>\n"
+                    + "    <Attribute name='Store Type' table='store' keyColumn='store_type' hasHierarchy='false'/>\n"
+                    + "  </Attributes>\n"
+                    + "  <Hierarchies>\n"
+                    + "    <Hierarchy name='Store Type'>\n"
+                    + "      <Level attribute='Store Type'/>\n"
+                    + "    </Hierarchy>\n"
+                    + "  </Hierarchies>\n"
+                    + "</Dimension>\n",
+                    null,
+                    null,
+                    null,
+                    ArrayMap.of(
+                        "Sales",
+                        "<ForeignKeyLink dimension='Store Type' "
+                        + "foreignKeyColumn='store_id'/>"))
+                .getOlap4jConnection().createStatement()
+                .executeOlapQuery(
+                    "select [Store Type].[Store Type] on 0\n"
+                    + "from [Sales]");
+        member =
+            y.getAxes().get(0).getPositions().get(0).getMembers().get(0);
+        assertEquals("[Store Type]", member.getDimension().getUniqueName());
+        assertEquals(
+            "[Store Type].[Store Type]", member.getHierarchy().getUniqueName());
+        assertEquals(
+            "[Store Type].[Store Type].[(All)]",
+            member.getLevel().getUniqueName());
+        assertEquals(
+            "[Store Type].[Store Type].[All Store Types]",
+            member.getUniqueName());
+    }
+
+    public void testCellSetGetCellPositionArray() throws SQLException {
+        // Create a cell set with 1 column and 2 rows.
+        // Only coordinates (0, 0) and (0, 1) are valid.
+        CellSet x =
+            getTestContext().getOlap4jConnection().createStatement()
+                .executeOlapQuery(
+                    "select {[Customer].[Gender].[M]} on 0,\n"
+                    + " {[Customer].[Marital Status].[M],\n"
+                    + "  [Customer].[Marital Status].[S]} on 1\n"
+                    + "from [Sales]");
+        Cell cell;
+
+        // column=0, row=1 via getCell(List<Integer>)
+        cell = x.getCell(Arrays.asList(0, 1));
+        final String xxx = "68,755";
+        assertEquals(xxx, cell.getFormattedValue());
+
+        // column=1, row=0 out of range
+        try {
+            cell = x.getCell(Arrays.asList(1, 0));
+            fail("expected exception, got " + cell);
+        } catch (IndexOutOfBoundsException e) {
+            assertEquals(
+                "Cell coordinates (1, 0) fall outside CellSet bounds (1, 2)",
+                e.getMessage());
+        }
+
+        // ordinal=1 via getCell(int)
+        cell = x.getCell(1);
+        assertEquals(xxx, cell.getFormattedValue());
+
+        // column=0, row=1 via getCell(Position...)
+        final Position col0 = x.getAxes().get(0).getPositions().get(0);
+        final Position row1 = x.getAxes().get(1).getPositions().get(1);
+        final Position row0 = x.getAxes().get(1).getPositions().get(0);
+        cell = x.getCell(col0, row1);
+        assertEquals(xxx, cell.getFormattedValue());
+
+        // row=1, column=0 via getCell(Position...).
+        // This is OK, even though positions are not in axis order.
+        // Result same as previous.
+        cell = x.getCell(row1, col0);
+        assertEquals(xxx, cell.getFormattedValue());
+
+        try {
+            cell = x.getCell(col0);
+            fail("expected exception, got " + cell);
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                "Coordinates have different dimension (1) than axes (2)",
+                e.getMessage());
+        }
+
+        try {
+            cell = x.getCell(col0, row1, col0);
+            fail("expected exception, got " + cell);
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                "Coordinates have different dimension (3) than axes (2)",
+                e.getMessage());
+        }
+
+        try {
+            cell = x.getCell(row0, row1);
+            fail("expected exception, got " + cell);
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                "Coordinates contain axis 1 more than once",
+                e.getMessage());
+        }
+    }
+
+    /**
+     * Test case for
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1204">MONDRIAN-1204,
+     * "Olap4j's method toOlap4j throws NPE if we have a function"</a>.
+     */
+    public void testBugMondrian1204() throws SQLException {
+        final OlapConnection connection =
+            TestContext.instance().getOlap4jConnection();
+        final String mdx =
+            "SELECT\n"
+            + "NON EMPTY {Hierarchize({[Measures].[Customer Count]})} ON COLUMNS,\n"
+            + "CurrentDateMember([Time].[Year], \"\"\"[Time].[Year].[1997]\"\"\") ON ROWS\n"
+            + "FROM [Sales 2]";
+        try {
+            final MdxParserFactory parserFactory =
+                connection.getParserFactory();
+            MdxParser mdxParser =
+                parserFactory.createMdxParser(connection);
+            MdxValidator mdxValidator =
+                parserFactory.createMdxValidator(connection);
+
+            SelectNode select = mdxParser.parseSelect(mdx);
+            SelectNode validatedSelect = mdxValidator.validateSelect(select);
+            Util.discard(validatedSelect);
+        } finally {
+            Util.close(null, null, connection);
+        }
+    }
+
+    /**
+     * This is a test for
+     * <a href="http://jira.pentaho.com/browse/MONDRIAN-1353">MONDRIAN-1353</a>
+     *
+     * <p>An empty stack exception was thrown from the olap4j API if
+     * the hierarchy didn't have a all member and the default member
+     * was not explicitly set.
+     */
+    public void testMondrian1353() throws Exception {
+        final TestContext testContext = TestContext.instance().legacy().create(
+            null,
+            "<Cube name=\"Mondrian1353\">\n"
+            + "  <Table name=\"sales_fact_1997\"/>\n"
+            + "  <Dimension name=\"Cities\" foreignKey=\"customer_id\">\n"
+            + "    <Hierarchy hasAll=\"false\" primaryKey=\"customer_id\">\n"
+            + "      <Table name=\"customer\"/>\n"
+            + "      <Level name=\"City\" column=\"city\" uniqueMembers=\"false\"/> \n"
+            + "    </Hierarchy>\n"
+            + "  </Dimension>\n"
+            + "  <Measure name=\"Unit Sales\" column=\"unit_sales\" aggregator=\"sum\"\n"
+            + "      formatString=\"Standard\" visible=\"false\"/>\n"
+            + "</Cube>",
+            null,
+            null,
+            null,
+            null);
+
+        final Member defaultMember =
+            testContext.getOlap4jConnection()
+                .getOlapSchema()
+                .getCubes().get("Mondrian1353")
+                .getDimensions().get("Cities")
+                .getDefaultHierarchy().getDefaultMember();
+
+        assertNotNull(defaultMember);
+        assertEquals("Acapulco", defaultMember.getName());
+    }
+
+    /**
+     * Same as {@link SchemaTest#testMondrian1390()} but this time
+     * with olap4j.
+     */
+    public void testMondrian1390() throws Exception {
+        final List<Member> members =
+            getTestContext().getOlap4jConnection()
+                .getOlapSchema()
+                .getCubes().get("Sales")
+                .getDimensions().get("Store")
+                .getHierarchies().get("Store Size in SQFT")
+                .getLevels().get("Store Sqft")
+                    .getMembers();
+        assertEquals(
+            "[[Store].[Store Size in SQFT].[#null], "
+            + "[Store].[Store Size in SQFT].[20319], "
+            + "[Store].[Store Size in SQFT].[21215], "
+            + "[Store].[Store Size in SQFT].[22478], "
+            + "[Store].[Store Size in SQFT].[23112], "
+            + "[Store].[Store Size in SQFT].[23593], "
+            + "[Store].[Store Size in SQFT].[23598], "
+            + "[Store].[Store Size in SQFT].[23688], "
+            + "[Store].[Store Size in SQFT].[23759], "
+            + "[Store].[Store Size in SQFT].[24597], "
+            + "[Store].[Store Size in SQFT].[27694], "
+            + "[Store].[Store Size in SQFT].[28206], "
+            + "[Store].[Store Size in SQFT].[30268], "
+            + "[Store].[Store Size in SQFT].[30584], "
+            + "[Store].[Store Size in SQFT].[30797], "
+            + "[Store].[Store Size in SQFT].[33858], "
+            + "[Store].[Store Size in SQFT].[34452], "
+            + "[Store].[Store Size in SQFT].[34791], "
+            + "[Store].[Store Size in SQFT].[36509], "
+            + "[Store].[Store Size in SQFT].[38382], "
+            + "[Store].[Store Size in SQFT].[39696]]",
+            members.toString());
+    }
+>>>>>>> upstream/4.0
 }
 
 // End Olap4jTest.java

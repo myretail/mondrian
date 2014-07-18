@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 //
 // jhyde, 10 August, 2001
@@ -34,7 +34,7 @@ import java.util.Map;
  * @author jhyde
  * @since 10 August, 2001
  */
-interface MemberReader extends MemberSource {
+public interface MemberReader extends MemberSource {
     /**
      * Returns the member <code>n</code> after <code>member</code> in the same
      * level (or before, if <code>n</code> is negative).
@@ -51,10 +51,11 @@ interface MemberReader extends MemberSource {
      * {@link MemberSource#setCache supports cache-writeback}, also
      * writes these members to the cache.
      *
+     * @param level Level
      * @return {@link List} of {@link RolapMember}
      */
     List<RolapMember> getMembersInLevel(
-        RolapLevel level);
+        RolapCubeLevel level);
 
     /**
      * Writes all members between <code>startMember</code> and
@@ -125,7 +126,7 @@ interface MemberReader extends MemberSource {
      * @return list of members
      */
     List<RolapMember> getMembersInLevel(
-        RolapLevel level,
+        RolapCubeLevel level,
         TupleConstraint constraint);
 
     /**
@@ -134,7 +135,7 @@ interface MemberReader extends MemberSource {
      * @param level Level
      * @return number of members in level
      */
-    int getLevelMemberCount(RolapLevel level);
+    int getLevelMemberCount(RolapCubeLevel level);
 
     MemberBuilder getMemberBuilder();
 
@@ -176,7 +177,7 @@ interface MemberReader extends MemberSource {
      * @return Member, or null
      */
     RolapMember getMemberByKey(
-        RolapLevel level,
+        RolapCubeLevel level,
         List<Comparable> keyValues);
 }
 

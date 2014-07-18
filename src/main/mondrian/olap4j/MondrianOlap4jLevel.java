@@ -4,13 +4,14 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2012 Pentaho
+// Copyright (C) 2007-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.olap4j;
 
 import mondrian.olap.*;
 import mondrian.rolap.RolapConnection;
+import mondrian.rolap.RolapCubeLevel;
 import mondrian.server.Locus;
 
 import org.olap4j.OlapException;
@@ -90,36 +91,7 @@ class MondrianOlap4jLevel
     }
 
     public Type getLevelType() {
-        if (level.isAll()) {
-            return Type.ALL;
-        }
-        switch (level.getLevelType()) {
-        case Regular:
-            return Type.REGULAR;
-        case TimeDays:
-            return Type.TIME_DAYS;
-        case TimeHalfYears:
-            return Type.TIME_HALF_YEAR;
-        case TimeHours:
-            return Type.TIME_HOURS;
-        case TimeMinutes:
-            return Type.TIME_MINUTES;
-        case TimeMonths:
-            return Type.TIME_MONTHS;
-        case TimeQuarters:
-            return Type.TIME_QUARTERS;
-        case TimeSeconds:
-            return Type.TIME_SECONDS;
-        case TimeUndefined:
-            return Type.TIME_UNDEFINED;
-        case TimeWeeks:
-            return Type.TIME_WEEKS;
-        case TimeYears:
-            return Type.TIME_YEARS;
-        case Null:
-        default:
-            throw Util.unexpected(level.getLevelType());
-        }
+        return level.getLevelType();
     }
 
     public NamedList<Property> getProperties() {
@@ -164,8 +136,18 @@ class MondrianOlap4jLevel
             "Reading members of level",
             new Locus.Action<List<Member>>() {
                 public List<Member> execute() {
-                    final mondrian.olap.SchemaReader schemaReader =
-                        mondrianConnection.getSchemaReader().withLocus();
+                    final mondrian.olap.SchemaReader schemaReader;
+                    if (level instanceof RolapCubeLevel) {
+                        schemaReader =
+                            ((RolapCubeLevel) level).getCube()
+                            .getSchemaReader(
+                                mondrianConnection.getRole())
+                                .withLocus();
+                    } else {
+                        schemaReader =
+                            mondrianConnection.getSchemaReader()
+                                .withLocus();
+                    }
                     final List<mondrian.olap.Member> levelMembers =
                         schemaReader.getLevelMembers(level, true);
                     return new AbstractList<Member>() {
@@ -173,7 +155,6 @@ class MondrianOlap4jLevel
                             return olap4jConnection.toOlap4j(
                                 levelMembers.get(index));
                         }
-
                         public int size() {
                             return levelMembers.size();
                         }
@@ -192,13 +173,13 @@ class MondrianOlap4jLevel
 
     public String getCaption() {
         return level.getLocalized(
-            OlapElement.LocalizedProperty.CAPTION,
+            LocalizedProperty.CAPTION,
             olap4jSchema.getLocale());
     }
 
     public String getDescription() {
         return level.getLocalized(
-            OlapElement.LocalizedProperty.DESCRIPTION,
+            LocalizedProperty.DESCRIPTION,
             olap4jSchema.getLocale());
     }
 

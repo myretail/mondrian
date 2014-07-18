@@ -7,8 +7,6 @@
 // Copyright (C) 2003-2005 Julian Hyde
 // Copyright (C) 2005-2012 Pentaho
 // All Rights Reserved.
-//
-// jhyde, Feb 14, 2003
 */
 package mondrian.test;
 
@@ -17,6 +15,7 @@ import mondrian.olap.Util;
 import mondrian.spi.impl.FilterDynamicSchemaProcessor;
 
 import java.io.InputStream;
+import java.util.Collections;
 
 /**
  * Unit-test for named sets, in all their various forms: <code>WITH SET</code>,
@@ -31,6 +30,10 @@ public class NamedSetTest extends FoodMartTestCase {
         super();
     }
 
+<<<<<<< HEAD
+=======
+    @SuppressWarnings("UnusedDeclaration")
+>>>>>>> upstream/4.0
     public NamedSetTest(String name) {
         super(name);
     }
@@ -53,20 +56,20 @@ public class NamedSetTest extends FoodMartTestCase {
             + "WHERE \n"
             + "    [Time].[Year].[1997]",
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Warehouse Sales]}\n"
             + "Axis #2:\n"
-            + "{[Warehouse].[USA].[OR].[Salem].[Treehouse Distribution]}\n"
-            + "{[Warehouse].[USA].[WA].[Tacoma].[Jorge Garcia, Inc.]}\n"
-            + "{[Warehouse].[USA].[CA].[Los Angeles].[Artesia Warehousing, Inc.]}\n"
-            + "{[Warehouse].[USA].[CA].[San Diego].[Jorgensen Service Storage]}\n"
-            + "{[Warehouse].[USA].[WA].[Bremerton].[Destination, Inc.]}\n"
-            + "{[Warehouse].[USA].[WA].[Seattle].[Quality Warehousing and Trucking]}\n"
-            + "{[Warehouse].[USA].[WA].[Spokane].[Jones International]}\n"
-            + "{[Warehouse].[USA].[WA].[Yakima].[Maddock Stored Foods]}\n"
-            + "{[Warehouse].[USA].[CA].[Beverly Hills].[Big  Quality Warehouse]}\n"
-            + "{[Warehouse].[USA].[OR].[Portland].[Quality Distribution, Inc.]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[OR].[Salem].[Treehouse Distribution]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA].[Tacoma].[Jorge Garcia, Inc.]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA].[Los Angeles].[Artesia Warehousing, Inc.]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA].[San Diego].[Jorgensen Service Storage]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA].[Bremerton].[Destination, Inc.]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA].[Seattle].[Quality Warehousing and Trucking]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA].[Spokane].[Jones International]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA].[Yakima].[Maddock Stored Foods]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA].[Beverly Hills].[Big  Quality Warehouse]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[OR].[Portland].[Quality Distribution, Inc.]}\n"
             + "Row #0: 31,116.375\n"
             + "Row #1: 30,743.772\n"
             + "Row #2: 22,907.959\n"
@@ -106,15 +109,15 @@ public class NamedSetTest extends FoodMartTestCase {
             + "WHERE \n"
             + "    [Time].[Year].[1997].[Q2]",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Profit]}\n"
             + "Axis #2:\n"
-            + "{[Warehouse].[USA].[WA].[Bremerton].[Destination, Inc.]}\n"
-            + "{[Warehouse].[USA].[CA].[San Diego].[Jorgensen Service Storage]}\n"
-            + "{[Warehouse].[USA].[OR].[Salem].[Treehouse Distribution]}\n"
-            + "{[Warehouse].[USA].[CA].[Los Angeles].[Artesia Warehousing, Inc.]}\n"
-            + "{[Warehouse].[USA].[WA].[Seattle].[Quality Warehousing and Trucking]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA].[Bremerton].[Destination, Inc.]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA].[San Diego].[Jorgensen Service Storage]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[OR].[Salem].[Treehouse Distribution]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[CA].[Los Angeles].[Artesia Warehousing, Inc.]}\n"
+            + "{[Warehouse].[Warehouses].[USA].[WA].[Seattle].[Quality Warehousing and Trucking]}\n"
             + "Row #0: 4,516.756\n"
             + "Row #1: 4,189.36\n"
             + "Row #2: 4,169.318\n"
@@ -145,16 +148,16 @@ public class NamedSetTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Good].[Good Chardonnay]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Pearl].[Pearl Chardonnay]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Portsmouth].[Portsmouth Chardonnay]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Top Measure].[Top Measure Chardonnay]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Walrus].[Walrus Chardonnay]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Good].[Good Chablis Wine]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Pearl].[Pearl Chablis Wine]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Portsmouth].[Portsmouth Chablis Wine]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Top Measure].[Top Measure Chablis Wine]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Walrus].[Walrus Chablis Wine]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Good].[Good Chardonnay]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Pearl].[Pearl Chardonnay]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Portsmouth].[Portsmouth Chardonnay]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Top Measure].[Top Measure Chardonnay]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Walrus].[Walrus Chardonnay]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Good].[Good Chablis Wine]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Pearl].[Pearl Chablis Wine]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Portsmouth].[Portsmouth Chablis Wine]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Top Measure].[Top Measure Chablis Wine]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Walrus].[Walrus Chablis Wine]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Row #0: 192\n"
@@ -173,6 +176,9 @@ public class NamedSetTest extends FoodMartTestCase {
      * Set defined using filter expression.
      */
     public void testIntrinsic() {
+//        testNamedSet();
+//        testNamedSetOnMember();
+        testNamedSetAsList();
         assertQueryReturns(
             "WITH SET [ChardonnayChablis] AS\n"
             + "   'Filter([Product].Members, (InStr(1, [Product].CurrentMember.Name, \"chardonnay\") <> 0) OR (InStr(1, [Product].CurrentMember.Name, \"chablis\") <> 0))'\n"
@@ -185,6 +191,7 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "Axis #2:\n"
             + "{[Measures].[Unit Sales]}\n");
+
         assertQueryReturns(
             "WITH SET [BeerMilk] AS\n"
             + "   'Filter([Product].Members, (InStr(1, [Product].CurrentMember.Name, \"Beer\") <> 0) OR (InStr(1, LCase([Product].CurrentMember.Name), \"milk\") <> 0))'\n"
@@ -195,49 +202,49 @@ public class NamedSetTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good].[Good Imported Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good].[Good Light Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl].[Pearl Imported Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl].[Pearl Light Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth].[Portsmouth Imported Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth].[Portsmouth Light Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure].[Top Measure Imported Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure].[Top Measure Light Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus].[Walrus Imported Beer]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus].[Walrus Light Beer]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker 1% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker 2% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker Buttermilk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker Chocolate Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker Whole Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson 1% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson 2% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson Buttermilk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson Chocolate Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson Whole Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club 1% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club 2% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club Buttermilk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club Chocolate Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club Whole Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better 1% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better 2% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better Buttermilk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better Chocolate Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better Whole Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla 1% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla 2% Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla Buttermilk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla Chocolate Milk]}\n"
-            + "{[Product].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla Whole Milk]}\n"
-            + "{[Product].[Food].[Snacks].[Candy].[Chocolate Candy].[Atomic].[Atomic Malted Milk Balls]}\n"
-            + "{[Product].[Food].[Snacks].[Candy].[Chocolate Candy].[Choice].[Choice Malted Milk Balls]}\n"
-            + "{[Product].[Food].[Snacks].[Candy].[Chocolate Candy].[Gulf Coast].[Gulf Coast Malted Milk Balls]}\n"
-            + "{[Product].[Food].[Snacks].[Candy].[Chocolate Candy].[Musial].[Musial Malted Milk Balls]}\n"
-            + "{[Product].[Food].[Snacks].[Candy].[Chocolate Candy].[Thresher].[Thresher Malted Milk Balls]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good].[Good Imported Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Good].[Good Light Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl].[Pearl Imported Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Pearl].[Pearl Light Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth].[Portsmouth Imported Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Portsmouth].[Portsmouth Light Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure].[Top Measure Imported Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Top Measure].[Top Measure Light Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus].[Walrus Imported Beer]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Beer].[Walrus].[Walrus Light Beer]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker 1% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker 2% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker Buttermilk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker Chocolate Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Booker].[Booker Whole Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson 1% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson 2% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson Buttermilk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson Chocolate Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Carlson].[Carlson Whole Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club 1% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club 2% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club Buttermilk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club Chocolate Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Club].[Club Whole Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better 1% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better 2% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better Buttermilk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better Chocolate Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Even Better].[Even Better Whole Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla 1% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla 2% Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla Buttermilk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla Chocolate Milk]}\n"
+            + "{[Product].[Products].[Drink].[Dairy].[Dairy].[Milk].[Gorilla].[Gorilla Whole Milk]}\n"
+            + "{[Product].[Products].[Food].[Snacks].[Candy].[Chocolate Candy].[Atomic].[Atomic Malted Milk Balls]}\n"
+            + "{[Product].[Products].[Food].[Snacks].[Candy].[Chocolate Candy].[Choice].[Choice Malted Milk Balls]}\n"
+            + "{[Product].[Products].[Food].[Snacks].[Candy].[Chocolate Candy].[Gulf Coast].[Gulf Coast Malted Milk Balls]}\n"
+            + "{[Product].[Products].[Food].[Snacks].[Candy].[Chocolate Candy].[Musial].[Musial Malted Milk Balls]}\n"
+            + "{[Product].[Products].[Food].[Snacks].[Candy].[Chocolate Candy].[Thresher].[Thresher Malted Milk Balls]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Row #0: 6,838\n"
@@ -303,13 +310,13 @@ public class NamedSetTest extends FoodMartTestCase {
             + "WHERE\n"
             + "    [Time].[1997].[Q2]",
             "Axis #0:\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Units Ordered]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA], [Store Type].[Deluxe Supermarket]}\n"
-            + "{[Store].[USA], [Store Type].[Mid-Size Grocery]}\n"
-            + "{[Store].[USA], [Store Type].[Supermarket]}\n"
+            + "{[Store].[Stores].[USA], [Store].[Store Type].[Deluxe Supermarket]}\n"
+            + "{[Store].[Stores].[USA], [Store].[Store Type].[Mid-Size Grocery]}\n"
+            + "{[Store].[Stores].[USA], [Store].[Store Type].[Supermarket]}\n"
             + "Row #0: 16843.0\n"
             + "Row #1: 2295.0\n"
             + "Row #2: 34856.0\n");
@@ -336,31 +343,31 @@ public class NamedSetTest extends FoodMartTestCase {
     public void testNamedSetUsedInCrossJoin() {
         assertQueryReturns(
             "WITH\n"
-            + "  SET [TopMedia] AS 'TopCount([Promotion Media].children, 5, [Measures].[Store Sales])' \n"
+            + "  SET [TopMedia] AS 'TopCount([Promotion].[Media Type].children, 5, [Measures].[Store Sales])' \n"
             + "SELECT {[Time].[1997].[Q1], [Time].[1997].[Q2]} ON COLUMNS,\n"
             + " {CrossJoin([TopMedia], [Product].children)} ON ROWS\n"
             + "FROM [Sales]",
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Axis #2:\n"
-            + "{[Promotion Media].[No Media], [Product].[Drink]}\n"
-            + "{[Promotion Media].[No Media], [Product].[Food]}\n"
-            + "{[Promotion Media].[No Media], [Product].[Non-Consumable]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio, TV], [Product].[Drink]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio, TV], [Product].[Food]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio, TV], [Product].[Non-Consumable]}\n"
-            + "{[Promotion Media].[Daily Paper], [Product].[Drink]}\n"
-            + "{[Promotion Media].[Daily Paper], [Product].[Food]}\n"
-            + "{[Promotion Media].[Daily Paper], [Product].[Non-Consumable]}\n"
-            + "{[Promotion Media].[Product Attachment], [Product].[Drink]}\n"
-            + "{[Promotion Media].[Product Attachment], [Product].[Food]}\n"
-            + "{[Promotion Media].[Product Attachment], [Product].[Non-Consumable]}\n"
-            + "{[Promotion Media].[Cash Register Handout], [Product].[Drink]}\n"
-            + "{[Promotion Media].[Cash Register Handout], [Product].[Food]}\n"
-            + "{[Promotion Media].[Cash Register Handout], [Product].[Non-Consumable]}\n"
+            + "{[Promotion].[Media Type].[No Media], [Product].[Products].[Drink]}\n"
+            + "{[Promotion].[Media Type].[No Media], [Product].[Products].[Food]}\n"
+            + "{[Promotion].[Media Type].[No Media], [Product].[Products].[Non-Consumable]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio, TV], [Product].[Products].[Drink]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio, TV], [Product].[Products].[Food]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio, TV], [Product].[Products].[Non-Consumable]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper], [Product].[Products].[Drink]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper], [Product].[Products].[Food]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper], [Product].[Products].[Non-Consumable]}\n"
+            + "{[Promotion].[Media Type].[Product Attachment], [Product].[Products].[Drink]}\n"
+            + "{[Promotion].[Media Type].[Product Attachment], [Product].[Products].[Food]}\n"
+            + "{[Promotion].[Media Type].[Product Attachment], [Product].[Products].[Non-Consumable]}\n"
+            + "{[Promotion].[Media Type].[Cash Register Handout], [Product].[Products].[Drink]}\n"
+            + "{[Promotion].[Media Type].[Cash Register Handout], [Product].[Products].[Food]}\n"
+            + "{[Promotion].[Media Type].[Cash Register Handout], [Product].[Products].[Non-Consumable]}\n"
             + "Row #0: 3,970\n"
             + "Row #0: 4,287\n"
             + "Row #1: 32,939\n"
@@ -396,7 +403,7 @@ public class NamedSetTest extends FoodMartTestCase {
     public void testAggOnCalcMember() {
         assertQueryReturns(
             "WITH\n"
-            + "  SET [TopMedia] AS 'TopCount([Promotion Media].children, 5, [Measures].[Store Sales])' \n"
+            + "  SET [TopMedia] AS 'TopCount([Promotion].[Media Type].children, 5, [Measures].[Store Sales])' \n"
             + "  MEMBER [Measures].[California sales for Top Media] AS 'Sum([TopMedia], ([Store].[USA].[CA], [Measures].[Store Sales]))'\n"
             + "SELECT {[Time].[1997].[Q1], [Time].[1997].[Q2]} ON COLUMNS,\n"
             + " {[Product].children} ON ROWS\n"
@@ -405,12 +412,12 @@ public class NamedSetTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{[Measures].[California sales for Top Media]}\n"
             + "Axis #1:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: 2,725.85\n"
             + "Row #0: 2,715.56\n"
             + "Row #1: 21,200.84\n"
@@ -423,29 +430,29 @@ public class NamedSetTest extends FoodMartTestCase {
         // For reference.
         assertQueryReturns(
             "SELECT {[Measures].[Unit Sales]} ON COLUMNS,\n"
-            + "Order([Promotion Media].Children, [Measures].[Unit Sales], DESC) ON ROWS\n"
+            + "Order([Promotion].[Media Type].Children, [Measures].[Unit Sales], DESC) ON ROWS\n"
             + "FROM [Sales]\n"
             + "WHERE [Time].[1997]",
 
             "Axis #0:\n"
-            + "{[Time].[1997]}\n"
+            + "{[Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Promotion Media].[No Media]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[Daily Paper]}\n"
-            + "{[Promotion Media].[Product Attachment]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio]}\n"
-            + "{[Promotion Media].[Cash Register Handout]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio]}\n"
-            + "{[Promotion Media].[Street Handout]}\n"
-            + "{[Promotion Media].[Sunday Paper]}\n"
-            + "{[Promotion Media].[Bulk Mail]}\n"
-            + "{[Promotion Media].[In-Store Coupon]}\n"
-            + "{[Promotion Media].[TV]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[Radio]}\n"
+            + "{[Promotion].[Media Type].[No Media]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper]}\n"
+            + "{[Promotion].[Media Type].[Product Attachment]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[Cash Register Handout]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[Street Handout]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper]}\n"
+            + "{[Promotion].[Media Type].[Bulk Mail]}\n"
+            + "{[Promotion].[Media Type].[In-Store Coupon]}\n"
+            + "{[Promotion].[Media Type].[TV]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[Radio]}\n"
             + "Row #0: 195,448\n"
             + "Row #1: 9,513\n"
             + "Row #2: 7,738\n"
@@ -464,29 +471,29 @@ public class NamedSetTest extends FoodMartTestCase {
         // For reference.
         assertQueryReturns(
             "SELECT {[Measures].[Unit Sales]} ON COLUMNS,\n"
-            + "Order([Promotion Media].Children, [Measures].[Unit Sales], DESC) ON ROWS\n"
+            + "Order([Promotion].[Media Type].Children, [Measures].[Unit Sales], DESC) ON ROWS\n"
             + "FROM [Sales]\n"
             + "WHERE [Time].[1997].[Q2]",
 
             "Axis #0:\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Promotion Media].[No Media]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[Daily Paper, Radio]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio]}\n"
-            + "{[Promotion Media].[TV]}\n"
-            + "{[Promotion Media].[Cash Register Handout]}\n"
-            + "{[Promotion Media].[Sunday Paper, Radio, TV]}\n"
-            + "{[Promotion Media].[Product Attachment]}\n"
-            + "{[Promotion Media].[Sunday Paper]}\n"
-            + "{[Promotion Media].[Bulk Mail]}\n"
-            + "{[Promotion Media].[Daily Paper]}\n"
-            + "{[Promotion Media].[Street Handout]}\n"
-            + "{[Promotion Media].[Radio]}\n"
-            + "{[Promotion Media].[In-Store Coupon]}\n"
+            + "{[Promotion].[Media Type].[No Media]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio]}\n"
+            + "{[Promotion].[Media Type].[TV]}\n"
+            + "{[Promotion].[Media Type].[Cash Register Handout]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper, Radio, TV]}\n"
+            + "{[Promotion].[Media Type].[Product Attachment]}\n"
+            + "{[Promotion].[Media Type].[Sunday Paper]}\n"
+            + "{[Promotion].[Media Type].[Bulk Mail]}\n"
+            + "{[Promotion].[Media Type].[Daily Paper]}\n"
+            + "{[Promotion].[Media Type].[Street Handout]}\n"
+            + "{[Promotion].[Media Type].[Radio]}\n"
+            + "{[Promotion].[Media Type].[In-Store Coupon]}\n"
             + "Row #0: 46,582\n"
             + "Row #1: 3,490\n"
             + "Row #2: 2,704\n"
@@ -508,7 +515,7 @@ public class NamedSetTest extends FoodMartTestCase {
 
         assertQueryReturns(
             "WITH\n"
-            + "  SET [Bottom Media] AS 'BottomCount([Promotion Media].children, 1, [Measures].[Unit Sales])' \n"
+            + "  SET [Bottom Media] AS 'BottomCount([Promotion].[Media Type].children, 1, [Measures].[Unit Sales])' \n"
             + "  MEMBER [Measures].[Unit Sales for Bottom Media] AS 'Sum([Bottom Media], [Measures].[Unit Sales])'\n"
             + "SELECT {[Measures].[Unit Sales for Bottom Media]} ON COLUMNS,\n"
             + " {[Time].[1997], [Time].[1997].[Q2]} ON ROWS\n"
@@ -521,17 +528,17 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales for Bottom Media]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997]}\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Row #0: 2,454\n"
             + "Row #1: 40\n");
 
         assertQueryReturns(
             "WITH\n"
-            + "  SET [TopMedia] AS 'TopCount([Promotion Media].children, 3, [Measures].[Store Sales])' \n"
+            + "  SET [TopMedia] AS 'TopCount([Promotion].[Media Type].children, 3, [Measures].[Store Sales])' \n"
             + "  MEMBER [Measures].[California sales for Top Media] AS 'Sum([TopMedia], [Measures].[Store Sales])'\n"
             + "SELECT \n"
-            + "  CrossJoin({[Store], [Store].[USA].[CA]},\n"
+            + "  CrossJoin({[Stores], [Stores].[USA].[CA]},\n"
             + "    {[Time].[1997].[Q1], [Time].[1997].[Q2]}) ON COLUMNS,\n"
             + " {[Product], [Product].children} ON ROWS\n"
             + "FROM [Sales]\n"
@@ -540,15 +547,15 @@ public class NamedSetTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{[Measures].[California sales for Top Media]}\n"
             + "Axis #1:\n"
-            + "{[Store].[All Stores], [Time].[1997].[Q1]}\n"
-            + "{[Store].[All Stores], [Time].[1997].[Q2]}\n"
-            + "{[Store].[USA].[CA], [Time].[1997].[Q1]}\n"
-            + "{[Store].[USA].[CA], [Time].[1997].[Q2]}\n"
+            + "{[Store].[Stores].[All Stores], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Store].[Stores].[All Stores], [Time].[Time].[1997].[Q2]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Time].[Time].[1997].[Q1]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Time].[Time].[1997].[Q2]}\n"
             + "Axis #2:\n"
-            + "{[Product].[All Products]}\n"
-            + "{[Product].[Drink]}\n"
-            + "{[Product].[Food]}\n"
-            + "{[Product].[Non-Consumable]}\n"
+            + "{[Product].[Products].[All Products]}\n"
+            + "{[Product].[Products].[Drink]}\n"
+            + "{[Product].[Products].[Food]}\n"
+            + "{[Product].[Products].[Non-Consumable]}\n"
             + "Row #0: 108,249.52\n"
             + "Row #0: 107,649.93\n"
             + "Row #0: 29,482.53\n"
@@ -574,7 +581,7 @@ public class NamedSetTest extends FoodMartTestCase {
             + "'ORDER ({[Education Level].[Education Level].Members}, [Gender].[All Gender].[F], ASC)'\n"
             + "MEMBER [Gender].[RANK1] AS 'rank([Education Level].currentmember, [SET1])'\n"
             + "select\n"
-            + "{[Gender].[All Gender].[F], [Gender].[RANK1]} on columns,\n"
+            + "{[Customer].[Gender].[All Gender].[F], [Gender].[RANK1]} on columns,\n"
             + "{[Education Level].[Education Level].Members} on rows\n"
             + "from Sales\n"
             + "where ([Measures].[Store Sales])",
@@ -583,14 +590,14 @@ public class NamedSetTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #1:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[RANK1]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[RANK1]}\n"
             + "Axis #2:\n"
-            + "{[Education Level].[Bachelors Degree]}\n"
-            + "{[Education Level].[Graduate Degree]}\n"
-            + "{[Education Level].[High School Degree]}\n"
-            + "{[Education Level].[Partial College]}\n"
-            + "{[Education Level].[Partial High School]}\n"
+            + "{[Customer].[Education Level].[Bachelors Degree]}\n"
+            + "{[Customer].[Education Level].[Graduate Degree]}\n"
+            + "{[Customer].[Education Level].[High School Degree]}\n"
+            + "{[Customer].[Education Level].[Partial College]}\n"
+            + "{[Customer].[Education Level].[Partial High School]}\n"
             + "Row #0: 72,119.26\n"
             + "Row #0: 3\n"
             + "Row #1: 17,641.64\n"
@@ -607,7 +614,7 @@ public class NamedSetTest extends FoodMartTestCase {
             + "'ORDER ({[Education Level].[Education Level].Members}, [Gender].[All Gender].[F], ASC)'\n"
             + "MEMBER [Gender].[RANK1] AS 'rank([Education Level].currentmember, [SET1])'\n"
             + "select\n"
-            + "{[Gender].[All Gender].[F], [Gender].[RANK1]} on columns,\n"
+            + "{[Customer].[Gender].[All Gender].[F], [Gender].[RANK1]} on columns,\n"
             + "{[Education Level].[Education Level].Members} on rows\n"
             + "from Sales\n"
             + "where ([Measures].[Profit])",
@@ -616,14 +623,14 @@ public class NamedSetTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{[Measures].[Profit]}\n"
             + "Axis #1:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[RANK1]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[RANK1]}\n"
             + "Axis #2:\n"
-            + "{[Education Level].[Bachelors Degree]}\n"
-            + "{[Education Level].[Graduate Degree]}\n"
-            + "{[Education Level].[High School Degree]}\n"
-            + "{[Education Level].[Partial College]}\n"
-            + "{[Education Level].[Partial High School]}\n"
+            + "{[Customer].[Education Level].[Bachelors Degree]}\n"
+            + "{[Customer].[Education Level].[Graduate Degree]}\n"
+            + "{[Customer].[Education Level].[High School Degree]}\n"
+            + "{[Customer].[Education Level].[Partial College]}\n"
+            + "{[Customer].[Education Level].[Partial High School]}\n"
             + "Row #0: $43,382.33\n"
             + "Row #0: $0.00\n"
             + "Row #1: $10,599.59\n"
@@ -642,7 +649,7 @@ public class NamedSetTest extends FoodMartTestCase {
             + "MEMBER [Gender].[RANK1] AS 'rank([Education Level].currentmember, [SET1])', \n"
             + "  SOLVE_ORDER = 10\n"
             + "select\n"
-            + "{[Gender].[F], [Gender].[RANK1]} on columns,\n"
+            + "{[Customer].[Gender].[F], [Gender].[RANK1]} on columns,\n"
             + "{[Education Level].[Education Level].Members} on rows\n"
             + "from Sales\n"
             + "where ([Measures].[Profit])",
@@ -650,14 +657,14 @@ public class NamedSetTest extends FoodMartTestCase {
             "Axis #0:\n"
             + "{[Measures].[Profit]}\n"
             + "Axis #1:\n"
-            + "{[Gender].[F]}\n"
-            + "{[Gender].[RANK1]}\n"
+            + "{[Customer].[Gender].[F]}\n"
+            + "{[Customer].[Gender].[RANK1]}\n"
             + "Axis #2:\n"
-            + "{[Education Level].[Bachelors Degree]}\n"
-            + "{[Education Level].[Graduate Degree]}\n"
-            + "{[Education Level].[High School Degree]}\n"
-            + "{[Education Level].[Partial College]}\n"
-            + "{[Education Level].[Partial High School]}\n"
+            + "{[Customer].[Education Level].[Bachelors Degree]}\n"
+            + "{[Customer].[Education Level].[Graduate Degree]}\n"
+            + "{[Customer].[Education Level].[High School Degree]}\n"
+            + "{[Customer].[Education Level].[Partial College]}\n"
+            + "{[Customer].[Education Level].[Partial High School]}\n"
             + "Row #0: $43,382.33\n"
             + "Row #0: 3\n"
             + "Row #1: $10,599.59\n"
@@ -683,8 +690,8 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[DateName]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Row #0: Q1Q2\n"
             + "Row #1: Q1Q2\n");
 
@@ -700,15 +707,15 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[DateName]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1]}\n"
-            + "{[Time].[1997].[Q2]}\n"
+            + "{[Time].[Time].[1997].[Q1]}\n"
+            + "{[Time].[Time].[1997].[Q2]}\n"
             + "Row #0: Q1 and Q2\n"
             + "Row #1: Q1 and Q2\n");
     }
 
     public void testNamedSetAgainstCube() {
         final TestContext tc =
-            getTestContext().withSchemaProcessor(
+            getTestContext().legacy().withSchemaProcessor(
                 NamedSetsInCubeProcessor.class);
         // Set defined against cube, using 'formula' attribute.
         tc.assertQueryReturns(
@@ -720,11 +727,11 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Alameda]}\n"
-            + "{[Store].[USA].[CA].[Beverly Hills]}\n"
-            + "{[Store].[USA].[CA].[Los Angeles]}\n"
-            + "{[Store].[USA].[CA].[San Diego]}\n"
-            + "{[Store].[USA].[CA].[San Francisco]}\n"
+            + "{[Store].[Store].[USA].[CA].[Alameda]}\n"
+            + "{[Store].[Store].[USA].[CA].[Beverly Hills]}\n"
+            + "{[Store].[Store].[USA].[CA].[Los Angeles]}\n"
+            + "{[Store].[Store].[USA].[CA].[San Diego]}\n"
+            + "{[Store].[Store].[USA].[CA].[San Francisco]}\n"
             + "Row #0: \n"
             + "Row #1: 21,333\n"
             + "Row #2: 25,663\n"
@@ -742,8 +749,8 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Los Angeles]}\n"
-            + "{[Store].[USA].[CA].[San Diego]}\n"
+            + "{[Store].[Store].[USA].[CA].[Los Angeles]}\n"
+            + "{[Store].[Store].[USA].[CA].[San Diego]}\n"
             + "Row #0: 25,663\n"
             + "Row #1: 25,635\n");
 
@@ -758,7 +765,7 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[OR].[Portland]}\n"
+            + "{[Store].[Store].[USA].[OR].[Portland]}\n"
             + "Row #0: 26,079\n");
 
         // When [CA Cities] is overridden, does the named set [Top CA Cities],
@@ -774,15 +781,15 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Los Angeles]}\n"
-            + "{[Store].[USA].[CA].[San Diego]}\n"
+            + "{[Store].[Store].[USA].[CA].[Los Angeles]}\n"
+            + "{[Store].[Store].[USA].[CA].[San Diego]}\n"
             + "Row #0: 25,663\n"
             + "Row #1: 25,635\n");
     }
 
     public void testNamedSetAgainstSchema() {
         final TestContext tc =
-            getTestContext().withSchemaProcessor(
+            getTestContext().legacy().withSchemaProcessor(
                 NamedSetsInCubeAndSchemaProcessor.class);
         tc.assertQueryReturns(
             "SELECT {[Measures].[Store Sales]} on columns,\n"
@@ -793,7 +800,7 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA].[Los Angeles]}\n"
+            + "{[Store].[Store].[USA].[CA].[Los Angeles]}\n"
             + "Row #0: 54,545.28\n");
         // Use non-existent set.
         tc.assertQueryThrows(
@@ -885,7 +892,7 @@ public class NamedSetTest extends FoodMartTestCase {
     public void testNamedSetsMixedWithCalcMembers()
     {
         final TestContext tc =
-            getTestContext().withSchemaProcessor(
+            getTestContext().legacy().withSchemaProcessor(
                 MixedNamedSetSchemaProcessor.class);
         tc.assertQueryReturns(
             "select {\n"
@@ -897,23 +904,23 @@ public class NamedSetTest extends FoodMartTestCase {
             + "from [Sales]\n"
             + "where [Marital Status].[S]",
             "Axis #0:\n"
-            + "{[Marital Status].[S]}\n"
+            + "{[Marital Status].[Marital Status].[S]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[CA City Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1], [Product].[Food].[Produce]}\n"
-            + "{[Time].[1997].[Q1], [Product].[Food].[Snack Foods]}\n"
-            + "{[Time].[1997].[Q1], [Product].[Non-Consumable].[Household]}\n"
-            + "{[Time].[1997].[Q2], [Product].[Food].[Produce]}\n"
-            + "{[Time].[1997].[Q2], [Product].[Food].[Snack Foods]}\n"
-            + "{[Time].[1997].[Q2], [Product].[Non-Consumable].[Household]}\n"
-            + "{[Time].[1997].[Q3], [Product].[Food].[Produce]}\n"
-            + "{[Time].[1997].[Q3], [Product].[Food].[Snack Foods]}\n"
-            + "{[Time].[1997].[Q3], [Product].[Non-Consumable].[Household]}\n"
-            + "{[Time].[1997].[Q4], [Product].[Food].[Produce]}\n"
-            + "{[Time].[1997].[Q4], [Product].[Food].[Snack Foods]}\n"
-            + "{[Time].[1997].[Q4], [Product].[Non-Consumable].[Household]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Product].[Food].[Produce]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Product].[Food].[Snack Foods]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Product].[Product].[Non-Consumable].[Household]}\n"
+            + "{[Time].[Time].[1997].[Q2], [Product].[Product].[Food].[Produce]}\n"
+            + "{[Time].[Time].[1997].[Q2], [Product].[Product].[Food].[Snack Foods]}\n"
+            + "{[Time].[Time].[1997].[Q2], [Product].[Product].[Non-Consumable].[Household]}\n"
+            + "{[Time].[Time].[1997].[Q3], [Product].[Product].[Food].[Produce]}\n"
+            + "{[Time].[Time].[1997].[Q3], [Product].[Product].[Food].[Snack Foods]}\n"
+            + "{[Time].[Time].[1997].[Q3], [Product].[Product].[Non-Consumable].[Household]}\n"
+            + "{[Time].[Time].[1997].[Q4], [Product].[Product].[Food].[Produce]}\n"
+            + "{[Time].[Time].[1997].[Q4], [Product].[Product].[Food].[Snack Foods]}\n"
+            + "{[Time].[Time].[1997].[Q4], [Product].[Product].[Non-Consumable].[Household]}\n"
             + "Row #0: 4,872\n"
             + "Row #0: $1,218.0\n"
             + "Row #1: 3,746\n"
@@ -952,7 +959,7 @@ public class NamedSetTest extends FoodMartTestCase {
             + "   UNION(\n"
             + "      CROSSJOIN(\n"
             + "         {[Time].[1997].[Q1]},\n"
-            + "          [Set Education Level]), \n"
+            + "          [Set Education Level]),\n"
             + "      {([Time].[1997].[Q1],\n"
             + "        [Education Level].[All Education Levels].[Graduate Degree])}) ON ROWS\n"
             + "from [Sales]",
@@ -963,8 +970,8 @@ public class NamedSetTest extends FoodMartTestCase {
             + "{[Measures].[Store Cost]}\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Time].[1997].[Q1], [Education Level].[Bachelors Degree]}\n"
-            + "{[Time].[1997].[Q1], [Education Level].[Graduate Degree]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Customer].[Education Level].[Bachelors Degree]}\n"
+            + "{[Time].[Time].[1997].[Q1], [Customer].[Education Level].[Graduate Degree]}\n"
             + "Row #0: 17,066\n"
             + "Row #0: 14,234.10\n"
             + "Row #0: 35,699.43\n"
@@ -978,9 +985,11 @@ public class NamedSetTest extends FoodMartTestCase {
      */
     public void testNamedSetDependencies() {
         final TestContext tc =
-            getTestContext().withSchemaProcessor(
+            getTestContext().legacy().withSchemaProcessor(
                 NamedSetsInCubeProcessor.class);
-        tc.assertSetExprDependsOn("[Top CA Cities]", "{}");
+        tc.assertSetExprDependsOn(
+            "[Top CA Cities]",
+            Collections.<String>emptySet());
     }
 
     /**
@@ -1000,11 +1009,11 @@ public class NamedSetTest extends FoodMartTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Tracy Meyer], [Store].[USA].[WA].[Yakima].[Store 23]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Vanessa Thompson], [Store].[USA].[WA].[Yakima].[Store 23]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Velma Lykes], [Store].[USA].[WA].[Yakima].[Store 23]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[William Battaglia], [Store].[USA].[WA].[Yakima].[Store 23]}\n"
-            + "{[Customers].[USA].[WA].[Yakima].[Wilma Fink], [Store].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Tracy Meyer], [Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Vanessa Thompson], [Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Velma Lykes], [Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[William Battaglia], [Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Yakima].[Wilma Fink], [Store].[Stores].[USA].[WA].[Yakima].[Store 23]}\n"
             + "Row #0: 44\n"
             + "Row #1: 128\n"
             + "Row #2: 55\n"
@@ -1033,42 +1042,132 @@ public class NamedSetTest extends FoodMartTestCase {
             + "{[Measures].[GMS Ordinal]}\n"
             + "{[Measures].[GMS Name]}\n"
             + "Axis #2:\n"
-            + "{[Gender].[All Gender], [Marital Status].[All Marital Status]}\n"
-            + "{[Gender].[All Gender], [Marital Status].[M]}\n"
-            + "{[Gender].[All Gender], [Marital Status].[S]}\n"
-            + "{[Gender].[F], [Marital Status].[All Marital Status]}\n"
-            + "{[Gender].[F], [Marital Status].[M]}\n"
-            + "{[Gender].[F], [Marital Status].[S]}\n"
-            + "{[Gender].[M], [Marital Status].[All Marital Status]}\n"
-            + "{[Gender].[M], [Marital Status].[M]}\n"
-            + "{[Gender].[M], [Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[All Gender], [Customer].[Marital Status].[All Marital Status]}\n"
+            + "{[Customer].[Gender].[All Gender], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[All Gender], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[All Marital Status]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[F], [Customer].[Marital Status].[S]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[All Marital Status]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[M]}\n"
+            + "{[Customer].[Gender].[M], [Customer].[Marital Status].[S]}\n"
             + "Row #0: 266,773\n"
             + "Row #0: 0\n"
-            + "Row #0: ([Gender].[All Gender], [Marital Status].[All Marital Status])\n"
+            + "Row #0: ([Customer].[Gender].[All Gender], [Customer].[Marital Status].[All Marital Status])\n"
             + "Row #1: 131,796\n"
             + "Row #1: 1\n"
-            + "Row #1: ([Gender].[All Gender], [Marital Status].[M])\n"
+            + "Row #1: ([Customer].[Gender].[All Gender], [Customer].[Marital Status].[M])\n"
             + "Row #2: 134,977\n"
             + "Row #2: 2\n"
-            + "Row #2: ([Gender].[All Gender], [Marital Status].[S])\n"
+            + "Row #2: ([Customer].[Gender].[All Gender], [Customer].[Marital Status].[S])\n"
             + "Row #3: 131,558\n"
             + "Row #3: 3\n"
-            + "Row #3: ([Gender].[F], [Marital Status].[All Marital Status])\n"
+            + "Row #3: ([Customer].[Gender].[F], [Customer].[Marital Status].[All Marital Status])\n"
             + "Row #4: 65,336\n"
             + "Row #4: 4\n"
-            + "Row #4: ([Gender].[F], [Marital Status].[M])\n"
+            + "Row #4: ([Customer].[Gender].[F], [Customer].[Marital Status].[M])\n"
             + "Row #5: 66,222\n"
             + "Row #5: 5\n"
-            + "Row #5: ([Gender].[F], [Marital Status].[S])\n"
+            + "Row #5: ([Customer].[Gender].[F], [Customer].[Marital Status].[S])\n"
             + "Row #6: 135,215\n"
             + "Row #6: 6\n"
-            + "Row #6: ([Gender].[M], [Marital Status].[All Marital Status])\n"
+            + "Row #6: ([Customer].[Gender].[M], [Customer].[Marital Status].[All Marital Status])\n"
             + "Row #7: 66,460\n"
             + "Row #7: 7\n"
-            + "Row #7: ([Gender].[M], [Marital Status].[M])\n"
+            + "Row #7: ([Customer].[Gender].[M], [Customer].[Marital Status].[M])\n"
             + "Row #8: 68,755\n"
             + "Row #8: 8\n"
-            + "Row #8: ([Gender].[M], [Marital Status].[S])\n");
+            + "Row #8: ([Customer].[Gender].[M], [Customer].[Marital Status].[S])\n");
+    }
+
+    /**
+     * Test case for issue on developers list which involves a named set and a
+     * range in the WHERE clause. Current Mondrian behavior appears to be
+     * correct.
+     */
+    public void testNamedSetRangeInSlicer() {
+        String expected =
+            "Axis #0:\n"
+            + "{[Time].[Time].[1997].[Q1].[1]}\n"
+            + "{[Time].[Time].[1997].[Q1].[2]}\n"
+            + "{[Time].[Time].[1997].[Q1].[3]}\n"
+            + "{[Time].[Time].[1997].[Q2].[4]}\n"
+            + "{[Time].[Time].[1997].[Q2].[5]}\n"
+            + "{[Time].[Time].[1997].[Q2].[6]}\n"
+            + "{[Time].[Time].[1997].[Q3].[7]}\n"
+            + "{[Time].[Time].[1997].[Q3].[8]}\n"
+            + "{[Time].[Time].[1997].[Q3].[9]}\n"
+            + "{[Time].[Time].[1997].[Q4].[10]}\n"
+            + "Axis #1:\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Mary Francis Benigar], [Measures].[Unit Sales]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[James Horvat], [Measures].[Unit Sales]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Matt Bellah], [Measures].[Unit Sales]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Ida Rodriguez], [Measures].[Unit Sales]}\n"
+            + "{[Customer].[Customers].[USA].[WA].[Spokane].[Kristin Miller], [Measures].[Unit Sales]}\n"
+            + "Row #0: 422\n"
+            + "Row #0: 369\n"
+            + "Row #0: 363\n"
+            + "Row #0: 344\n"
+            + "Row #0: 323\n";
+        assertQueryReturns(
+            "SELECT\n"
+            + "NON EMPTY TopCount([Customers].[Name].Members, 5, [Measures].[Unit Sales]) * [Measures].[Unit Sales] on 0\n"
+            + "FROM [Sales]\n"
+            + "WHERE [Time].[1997].[Q1].[1]:[Time].[1997].[Q4].[10]",
+            expected);
+        // as above, but remove NON EMPTY
+        assertQueryReturns(
+            "SELECT\n"
+            + "TopCount([Customers].[Name].Members, 5, [Measures].[Unit Sales]) * [Measures].[Unit Sales] on 0\n"
+            + "FROM [Sales]\n"
+            + "WHERE [Time].[1997].[Q1].[1]:[Time].[1997].[Q4].[10]",
+            expected);
+        // as above, but with DISTINCT
+        assertQueryReturns(
+            "SELECT\n"
+            + "TopCount(Distinct([Customers].[Name].Members), 5, [Measures].[Unit Sales]) * [Measures].[Unit Sales] on 0\n"
+            + "FROM [Sales]\n"
+            + "WHERE [Time].[1997].[Q1].[1]:[Time].[1997].[Q4].[10]",
+            expected);
+        // As above, but convert TopCount expression to a named set. Named
+        // sets are evaluated after the slicer but before any axes. I.e. not
+        // in the context of any particular position on ROWS or COLUMNS, nor
+        // inheriting the NON EMPTY constraint on the axis.
+        assertQueryReturns(
+            "WITH SET [Top Count] AS\n"
+            + "  TopCount([Customers].[Name].Members, 5, [Measures].[Unit Sales])\n"
+            + "SELECT [Top Count] * [Measures].[Unit Sales] on 0\n"
+            + "FROM [Sales]\n"
+            + "WHERE [Time].[1997].[Q1].[1]:[Time].[1997].[Q4].[10]",
+            expected);
+        // as above, but with DISTINCT
+        if (false)
+        assertQueryReturns(
+            "WITH SET [Top Count] AS\n"
+            + "{\n"
+            + "  TopCount(\n"
+            + "    Distinct([Customers].[Name].Members),\n"
+            + "    5,\n"
+            + "    [Measures].[Unit Sales])\n"
+            + "}\n"
+            + "SELECT [Top Count] * [Measures].[Unit Sales] on 0\n"
+            + "FROM [Sales]\n"
+            + "WHERE [Time].[1997].[Q1].[1]:[Time].[1997].[Q4].[10]",
+            expected);
+    }
+
+    /**
+     * Variant of {@link #testNamedSetRangeInSlicer()} that calls
+     * {@link mondrian.test.CompoundSlicerTest#testBugMondrian899()} to
+     * prime the cache and therefore fails even when run standalone.
+     *
+     * <p>Test case for <a href="http://jira.pentaho.com/browse/MONDRIAN-1203">
+     * MONDRIAN-1203, "Error 'Failed to load all aggregations after 10 passes'
+     * while evaluating composite slicer"</a>.</p>
+     */
+    public void testNamedSetRangeInSlicerPrimed() {
+        new CompoundSlicerTest().testBugMondrian899();
+        testNamedSetRangeInSlicer();
     }
 
     /**

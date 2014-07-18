@@ -4,7 +4,7 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2009 Pentaho and others
+// Copyright (C) 2006-2012 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -426,9 +426,9 @@ public interface CacheControl {
     public interface CellRegion {
         /**
          * Returns the dimensionality of a region.
-         * @return a list of {@link mondrian.olap.Dimension} objects.
+         * @return a list of {@link mondrian.olap.Hierarchy} objects.
          */
-        List<Dimension> getDimensionality();
+        List<Hierarchy> getDimensionality();
     }
 
     /**

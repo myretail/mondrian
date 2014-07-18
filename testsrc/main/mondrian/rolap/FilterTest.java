@@ -9,12 +9,12 @@
 */
 package mondrian.rolap;
 
-import mondrian.olap.Connection;
 import mondrian.olap.MondrianProperties;
 import mondrian.rolap.sql.MemberListCrossJoinArg;
 import mondrian.spi.Dialect;
 import mondrian.test.SqlPattern;
 import mondrian.test.TestContext;
+import mondrian.util.Bug;
 
 /**
  * Tests for Filter and native Filters.
@@ -34,13 +34,12 @@ public class FilterTest extends BatchTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        propSaver.set(
-            MondrianProperties.instance().EnableNativeCrossJoin, true);
+        propSaver.set(propSaver.props.EnableNativeCrossJoin, true);
     }
 
     public void testInFilterSimple() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -57,12 +56,13 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNative(100, 45, query, null, requestFreshConnection);
+        checkNative(
+            getTestContext(), 100, 45, query, null, requestFreshConnection);
     }
 
     public void testNotInFilterSimple() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -79,12 +79,13 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNative(100, 66, query, null, requestFreshConnection);
+        checkNative(
+            getTestContext(), 100, 66, query, null, requestFreshConnection);
     }
 
     public void testInFilterAND() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -103,12 +104,17 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
+<<<<<<< HEAD
         checkNative(200, 88, query, null, requestFreshConnection);
+=======
+        checkNative(
+            getTestContext(), 200, 88, query, null, requestFreshConnection);
+>>>>>>> upstream/4.0
     }
 
     public void testIsFilterSimple() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -125,12 +131,13 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNative(100, 45, query, null, requestFreshConnection);
+        checkNative(
+            getTestContext(), 100, 45, query, null, requestFreshConnection);
     }
 
     public void testNotIsFilterSimple() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -147,12 +154,13 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNative(100, 66, query, null, requestFreshConnection);
+        checkNative(
+            getTestContext(), 100, 66, query, null, requestFreshConnection);
     }
 
     public void testMixedInIsFilters() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -171,7 +179,12 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
+<<<<<<< HEAD
         checkNative(200, 88, query, null, requestFreshConnection);
+=======
+        checkNative(
+            getTestContext(), 200, 88, query, null, requestFreshConnection);
+>>>>>>> upstream/4.0
     }
 
     /**
@@ -185,8 +198,8 @@ public class FilterTest extends BatchTestCase {
      * @throws Exception
      */
     public void testInFilterNonNative() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         String query =
             "With "
@@ -199,13 +212,13 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNotNative(45, query);
+        checkNotNative(getTestContext(), 45, query);
     }
 
     public void testTopCountOverInFilter() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
-        propSaver.set(MondrianProperties.instance().EnableNativeTopCount, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
+        propSaver.set(propSaver.props.EnableNativeTopCount, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -221,7 +234,8 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNative(100, 3, query, null, requestFreshConnection);
+        checkNative(
+            getTestContext(), 100, 3, query, null, requestFreshConnection);
     }
 
     /**
@@ -231,8 +245,8 @@ public class FilterTest extends BatchTestCase {
      * @throws Exception
      */
     public void testNotInFilterKeepNullMember() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -256,16 +270,16 @@ public class FilterTest extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[#null]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[20319]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[21215]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[22478]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[23598]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[23688]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[27694]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[28206]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[30268]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[33858]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[#null]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[20319]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[21215]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[22478]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[23598]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[23688]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[27694]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[28206]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[30268]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[33858]}\n"
             + "Row #0: 1,153\n"
             + "Row #1: 563\n"
             + "Row #2: 906\n"
@@ -277,18 +291,19 @@ public class FilterTest extends BatchTestCase {
             + "Row #8: 84\n"
             + "Row #9: 278\n";
 
-        checkNative(0, 10, query, result, requestFreshConnection);
+        checkNative(
+            getTestContext(), 0, 10, query, result, requestFreshConnection);
     }
 
     /**
      * Test that if Null member is explicitly excluded, then the native filter
      * SQL should filter out null members.
      *
-     * @throws Exception
+     * @throws Exception on error
      */
     public void testNotInFilterExcludeNullMember() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -313,15 +328,15 @@ public class FilterTest extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Axis #2:\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[20319]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[21215]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[22478]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[23598]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[23688]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[27694]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[28206]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[30268]}\n"
-            + "{[Customers].[USA], [Store Size in SQFT].[33858]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[20319]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[21215]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[22478]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[23598]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[23688]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[27694]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[28206]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[30268]}\n"
+            + "{[Customer].[Customers].[USA], [Store].[Store Size in SQFT].[33858]}\n"
             + "Row #0: 563\n"
             + "Row #1: 906\n"
             + "Row #2: 296\n"
@@ -332,7 +347,8 @@ public class FilterTest extends BatchTestCase {
             + "Row #7: 84\n"
             + "Row #8: 278\n";
 
-        checkNative(0, 9, query, result, requestFreshConnection);
+        checkNative(
+            getTestContext(), 0, 9, query, result, requestFreshConnection);
     }
 
     /**
@@ -340,7 +356,7 @@ public class FilterTest extends BatchTestCase {
      * that contain multiple levels, but none being null.
      */
     public void testNotInMultiLevelMemberConstraintNonNullParent() {
-        if (MondrianProperties.instance().ReadAggregates.get()) {
+        if (propSaver.props.ReadAggregates.get()) {
             // If aggregate tables are enabled, generates similar SQL involving
             // agg tables.
             return;
@@ -349,56 +365,44 @@ public class FilterTest extends BatchTestCase {
             "With "
             + "Set [*NATIVE_CJ_SET] as 'NonEmptyCrossJoin([*BASE_MEMBERS_Customers],[*BASE_MEMBERS_Quarters])' "
             + "Set [*BASE_MEMBERS_Customers] as 'Filter([Customers].[Country].Members, [Customers].CurrentMember In {[Customers].[All Customers].[USA]})' "
-            + "Set [*BASE_MEMBERS_Quarters] as 'Filter([Time].[Quarter].Members, "
-            + "[Time].currentMember not in {[Time].[1997].[Q1], [Time].[1998].[Q3]})' "
-            + "Set [*CJ_ROW_AXIS] as 'Generate([*NATIVE_CJ_SET], {([Customers].currentMember,[Time].currentMember)})' "
-            + "Set [*ORDERED_CJ_ROW_AXIS] as 'Order([*CJ_ROW_AXIS], [Time].currentmember.OrderKey, BASC)' "
+            + "Set [*BASE_MEMBERS_Quarters] as 'Filter([Time].[Time].[Quarter].Members, "
+            + "[Time].[Time].currentMember not in {[Time].[Time].[1997].[Q1], [Time].[Time].[1998].[Q3]})' "
+            + "Set [*CJ_ROW_AXIS] as 'Generate([*NATIVE_CJ_SET], {([Customers].currentMember,[Time].[Time].currentMember)})' "
+            + "Set [*ORDERED_CJ_ROW_AXIS] as 'Order([*CJ_ROW_AXIS], [Time].[Time].currentmember.OrderKey, BASC)' "
             + "Select "
             + "{[Measures].[Customer Count]} on columns, "
             + "Non Empty [*ORDERED_CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        String necjSqlDerby =
-            "select \"customer\".\"country\", \"time_by_day\".\"the_year\", "
-            + "\"time_by_day\".\"quarter\" from \"customer\" as \"customer\", "
-            + "\"sales_fact_1997\" as \"sales_fact_1997\", \"time_by_day\" as "
-            + "\"time_by_day\" where \"sales_fact_1997\".\"customer_id\" = "
-            + "\"customer\".\"customer_id\" and \"sales_fact_1997\".\"time_id\" = "
-            + "\"time_by_day\".\"time_id\" and (\"customer\".\"country\" = 'USA') and "
-            + "(not ((\"time_by_day\".\"the_year\" = 1997 and \"time_by_day\".\"quarter\" "
-            + "= 'Q1') or (\"time_by_day\".\"the_year\" = 1998 and "
-            + "\"time_by_day\".\"quarter\" = 'Q3')) or ((\"time_by_day\".\"quarter\" is "
-            + "null or \"time_by_day\".\"the_year\" is null) and "
-            + "not((\"time_by_day\".\"the_year\" = 1997 and \"time_by_day\".\"quarter\" "
-            + "= 'Q1') or (\"time_by_day\".\"the_year\" = 1998 and "
-            + "\"time_by_day\".\"quarter\" = 'Q3')))) group by \"customer\".\"country\", "
-            + "\"time_by_day\".\"the_year\", \"time_by_day\".\"quarter\" "
-            + "order by CASE WHEN \"customer\".\"country\" IS NULL THEN 1 ELSE 0 END, \"customer\".\"country\" ASC, CASE WHEN \"time_by_day\".\"the_year\" IS NULL THEN 1 ELSE 0 END, \"time_by_day\".\"the_year\" ASC, CASE WHEN \"time_by_day\".\"quarter\" IS NULL THEN 1 ELSE 0 END, \"time_by_day\".\"quarter\" ASC";
+        String sql =
+            "select\n"
+            + "    `customer`.`country` as `c0`,\n"
+            + "    `time_by_day`.`the_year` as `c1`,\n"
+            + "    `time_by_day`.`quarter` as `c2`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `customer` as `customer`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    (`customer`.`country` = 'USA')\n"
+            + "and\n"
+            + "    (not ((`time_by_day`.`the_year`, `time_by_day`.`quarter`) in ((1997, 'Q1'), (1998, 'Q3')))\n"
+            + "    or (`time_by_day`.`quarter` is null\n"
+            + "        or `time_by_day`.`the_year` is null))\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`customer_id` = `customer`.`customer_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "group by\n"
+            + "    `customer`.`country`,\n"
+            + "    `time_by_day`.`the_year`,\n"
+            + "    `time_by_day`.`quarter`\n"
+            + "order by\n"
+            + "    ISNULL(`customer`.`country`) ASC, `customer`.`country` ASC,\n"
+            + "    ISNULL(`time_by_day`.`the_year`) ASC, `time_by_day`.`the_year` ASC,\n"
+            + "    ISNULL(`time_by_day`.`quarter`) ASC, `time_by_day`.`quarter` ASC";
 
-        String necjSqlMySql =
-            "select `customer`.`country` as `c0`, `time_by_day`.`the_year` as `c1`, "
-            + "`time_by_day`.`quarter` as `c2` from `customer` as `customer`, "
-            + "`sales_fact_1997` as `sales_fact_1997`, `time_by_day` as `time_by_day` "
-            + "where `sales_fact_1997`.`customer_id` = `customer`.`customer_id` "
-            + "and `sales_fact_1997`.`time_id` = `time_by_day`.`time_id` and "
-            + "(`customer`.`country` = 'USA') and "
-            + "(not ((`time_by_day`.`quarter`, `time_by_day`.`the_year`) in "
-            + "(('Q1', 1997), ('Q3', 1998))) or (`time_by_day`.`quarter` is null or "
-            + "`time_by_day`.`the_year` is null)) "
-            + "group by `customer`.`country`, `time_by_day`.`the_year`, "
-            + "`time_by_day`.`quarter` order by ISNULL(`customer`.`country`) ASC, "
-            + "`customer`.`country` ASC, ISNULL(`time_by_day`.`the_year`) ASC, "
-            + "`time_by_day`.`the_year` ASC, ISNULL(`time_by_day`.`quarter`) ASC, "
-            + "`time_by_day`.`quarter` ASC";
-
-        SqlPattern[] patterns = {
-            new SqlPattern(
-                Dialect.DatabaseProduct.DERBY, necjSqlDerby, necjSqlDerby),
-            new SqlPattern(
-                Dialect.DatabaseProduct.MYSQL, necjSqlMySql, necjSqlMySql)
-        };
-
-        assertQuerySql(query, patterns);
+        assertQuerySql(getTestContext(), query, sql);
     }
 
     /**
@@ -407,7 +411,7 @@ public class FilterTest extends BatchTestCase {
      * the same parent.
      */
     public void testNotInMultiLevelMemberConstraintNonNullSameParent() {
-        if (MondrianProperties.instance().ReadAggregates.get()) {
+        if (propSaver.props.ReadAggregates.get()) {
             // If aggregate tables are enabled, generates similar SQL involving
             // agg tables.
             return;
@@ -416,53 +420,47 @@ public class FilterTest extends BatchTestCase {
             "With "
             + "Set [*NATIVE_CJ_SET] as 'NonEmptyCrossJoin([*BASE_MEMBERS_Customers],[*BASE_MEMBERS_Quarters])' "
             + "Set [*BASE_MEMBERS_Customers] as 'Filter([Customers].[Country].Members, [Customers].CurrentMember In {[Customers].[All Customers].[USA]})' "
-            + "Set [*BASE_MEMBERS_Quarters] as 'Filter([Time].[Quarter].Members, "
-            + "[Time].currentMember not in {[Time].[1997].[Q1], [Time].[1997].[Q3]})' "
-            + "Set [*CJ_ROW_AXIS] as 'Generate([*NATIVE_CJ_SET], {([Customers].currentMember,[Time].currentMember)})' "
-            + "Set [*ORDERED_CJ_ROW_AXIS] as 'Order([*CJ_ROW_AXIS], [Time].currentmember.OrderKey, BASC)' "
+            + "Set [*BASE_MEMBERS_Quarters] as 'Filter([Time].[Time].[Quarter].Members, "
+            + "[Time].[Time].currentMember not in {[Time].[Time].[1997].[Q1], [Time].[Time].[1997].[Q3]})' "
+            + "Set [*CJ_ROW_AXIS] as 'Generate([*NATIVE_CJ_SET], {([Customers].currentMember,[Time].[Time].currentMember)})' "
+            + "Set [*ORDERED_CJ_ROW_AXIS] as 'Order([*CJ_ROW_AXIS], [Time].[Time].currentmember.OrderKey, BASC)' "
             + "Select "
             + "{[Measures].[Customer Count]} on columns, "
             + "Non Empty [*ORDERED_CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        String necjSqlDerby =
-            "select \"customer\".\"country\", \"time_by_day\".\"the_year\", "
-            + "\"time_by_day\".\"quarter\" from \"customer\" as \"customer\", "
-            + "\"sales_fact_1997\" as \"sales_fact_1997\", \"time_by_day\" as "
-            + "\"time_by_day\" where \"sales_fact_1997\".\"customer_id\" = "
-            + "\"customer\".\"customer_id\" and \"sales_fact_1997\".\"time_id\" = "
-            + "\"time_by_day\".\"time_id\" and (\"customer\".\"country\" = 'USA') and "
-            + "((not (\"time_by_day\".\"quarter\" in ('Q1', 'Q3')) or "
-            + "(\"time_by_day\".\"quarter\" is null)) or (not "
-            + "(\"time_by_day\".\"the_year\" = 1997) or (\"time_by_day\".\"the_year\" is "
-            + "null))) group by \"customer\".\"country\", \"time_by_day\".\"the_year\", "
-            + "\"time_by_day\".\"quarter\" "
-            + "order by CASE WHEN \"customer\".\"country\" IS NULL THEN 1 ELSE 0 END, \"customer\".\"country\" ASC, CASE WHEN \"time_by_day\".\"the_year\" IS NULL THEN 1 ELSE 0 END, \"time_by_day\".\"the_year\" ASC, CASE WHEN \"time_by_day\".\"quarter\" IS NULL THEN 1 ELSE 0 END, \"time_by_day\".\"quarter\" ASC";
+        String sql =
+            "select\n"
+            + "    `customer`.`country` as `c0`,\n"
+            + "    `time_by_day`.`the_year` as `c1`,\n"
+            + "    `time_by_day`.`quarter` as `c2`\n"
+            + "from\n"
+            + "    `sales_fact_1997` as `sales_fact_1997`,\n"
+            + "    `customer` as `customer`,\n"
+            + "    `time_by_day` as `time_by_day`\n"
+            + "where\n"
+            + "    `sales_fact_1997`.`customer_id` = `customer`.`customer_id`\n"
+            + "and\n"
+            + "    `sales_fact_1997`.`time_id` = `time_by_day`.`time_id`\n"
+            + "and\n"
+            + "    (`customer`.`country` = 'USA')\n"
+            + "and\n"
+            + "    ((not (`time_by_day`.`the_year` = 1997 and `time_by_day`.`quarter` = 'Q1' or `time_by_day`.`the_year` = 1997 and `time_by_day`.`quarter` = 'Q3')\n"
+            + "        or (`time_by_day`.`the_year` is null))\n"
+            + "    or (not (`time_by_day`.`the_year` = 1997 and `time_by_day`.`quarter` = 'Q1' or `time_by_day`.`the_year` = 1997 and `time_by_day`.`quarter` = 'Q3')\n"
+            + "        or (`time_by_day`.`quarter` is null))\n"
+            + "    or (not (`time_by_day`.`the_year` = 1997)\n"
+            + "        or (`time_by_day`.`the_year` is null)))\n"
+            + "group by\n"
+            + "    `customer`.`country`,\n"
+            + "    `time_by_day`.`the_year`,\n"
+            + "    `time_by_day`.`quarter`\n"
+            + "order by\n"
+            + "    ISNULL(`customer`.`country`) ASC, `customer`.`country` ASC,\n"
+            + "    ISNULL(`time_by_day`.`the_year`) ASC, `time_by_day`.`the_year` ASC,\n"
+            + "    ISNULL(`time_by_day`.`quarter`) ASC, `time_by_day`.`quarter` ASC";
 
-        String necjSqlMySql =
-            "select `customer`.`country` as `c0`, `time_by_day`.`the_year` as "
-            + "`c1`, `time_by_day`.`quarter` as `c2` from `customer` as "
-            + "`customer`, `sales_fact_1997` as `sales_fact_1997`, `time_by_day` "
-            + "as `time_by_day` where `sales_fact_1997`.`customer_id` = "
-            + "`customer`.`customer_id` and `sales_fact_1997`.`time_id` = "
-            + "`time_by_day`.`time_id` and (`customer`.`country` = 'USA') and "
-            + "((not (`time_by_day`.`quarter` in ('Q1', 'Q3')) or "
-            + "(`time_by_day`.`quarter` is null)) or (not "
-            + "(`time_by_day`.`the_year` = 1997) or (`time_by_day`.`the_year` "
-            + "is null))) group by `customer`.`country`, `time_by_day`.`the_year`,"
-            + " `time_by_day`.`quarter` order by ISNULL(`customer`.`country`) ASC, "
-            + "`customer`.`country` ASC, ISNULL(`time_by_day`.`the_year`) ASC, "
-            + "`time_by_day`.`the_year` ASC, ISNULL(`time_by_day`.`quarter`) ASC, "
-            + "`time_by_day`.`quarter` ASC";
-
-        SqlPattern[] patterns = {
-            new SqlPattern(
-                Dialect.DatabaseProduct.DERBY, necjSqlDerby, necjSqlDerby),
-            new SqlPattern(
-                Dialect.DatabaseProduct.MYSQL, necjSqlMySql, necjSqlMySql)
-        };
-
-        assertQuerySql(query, patterns);
+        assertQuerySql(getTestContext(), query, sql);
     }
 
     /**
@@ -473,8 +471,7 @@ public class FilterTest extends BatchTestCase {
         if (!isDefaultNullMemberRepresentation()) {
             return;
         }
-        if (MondrianProperties.instance().FilterChildlessSnowflakeMembers.get())
-        {
+        if (propSaver.props.FilterChildlessSnowflakeMembers.get()) {
             return;
         }
 
@@ -505,37 +502,7 @@ public class FilterTest extends BatchTestCase {
             + "set [NECJ] as NonEmptyCrossJoin([Filtered Warehouse Set], {[Product].[Product Family].Food}) "
             + "select [NECJ] on 0 from [Warehouse2]";
 
-        String necjSqlDerby =
-            "select \"warehouse\".\"warehouse_fax\", \"warehouse\".\"wa_address1\", "
-            + "\"warehouse\".\"warehouse_name\", \"product_class\".\"product_family\" "
-            + "from \"warehouse\" as \"warehouse\", \"inventory_fact_1997\" as "
-            + "\"inventory_fact_1997\", \"product\" as \"product\", \"product_class\" as "
-            + "\"product_class\" where \"inventory_fact_1997\".\"warehouse_id\" = "
-            + "\"warehouse\".\"warehouse_id\" and \"product\".\"product_class_id\" = "
-            + "\"product_class\".\"product_class_id\" and "
-            + "\"inventory_fact_1997\".\"product_id\" = \"product\".\"product_id\" and "
-            + "(\"product_class\".\"product_family\" = 'Food') and "
-            + "(not ((\"warehouse\".\"wa_address1\" = '234 West Covina Pkwy' and "
-            + "\"warehouse\".\"warehouse_fax\" is null and "
-            + "\"warehouse\".\"warehouse_name\" = 'Freeman And Co') or "
-            + "(\"warehouse\".\"wa_address1\" = '3377 Coachman Place' and "
-            + "\"warehouse\".\"warehouse_fax\" = '971-555-6213' and "
-            + "\"warehouse\".\"warehouse_name\" = 'Jones International')) or "
-            + "((\"warehouse\".\"warehouse_name\" is null or "
-            + "\"warehouse\".\"wa_address1\" is null or \"warehouse\".\"warehouse_fax\" "
-            + "is null) and not((\"warehouse\".\"wa_address1\" = "
-            + "'234 West Covina Pkwy' and \"warehouse\".\"warehouse_fax\" is null "
-            + "and \"warehouse\".\"warehouse_name\" = 'Freeman And Co') or "
-            + "(\"warehouse\".\"wa_address1\" = '3377 Coachman Place' and "
-            + "\"warehouse\".\"warehouse_fax\" = '971-555-6213' and "
-            + "\"warehouse\".\"warehouse_name\" = 'Jones International')))) "
-            + "group by \"warehouse\".\"warehouse_fax\", \"warehouse\".\"wa_address1\", "
-            + "\"warehouse\".\"warehouse_name\", \"product_class\".\"product_family\" "
-            + "order by \"warehouse\".\"warehouse_fax\" ASC, "
-            + "\"warehouse\".\"wa_address1\" ASC, \"warehouse\".\"warehouse_name\" ASC, "
-            + "\"product_class\".\"product_family\" ASC";
-
-        String necjSqlMySql =
+        String sql =
             "select `warehouse`.`warehouse_fax` as `c0`, `warehouse`.`wa_address1` as `c1`, "
             + "`warehouse`.`warehouse_name` as `c2`, `product_class`.`product_family` as `c3` "
             + "from `warehouse` as `warehouse`, `inventory_fact_1997` as `inventory_fact_1997`, "
@@ -559,13 +526,6 @@ public class FilterTest extends BatchTestCase {
             + "ISNULL(`warehouse`.`warehouse_name`), `warehouse`.`warehouse_name` ASC, "
             + "ISNULL(`product_class`.`product_family`), `product_class`.`product_family` ASC";
 
-        SqlPattern[] patterns = {
-            new SqlPattern(
-                Dialect.DatabaseProduct.DERBY, necjSqlDerby, necjSqlDerby),
-            new SqlPattern(
-                Dialect.DatabaseProduct.MYSQL, necjSqlMySql, necjSqlMySql)
-        };
-
         TestContext testContext =
             TestContext.instance().create(
                 dimension,
@@ -575,7 +535,7 @@ public class FilterTest extends BatchTestCase {
                 null,
                 null);
 
-        assertQuerySql(testContext, query, patterns);
+        assertQuerySql(testContext, query, sql);
     }
 
     /**
@@ -586,8 +546,7 @@ public class FilterTest extends BatchTestCase {
         if (!isDefaultNullMemberRepresentation()) {
             return;
         }
-        if (MondrianProperties.instance().FilterChildlessSnowflakeMembers.get())
-        {
+        if (propSaver.props.FilterChildlessSnowflakeMembers.get()) {
             return;
         }
 
@@ -617,28 +576,7 @@ public class FilterTest extends BatchTestCase {
             + "set [NECJ] as NonEmptyCrossJoin([Filtered Warehouse Set], {[Product].[Product Family].Food}) "
             + "select [NECJ] on 0 from [Warehouse2]";
 
-        String necjSqlDerby =
-            "select \"warehouse\".\"warehouse_fax\", \"warehouse\".\"wa_address1\", "
-            + "\"warehouse\".\"warehouse_name\", \"product_class\".\"product_family\" "
-            + "from \"warehouse\" as \"warehouse\", \"inventory_fact_1997\" as "
-            + "\"inventory_fact_1997\", \"product\" as \"product\", \"product_class\" "
-            + "as \"product_class\" where \"inventory_fact_1997\".\"warehouse_id\" = "
-            + "\"warehouse\".\"warehouse_id\" and \"product\".\"product_class_id\" = "
-            + "\"product_class\".\"product_class_id\" and "
-            + "\"inventory_fact_1997\".\"product_id\" = \"product\".\"product_id\" and "
-            + "(\"product_class\".\"product_family\" = 'Food') and ((not "
-            + "(\"warehouse\".\"warehouse_name\" = 'Freeman And Co') or "
-            + "(\"warehouse\".\"warehouse_name\" is null)) or (not "
-            + "(\"warehouse\".\"wa_address1\" = '234 West Covina Pkwy') or "
-            + "(\"warehouse\".\"wa_address1\" is null)) or not "
-            + "(\"warehouse\".\"warehouse_fax\" is null)) group by "
-            + "\"warehouse\".\"warehouse_fax\", \"warehouse\".\"wa_address1\", "
-            + "\"warehouse\".\"warehouse_name\", \"product_class\".\"product_family\" "
-            + "order by \"warehouse\".\"warehouse_fax\" ASC, "
-            + "\"warehouse\".\"wa_address1\" ASC, \"warehouse\".\"warehouse_name\" ASC, "
-            + "\"product_class\".\"product_family\" ASC";
-
-        String necjSqlMySql =
+        String sql =
             "select `warehouse`.`warehouse_fax` as `c0`, "
             + "`warehouse`.`wa_address1` as `c1`, `warehouse`.`warehouse_name` "
             + "as `c2`, `product_class`.`product_family` as `c3` from "
@@ -664,13 +602,6 @@ public class FilterTest extends BatchTestCase {
             + "ISNULL(`product_class`.`product_family`), "
             + "`product_class`.`product_family` ASC";
 
-        SqlPattern[] patterns = {
-            new SqlPattern(
-                Dialect.DatabaseProduct.DERBY, necjSqlDerby, necjSqlDerby),
-            new SqlPattern(
-                Dialect.DatabaseProduct.MYSQL, necjSqlMySql, necjSqlMySql)
-        };
-
         TestContext testContext =
             TestContext.instance().create(
                 dimension,
@@ -680,12 +611,12 @@ public class FilterTest extends BatchTestCase {
                 null,
                 null);
 
-        assertQuerySql(testContext, query, patterns);
+        assertQuerySql(testContext, query, sql);
     }
 
     public void testCachedNativeSetUsingFilters() throws Exception {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -702,7 +633,8 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNative(100, 45, query1, null, requestFreshConnection);
+        checkNative(
+            getTestContext(), 100, 45, query1, null, requestFreshConnection);
 
         // query2 has different filters; it should not reuse the result from
         // query1.
@@ -717,17 +649,19 @@ public class FilterTest extends BatchTestCase {
             + "Non Empty [*CJ_ROW_AXIS] on rows "
             + "From [Sales]";
 
-        checkNative(100, 11, query2, null, requestFreshConnection);
+        checkNative(
+            getTestContext(), 100, 11, query2, null, requestFreshConnection);
     }
 
     public void testNativeFilter() {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
         boolean requestFreshConnection = true;
         checkNative(
+            getTestContext(),
             32,
             18,
             "select {[Measures].[Store Sales]} ON COLUMNS, "
@@ -742,13 +676,14 @@ public class FilterTest extends BatchTestCase {
      * Executes a Filter() whose condition contains a calculated member.
      */
     public void testCmNativeFilter() {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
         boolean requestFreshConnection = true;
         checkNative(
+            getTestContext(),
             0,
             8,
             "with member [Measures].[Rendite] as '([Measures].[Store Sales] - [Measures].[Store Cost]) / [Measures].[Store Cost]' "
@@ -757,21 +692,21 @@ public class FilterTest extends BatchTestCase {
             + "from [Sales] "
             + "where ([Store].[All Stores].[USA].[CA], [Time].[1997])",
             "Axis #0:\n"
-            + "{[Store].[USA].[CA], [Time].[1997]}\n"
+            + "{[Store].[Stores].[USA].[CA], [Time].[Time].[1997]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "{[Measures].[Store Cost]}\n"
             + "{[Measures].[Rendite]}\n"
             + "{[Measures].[Store Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Food].[Baking Goods].[Jams and Jellies].[Peanut Butter].[Plato].[Plato Extra Chunky Peanut Butter]}\n"
-            + "{[Product].[Food].[Snack Foods].[Snack Foods].[Popcorn].[Horatio].[Horatio Buttered Popcorn]}\n"
-            + "{[Product].[Food].[Canned Foods].[Canned Tuna].[Tuna].[Better].[Better Canned Tuna in Oil]}\n"
-            + "{[Product].[Food].[Produce].[Fruit].[Fresh Fruit].[High Top].[High Top Cantelope]}\n"
-            + "{[Product].[Non-Consumable].[Household].[Electrical].[Lightbulbs].[Denny].[Denny 75 Watt Lightbulb]}\n"
-            + "{[Product].[Food].[Breakfast Foods].[Breakfast Foods].[Cereal].[Johnson].[Johnson Oatmeal]}\n"
-            + "{[Product].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Portsmouth].[Portsmouth Light Wine]}\n"
-            + "{[Product].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Ebony].[Ebony Squash]}\n"
+            + "{[Product].[Products].[Food].[Baking Goods].[Jams and Jellies].[Peanut Butter].[Plato].[Plato Extra Chunky Peanut Butter]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods].[Snack Foods].[Popcorn].[Horatio].[Horatio Buttered Popcorn]}\n"
+            + "{[Product].[Products].[Food].[Canned Foods].[Canned Tuna].[Tuna].[Better].[Better Canned Tuna in Oil]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Fruit].[Fresh Fruit].[High Top].[High Top Cantelope]}\n"
+            + "{[Product].[Products].[Non-Consumable].[Household].[Electrical].[Lightbulbs].[Denny].[Denny 75 Watt Lightbulb]}\n"
+            + "{[Product].[Products].[Food].[Breakfast Foods].[Breakfast Foods].[Cereal].[Johnson].[Johnson Oatmeal]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages].[Beer and Wine].[Wine].[Portsmouth].[Portsmouth Light Wine]}\n"
+            + "{[Product].[Products].[Food].[Produce].[Vegetables].[Fresh Vegetables].[Ebony].[Ebony Squash]}\n"
             + "Row #0: 42\n"
             + "Row #0: 24.06\n"
             + "Row #0: 1.93\n"
@@ -808,9 +743,13 @@ public class FilterTest extends BatchTestCase {
     }
 
     public void testNonNativeFilterWithNullMeasure() {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, false);
+        if (!Bug.CubeStoreFeature) {
+            return;
+        }
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, false);
         checkNotNative(
+            getTestContext(),
             9,
             "select Filter([Store].[Store Name].members, "
             + "              Not ([Measures].[Store Sqft] - [Measures].[Grocery Sqft] < 10000)) on rows, "
@@ -852,9 +791,12 @@ public class FilterTest extends BatchTestCase {
     }
 
     public void testNativeFilterWithNullMeasure() {
+        if (!Bug.CubeStoreFeature) {
+            return;
+        }
         // Currently this behaves differently from the non-native evaluation.
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
@@ -885,9 +827,10 @@ public class FilterTest extends BatchTestCase {
 
     public void testNonNativeFilterWithCalcMember() {
         // Currently this query cannot run natively
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, false);
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, false);
+        propSaver.set(propSaver.props.ExpandNonNative, false);
         checkNotNative(
+            getTestContext(),
             3,
             "with\n"
             + "member [Time].[Time].[Date Range] as 'Aggregate({[Time].[1997].[Q1]:[Time].[1997].[Q4]})'\n"
@@ -897,13 +840,13 @@ public class FilterTest extends BatchTestCase {
             + "from [Sales]\n"
             + "where [Time].[Date Range]\n",
             "Axis #0:\n"
-            + "{[Time].[Date Range]}\n"
+            + "{[Time].[Time].[Date Range]}\n"
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Store].[USA].[CA]}\n"
-            + "{[Store].[USA].[OR]}\n"
-            + "{[Store].[USA].[WA]}\n"
+            + "{[Store].[Stores].[USA].[CA]}\n"
+            + "{[Store].[Stores].[USA].[OR]}\n"
+            + "{[Store].[Stores].[USA].[WA]}\n"
             + "Row #0: 74,748\n"
             + "Row #1: 67,659\n"
             + "Row #2: 124,366\n");
@@ -914,13 +857,17 @@ public class FilterTest extends BatchTestCase {
      * evaluated.
      */
     public void testNativeFilterNonEmpty() {
-        propSaver.set(MondrianProperties.instance().ExpandNonNative, false);
-        propSaver.set(MondrianProperties.instance().EnableNativeFilter, true);
+        if (!Bug.CubeStoreFeature) {
+            return;
+        }
+        propSaver.set(propSaver.props.ExpandNonNative, false);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
 
         // Get a fresh connection; Otherwise the mondrian property setting
         // is not refreshed for this parameter.
         boolean requestFreshConnection = true;
         checkNative(
+            getTestContext(),
             0,
             20,
             "select Filter(CrossJoin([Store].[Store Name].members, "
@@ -941,30 +888,17 @@ public class FilterTest extends BatchTestCase {
      * filter"</a>.
      */
     public void testBugMondrian706() {
-        propSaver.set(
-            MondrianProperties.instance().UseAggregates,
-            false);
-        propSaver.set(
-            MondrianProperties.instance().ReadAggregates,
-            false);
-        propSaver.set(
-            MondrianProperties.instance().DisableCaching,
-            false);
-        propSaver.set(
-            MondrianProperties.instance().EnableNativeNonEmpty,
-            true);
-        propSaver.set(
-            MondrianProperties.instance().CompareSiblingsByOrderKey,
-            true);
-        propSaver.set(
-            MondrianProperties.instance().NullDenominatorProducesNull,
-            true);
-        propSaver.set(
-            MondrianProperties.instance().ExpandNonNative,
-            true);
-        propSaver.set(
-            MondrianProperties.instance().EnableNativeFilter,
-            true);
+        if (!Bug.CubeStoreFeature) {
+            return;
+        }
+        propSaver.set(propSaver.props.UseAggregates, false);
+        propSaver.set(propSaver.props.ReadAggregates, false);
+        propSaver.set(propSaver.props.DisableCaching, false);
+        propSaver.set(propSaver.props.EnableNativeNonEmpty, true);
+        propSaver.set(propSaver.props.CompareSiblingsByOrderKey, true);
+        propSaver.set(propSaver.props.NullDenominatorProducesNull, true);
+        propSaver.set(propSaver.props.ExpandNonNative, true);
+        propSaver.set(propSaver.props.EnableNativeFilter, true);
         // With bug MONDRIAN-706, would generate
         //
         // ((`store`.`store_name`, `store`.`store_city`, `store`.`store_state`)
@@ -1055,7 +989,7 @@ public class FilterTest extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink].[Dairy]}\n"
+            + "{[Product].[Products].[Drink].[Dairy]}\n"
             + "Row #0: 4,186\n";
 
         final String expectedResult2 =
@@ -1064,23 +998,23 @@ public class FilterTest extends BatchTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Unit Sales]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Drink].[Alcoholic Beverages]}\n"
-            + "{[Product].[Drink].[Beverages]}\n"
-            + "{[Product].[Food].[Baked Goods]}\n"
-            + "{[Product].[Food].[Baking Goods]}\n"
-            + "{[Product].[Food].[Breakfast Foods]}\n"
-            + "{[Product].[Food].[Canned Foods]}\n"
-            + "{[Product].[Food].[Canned Products]}\n"
-            + "{[Product].[Food].[Dairy]}\n"
-            + "{[Product].[Food].[Deli]}\n"
-            + "{[Product].[Food].[Eggs]}\n"
-            + "{[Product].[Food].[Frozen Foods]}\n"
-            + "{[Product].[Food].[Meat]}\n"
-            + "{[Product].[Food].[Produce]}\n"
-            + "{[Product].[Food].[Seafood]}\n"
-            + "{[Product].[Food].[Snack Foods]}\n"
-            + "{[Product].[Food].[Snacks]}\n"
-            + "{[Product].[Food].[Starchy Foods]}\n"
+            + "{[Product].[Products].[Drink].[Alcoholic Beverages]}\n"
+            + "{[Product].[Products].[Drink].[Beverages]}\n"
+            + "{[Product].[Products].[Food].[Baked Goods]}\n"
+            + "{[Product].[Products].[Food].[Baking Goods]}\n"
+            + "{[Product].[Products].[Food].[Breakfast Foods]}\n"
+            + "{[Product].[Products].[Food].[Canned Foods]}\n"
+            + "{[Product].[Products].[Food].[Canned Products]}\n"
+            + "{[Product].[Products].[Food].[Dairy]}\n"
+            + "{[Product].[Products].[Food].[Deli]}\n"
+            + "{[Product].[Products].[Food].[Eggs]}\n"
+            + "{[Product].[Products].[Food].[Frozen Foods]}\n"
+            + "{[Product].[Products].[Food].[Meat]}\n"
+            + "{[Product].[Products].[Food].[Produce]}\n"
+            + "{[Product].[Products].[Food].[Seafood]}\n"
+            + "{[Product].[Products].[Food].[Snack Foods]}\n"
+            + "{[Product].[Products].[Food].[Snacks]}\n"
+            + "{[Product].[Products].[Food].[Starchy Foods]}\n"
             + "Row #0: 6,838\n"
             + "Row #1: 13,573\n"
             + "Row #2: 7,870\n"
@@ -1102,7 +1036,10 @@ public class FilterTest extends BatchTestCase {
         assertQueryReturns(query1, expectedResult1);
         assertQueryReturns(query2, expectedResult2);
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/4.0
     /**
      * http://jira.pentaho.com/browse/MONDRIAN-1458
      * When using a multi value IN clause which includes null values
@@ -1112,10 +1049,22 @@ public class FilterTest extends BatchTestCase {
     public void testMultiValueInWithNullVals() {
         // MONDRIAN-1458 - Native exclusion predicate doesn't use agg table
         // when checking for nulls
+<<<<<<< HEAD
         TestContext context = getTestContext();
         if (!propSaver.properties.EnableNativeCrossJoin.get()
             || !propSaver.properties.ReadAggregates.get()
             || !propSaver.properties.UseAggregates.get())
+=======
+        // MONDRIAN-1458 was written against Mondrian 3x and does not currently
+        // impact the lagunitas branch because SqlTupleReader does not
+        // use the aggregate table due to a different bug (1372).
+        // Once 1372 is fixed this test should be enabled.
+        TestContext context = getTestContext();
+        if (!Bug.BugMondrian1372Fixed
+            || !propSaver.props.EnableNativeCrossJoin.get()
+            || !propSaver.props.ReadAggregates.get()
+            || !propSaver.props.UseAggregates.get())
+>>>>>>> upstream/4.0
         {
             return;
         }
@@ -1194,14 +1143,21 @@ public class FilterTest extends BatchTestCase {
             ")\n"+
             "on 0 from sales\n";
         assertQuerySql(
+<<<<<<< HEAD
+=======
+            context,
+>>>>>>> upstream/4.0
             mdx,
             new SqlPattern[] {
                 new SqlPattern(Dialect.DatabaseProduct.MYSQL, sql, null)
             });
     }
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> upstream/4.0
 }
 
 // End FilterTest.java

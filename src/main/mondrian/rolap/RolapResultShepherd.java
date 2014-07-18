@@ -40,7 +40,25 @@ public class RolapResultShepherd {
      * An executor service used for both the shepherd thread and the
      * Execution objects.
      */
+<<<<<<< HEAD
     private final ExecutorService executor;
+=======
+    private final ExecutorService executor =
+        Util.getExecutorService(
+            MondrianProperties.instance()
+                .RolapConnectionShepherdNbThreads.get(),
+            0, 1,
+            "mondrian.rolap.RolapResultShepherd$executor",
+            new RejectedExecutionHandler() {
+                public void rejectedExecution(
+                    Runnable r,
+                    ThreadPoolExecutor executor)
+                {
+                    throw MondrianResource.instance()
+                        .QueryLimitReached.ex();
+                }
+            });
+>>>>>>> upstream/4.0
 
     /**
      * List of tasks that should be monitored by the shepherd thread.
@@ -52,6 +70,7 @@ public class RolapResultShepherd {
         Util.newTimer("mondrian.rolap.RolapResultShepherd#timer", true);
 
     public RolapResultShepherd() {
+<<<<<<< HEAD
         final IntegerProperty property =
             MondrianProperties.instance().RolapConnectionShepherdNbThreads;
         final int maximumPoolSize = property.get();
@@ -76,6 +95,14 @@ public class RolapResultShepherd {
                     MondrianProperties.instance()
                         .RolapConnectionShepherdThreadPollingInterval.get()),
                 TimeUnit.MILLISECONDS);
+=======
+        final Pair<Long, TimeUnit> interval =
+            Util.parseInterval(
+                MondrianProperties.instance()
+                    .RolapConnectionShepherdThreadPollingInterval.get(),
+                TimeUnit.MILLISECONDS);
+
+>>>>>>> upstream/4.0
         long period = interval.right.toMillis(interval.left);
         timer.schedule(
             new TimerTask() {

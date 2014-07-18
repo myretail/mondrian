@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho and others
+=======
+// Copyright (C) 2005-2014 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -17,7 +21,7 @@ import mondrian.mdx.*;
 import mondrian.olap.*;
 import mondrian.olap.type.*;
 import mondrian.resource.MondrianResource;
-import mondrian.rolap.RolapHierarchy;
+import mondrian.rolap.*;
 import mondrian.util.*;
 
 import org.apache.commons.collections.ComparatorUtils;
@@ -213,23 +217,16 @@ public class FunUtil extends Util {
                 return e;
             }
         }
-        StringBuilder buf = new StringBuilder(64);
-        int k = 0;
-        for (E e : allowedValues.getEnumConstants()) {
-            if (k++ > 0) {
-                buf.append(", ");
-            }
-            buf.append(e.name());
-        }
         throw newEvalException(
             call.getFunDef(),
-            "Allowed values are: {" + buf + "}");
+            "Allowed values are: "
+            + Arrays.toString(allowedValues.getEnumConstants()));
     }
 
     /**
      * Throws an error if the expressions don't have the same hierarchy.
-     * @param left
-     * @param right
+     * @param left Left
+     * @param right Right
      * @throws MondrianEvaluationException if expressions don't have the same
      *     hierarchy
      */
@@ -274,23 +271,33 @@ public class FunUtil extends Util {
      * @return Default hierarchy, or null
      */
     public static Hierarchy getDimensionDefaultHierarchy(Dimension dimension) {
-        final Hierarchy[] hierarchies = dimension.getHierarchies();
-        if (hierarchies.length == 1) {
-            return hierarchies[0];
+        if (dimension.getHierarchyList().size() == 1) {
+            return dimension.getHierarchyList().get(0);
         }
-        if (MondrianProperties.instance().SsasCompatibleNaming.get()) {
-            // In SSAS 2005, dimensions with more than one hierarchy do not have
-            // a default hierarchy.
-            return null;
-        }
-        for (Hierarchy hierarchy : hierarchies) {
-            if (hierarchy.getName() == null
-                || hierarchy.getUniqueName().equals(dimension.getUniqueName()))
-            {
-                return hierarchy;
-            }
+        List<Hierarchy> nonClosureHierarchies =
+            getNonClosureHierarchies(dimension);
+        if (nonClosureHierarchies.size() == 1) {
+            return nonClosureHierarchies.get(0);
         }
         return null;
+    }
+
+    /**
+     * Returns the list of hierarchies in a dimension, excluding
+     * any with a defined closureFor.
+     */
+    private static List<Hierarchy> getNonClosureHierarchies(
+        Dimension dimension)
+    {
+        List<Hierarchy> hierarchies = new ArrayList<Hierarchy>();
+        for (Hierarchy hierarchy : dimension.getHierarchyList()) {
+            if (hierarchy instanceof RolapHierarchy
+                && ((RolapHierarchy)hierarchy).closureFor == null)
+            {
+                hierarchies.add(hierarchy);
+            }
+        }
+        return hierarchies;
     }
 
     static List<Member> addMembers(
@@ -688,7 +695,9 @@ public class FunUtil extends Util {
      *
      * <p>Avoids sorting the whole list, finds only the <i>n</i>top (or bottom)
      * valued Members, and returns them as a new List. Helper function for MDX
-     * functions TopCount and BottomCount.
+     * functions TopCount and BottomCount.</p>
+     *
+     * <p>NOTE: Does not preserve the contents of the validator.</p>
      *
      * @param list a list of members
      * @param exp a Calc applied to each member to find its sort-key
@@ -697,7 +706,6 @@ public class FunUtil extends Util {
      * @param desc true to sort descending (and find TopCount), false to sort
      *   ascending (and find BottomCount).
      * @return the top or bottom members, as a new list.
-     * <p>NOTE: Does not preserve the contents of the validator.
      */
     public static  List<Member> partiallySortMembers(
         Evaluator evaluator,
@@ -706,6 +714,8 @@ public class FunUtil extends Util {
         int limit,
         boolean desc)
     {
+        assert list.size() > 0;
+        assert limit <= list.size();
         evaluator.getTiming().markStart(SORT_EVAL_TIMING_NAME);
         boolean timingEval = true;
         boolean timingSort = false;
@@ -804,7 +814,7 @@ public class FunUtil extends Util {
      *
      * @param evaluator Evaluator
      * @param list a list of tuples
-     * @param exp a Calc applied to each tple to find its sort-key
+     * @param exp a Calc applied to each tuple to find its sort-key
      * @param limit maximum count of tuples to return.
      * @param desc true to sort descending (and find TopCount),
      *  false to sort ascending (and find BottomCount).
@@ -817,6 +827,8 @@ public class FunUtil extends Util {
         int limit,
         boolean desc)
     {
+        assert list.size() > 0;
+        assert limit <= list.size();
         Comparator<List<Member>> comp =
             new BreakTupleComparator(evaluator, exp, list.getArity());
         if (desc) {
@@ -839,9 +851,6 @@ public class FunUtil extends Util {
         boolean post)
     {
         if (memberList.size() <= 1) {
-            return;
-        }
-        if (memberList.get(0).getDimension().isHighCardinality()) {
             return;
         }
         Comparator<Member> comparator = new HierarchizeComparator(post);
@@ -1219,8 +1228,13 @@ public class FunUtil extends Util {
         // arithmetic mean of the two numbers in the middle of the list, or
         // (entries[length/2 - 1] + entries[length/2]) / 2.
         int length = asArray.length;
-
-        if (p == 0.5) {
+        if (p <= 0.0) {
+            return asArray[0];
+        } else if (p >= 1.0) {
+            return asArray[length - 1];
+        } else if (length == 1) {
+            return asArray[0];
+        } else if (p == 0.5) {
             // Special case for median.
             if ((length & 1) == 1) {
                 // The length is odd. Note that length/2 is an integer
@@ -1230,18 +1244,13 @@ public class FunUtil extends Util {
                 return (asArray[(length >> 1) - 1] + asArray[length >> 1])
                     / 2.0;
             }
-        } else if (p <= 0.0) {
-            return asArray[0];
-        } else if (p >= 1.0) {
-            return asArray[length - 1];
         } else {
             final double jD = Math.floor(length * p);
-            int j = (int) jD;
-            double alpha = (p - jD) * length;
+            int j = jD > 0 ? (int) jD - 1 : (int) jD;
+            double alpha = (p * length) - jD;
             assert alpha >= 0;
             assert alpha <= 1;
-            return asArray[j] * (1.0 - alpha)
-                + asArray[j + 1] * alpha;
+            return asArray[j] + ((asArray[j + 1] - asArray[j]) * alpha);
         }
     }
 
@@ -1374,7 +1383,7 @@ public class FunUtil extends Util {
         SetWrapper sw1 = evaluateSet(evaluator, memberList, exp1);
         SetWrapper sw2 = evaluateSet(evaluator, memberList, exp2);
         Object covar = _covariance(sw1, sw2, false);
-        Object var1 = _var(sw1, false); //this should be false, yes?
+        Object var1 = _var(sw1, false); // this should be false, yes?
         Object var2 = _var(sw2, false);
         if ((covar instanceof Double)
             && (var1 instanceof Double)
@@ -1472,7 +1481,7 @@ public class FunUtil extends Util {
         for (int i = 0; i < sw.v.size(); i++) {
             sum += ((Double) sw.v.get(i)).doubleValue();
         }
-        //todo: should look at context and optionally include nulls
+        // todo: should look at context and optionally include nulls
         return sum / (double) sw.v.size();
     }
 
@@ -1802,10 +1811,7 @@ public class FunUtil extends Util {
 
         Member result = member.getHierarchy().getNullMember();
 
-        searchLoop:
-        for (int i = 0; i < ancestors.size(); i++) {
-            final Member ancestorMember = ancestors.get(i);
-
+        for (final Member ancestorMember : ancestors) {
             if (targetLevel != null) {
                 if (ancestorMember.getLevel() == targetLevel) {
                     if (schemaReader.isVisible(ancestorMember)) {
@@ -1893,13 +1899,7 @@ public class FunUtil extends Util {
                 m1 = unwrapLimitedRollupMember(m1.getParentMember());
                 m2 = unwrapLimitedRollupMember(m2.getParentMember());
                 if (equals(m1, m2)) {
-                    final int c = compareSiblingMembers(prev1, prev2);
-                    // compareHierarchically needs to impose a total order;
-                    // cannot return 0 for non-equal members
-                    assert c != 0
-                        : "Members " + prev1 + ", " + prev2
-                        + " are not equal, but compare returned 0.";
-                    return c;
+                    return compareSiblingMembers(prev1, prev2);
                 }
             }
         }
@@ -1912,16 +1912,8 @@ public class FunUtil extends Util {
         return m;
     }
     /**
-     * Compares two members which are known to have the same parent.
-     *
-     * First, compare by ordinal.
-     * This is only valid now we know they're siblings, because
-     * ordinals are only unique within a parent.
-     * If the dimension does not use ordinals, both ordinals
-     * will be -1.
-     *
-     * <p>If the ordinals do not differ, compare using regular member
-     * comparison.
+     * Compares two members which are known to have the same parent using their
+     * order keys.
      *
      * @param m1 First member
      * @param m2 Second member
@@ -1944,20 +1936,39 @@ public class FunUtil extends Util {
         }
         final Comparable k1 = m1.getOrderKey();
         final Comparable k2 = m2.getOrderKey();
-        if ((k1 != null) && (k2 != null)) {
-            return k1.compareTo(k2);
-        } else {
-            final int ordinal1 = m1.getOrdinal();
-            final int ordinal2 = m2.getOrdinal();
-            return (ordinal1 == ordinal2)
-                ? m1.compareTo(m2)
-                : (ordinal1 < ordinal2)
-                ? -1
-                : 1;
+        if (k1 instanceof String && k2 instanceof String) {
+            return Util.caseSensitiveCompareName((String)k1, (String)k2);
         }
+        return Util.compare(k1, k2);
     }
 
     /**
+     * Compares two members which are known to have the same parent by their
+     * names.
+     *
+     * @param m1 First member
+     * @param m2 Second member
+     * @return -1 if m1 collates less than m2,
+     *   1 if m1 collates after m2,
+     *   0 if m1 == m2.
+     */
+    public static int compareSiblingMembersByName(Member m1, Member m2) {
+        // calculated members collate after non-calculated
+        final boolean calculated1 = m1.isCalculatedInQuery();
+        final boolean calculated2 = m2.isCalculatedInQuery();
+        if (calculated1) {
+            if (!calculated2) {
+                return 1;
+            }
+        } else {
+            if (calculated2) {
+                return -1;
+            }
+        }
+        return m1.getName().compareTo(m2.getName());
+    }
+
+  /**
      * Returns whether one of the members in a tuple is null.
      */
     public static boolean tupleContainsNullMember(Member[] tuple) {
@@ -2151,7 +2162,15 @@ public class FunUtil extends Util {
         Exp[] args)
     {
         final int[] argCategories = ExpBase.getTypes(args);
-        return new FunDefBase(resolver, returnCategory, argCategories) {
+        return createDummyFunDef(resolver, returnCategory, argCategories);
+    }
+
+    static FunDef createDummyFunDef(
+        Resolver resolver,
+        int returnCategory,
+        int[] args)
+    {
+        return new FunDefBase(resolver, returnCategory, args) {
         };
     }
 
@@ -2231,7 +2250,7 @@ public class FunUtil extends Util {
         if (evaluator.isNonEmpty()) {
             // Allow the SQL generator to generate optimized SQL since we know
             // we're only interested in non-empty members of this level.
-            for (Level level : hierarchy.getLevels()) {
+            for (Level level : hierarchy.getLevelList()) {
                 List<Member> members =
                     getNonEmptyLevelMembers(
                         evaluator, level, includeCalcMembers);
@@ -2264,7 +2283,7 @@ public class FunUtil extends Util {
     *
     * @param items will be partially-sorted in place
     * @param comp a Comparator; null means use natural comparison
-    * @param limit
+    * @param limit Limit
     */
     static <T> void partialSort(T[] items, Comparator<T> comp, int limit)
     {
@@ -2278,7 +2297,64 @@ public class FunUtil extends Util {
     /**
      * Stable partial sort of a list. Returns the desired head of the list.
      */
-    static <T> List<T> stablePartialSort(
+    public static <T> List<T> stablePartialSort(
+        final List<T> list, final Comparator<T> comp, int limit)
+    {
+        return stablePartialSort(list, comp, limit, 0);
+    }
+
+    /**
+     * Stable partial sort of a list, using a specified algorithm.
+     */
+    public static <T> List<T> stablePartialSort(
+        final List<T> list, final Comparator<T> comp, int limit, int algorithm)
+    {
+        assert limit <= list.size();
+        assert list.size() > 0;
+        for (;;) {
+            switch (algorithm) {
+            case 0:
+                float ratio = (float) limit / (float) list.size();
+                if (ratio <= .05) {
+                    algorithm = 4; // julian's algorithm
+                } else if (ratio <= .35) {
+                    algorithm = 2; // marc's algorithm
+                } else {
+                    algorithm = 1; // array sort
+                }
+                break;
+            case 1:
+                return stablePartialSortArray(list, comp, limit);
+            case 2:
+                return stablePartialSortMarc(list, comp, limit);
+            case 3:
+                return stablePartialSortPedro(list, comp, limit);
+            case 4:
+                return stablePartialSortJulian(list, comp, limit);
+            default:
+                throw new RuntimeException();
+            }
+        }
+    }
+
+    /**
+     * Partial sort an array by sorting it and returning the first {@code limit}
+     * elements. Fastest approach if limit is a significant fraction of the
+     * list.
+     */
+    public static <T> List<T> stablePartialSortArray(
+        final List<T> list, final Comparator<T> comp, int limit)
+    {
+        ArrayList<T> list2 = new ArrayList<T>(list);
+        Collections.sort(list2, comp);
+        return list2.subList(0, limit);
+    }
+
+    /**
+     * Marc's original algorithm for stable partial sort of a list.
+     * Now superseded by {@link #stablePartialSortJulian}.
+     */
+    public static <T> List<T> stablePartialSortMarc(
         final List<T> list, final Comparator<T> comp, int limit)
     {
         assert limit >= 0;
@@ -2326,6 +2402,142 @@ public class FunUtil extends Util {
                 return length;
             }
         };
+    }
+
+    /**
+     * Pedro's algorithm for stably sorting the top {@code limit} items in
+     * a list.
+     */
+    public static <T> List<T> stablePartialSortPedro(
+        final List<T> list, final Comparator<T> comp, int limit)
+    {
+        final ObjIntPair<T>[] pairs = new ObjIntPair[limit];
+        Comparator<ObjIntPair<T>> pairComp =
+            new Comparator<ObjIntPair<T>>() {
+                public int compare(ObjIntPair<T> x, ObjIntPair<T> y) {
+                    int val = comp.compare(x.t, y.t);
+                    if (val == 0) {
+                        val = x.i - y.i;
+                    }
+                    return val;
+                }
+            };
+
+        int filled = 0;
+        T maximum = null;
+        int maximumIndex = 0;
+        int originalIndex = 0;
+        for (T item : list) { // O(n) to scan list
+            switch (filled) {
+            case 0:
+                maximum = item;
+                pairs[0] = new ObjIntPair<T>(item, originalIndex);
+                filled++;
+                break;
+            default:
+                if (filled < limit) {
+                    pairs[filled] = new ObjIntPair<T>(item, originalIndex);
+
+                    if (comp.compare(item, maximum) > 0) {
+                        maximum = item;
+                        maximumIndex = filled;
+                    }
+                    filled++;
+                } else {
+                    if (comp.compare(item, maximum) < 0) {
+                        pairs[maximumIndex] =
+                            new ObjIntPair<T>(item, originalIndex);
+                        maximum = pairs[0].t;
+                        maximumIndex = 0;
+                        for (int i = 0; i < filled; i++) {
+                            if (comp.compare(pairs[i].t, maximum) > 0) {
+                                maximum = pairs[i].t;
+                                maximumIndex = i;
+                            }
+                        }
+                    }
+                }
+            }
+            originalIndex++;
+        }
+
+        Arrays.sort(pairs, pairComp);
+
+        if (false)
+        for (int i = 0; i < limit; i++) {
+            T item = pairs[i].t;
+            T originalItem = list.get(i);
+            int itemIndex = pairs[i].i;
+            if (itemIndex < i) {
+                if (pairs[itemIndex].i > i) {
+                    list.set(pairs[itemIndex].i, originalItem);
+                }
+            } else {
+                list.set(itemIndex, originalItem);
+            }
+            list.set(i, item);
+        }
+
+        List<T> result = new ArrayList<T>(limit);
+        for (int i = 0; i < limit; i++) {
+            result.add(list.get(pairs[i].i));
+        }
+        return result;
+    }
+
+    /**
+     * Julian's algorithm for stable partial sort. Improves Pedro's algorithm
+     * by using a heap (priority queue) for the top {@code limit} items seen.
+     * The items on the priority queue have an ordinal field, so the queue
+     * can be used to generate a list of stably sorted items. (Heap sort is
+     * not normally stable.)
+     *
+     * @param list List to sort
+     * @param comp Comparator
+     * @param limit Maximum number of items to return
+     * @param <T> Element type
+     * @return Sorted list, containing at most limit items
+     */
+    public static <T> List<T> stablePartialSortJulian(
+        final List<T> list, final Comparator<T> comp, int limit)
+    {
+        final Comparator<ObjIntPair<T>> comp2 =
+            new Comparator<ObjIntPair<T>>() {
+                public int compare(ObjIntPair<T> o1, ObjIntPair<T> o2) {
+                    int c = comp.compare(o1.t, o2.t);
+                    if (c == 0) {
+                        c = Util.compare(o1.i, o2.i);
+                    }
+                    return -c;
+                }
+            };
+        int filled = 0;
+        final PriorityQueue<ObjIntPair<T>> queue =
+            new PriorityQueue<ObjIntPair<T>>(limit, comp2);
+        for (T element : list) {
+            if (filled < limit) {
+                queue.offer(new ObjIntPair<T>(element, filled++));
+            } else {
+                ObjIntPair<T> head = queue.element();
+                if (comp.compare(element, head.t) <= 0) {
+                    ObjIntPair<T> item = new ObjIntPair<T>(element, filled++);
+                    if (comp2.compare(item, head) >= 0) {
+                        ObjIntPair poll = queue.remove();
+                        Util.discard(poll);
+                        queue.offer(item);
+                    }
+                }
+            }
+        }
+
+        int n = queue.size();
+        final Object[] elements = new Object[n];
+        while (n > 0) {
+            elements[--n] = queue.poll().t;
+        }
+        assert queue.isEmpty();
+        //noinspection unchecked
+        return Arrays.asList((T[]) elements);
     }
 
     static TupleList parseTupleList(
@@ -2643,6 +2855,7 @@ public class FunUtil extends Util {
                 for (int i = start; i < left; i++) {
                     assert !more(vec[i], pivot);
                 }
+                //noinspection AssertWithSideEffects
                 assert equal(vec[left], pivot);
                 for (int i = left + 1;  i <= end;  i++) {
                     assert !less(vec[i], pivot);
@@ -3134,21 +3347,23 @@ public class FunUtil extends Util {
         List v = new ArrayList();
         public int errorCount = 0, nullCount = 0;
 
-        //private double avg = Double.NaN;
-        //todo: parameterize inclusion of nulls
-        //by making this a method of the SetWrapper, we can cache the result
-        //this allows its reuse in Correlation
-        // public double getAverage() {
-        //     if (avg == Double.NaN) {
-        //         double sum = 0.0;
-        //         for (int i = 0; i < resolvers.size(); i++) {
-        //             sum += ((Double) resolvers.elementAt(i)).doubleValue();
-        //         }
-        //         //todo: should look at context and optionally include nulls
-        //         avg = sum / (double) resolvers.size();
-        //     }
-        //     return avg;
-        // }
+/*
+        private double avg = Double.NaN;
+        // todo: parameterize inclusion of nulls
+        // by making this a method of the SetWrapper, we can cache the result
+        // this allows its reuse in Correlation
+        public double getAverage() {
+            if (avg == Double.NaN) {
+                double sum = 0.0;
+                for (int i = 0; i < resolvers.size(); i++) {
+                    sum += ((Double) resolvers.elementAt(i)).doubleValue();
+                }
+                // todo: should look at context and optionally include nulls
+                avg = sum / (double) resolvers.size();
+            }
+            return avg;
+        }
+*/
     }
 
     /**
@@ -3250,11 +3465,23 @@ public class FunUtil extends Util {
             throw new UnsupportedOperationException();
         }
 
+        public Object getPropertyValue(Property property) {
+            throw new UnsupportedOperationException();
+        }
+
         public String getPropertyFormattedValue(String propertyName) {
             throw new UnsupportedOperationException();
         }
 
-        public void setProperty(String name, Object value) {
+        public String getPropertyFormattedValue(Property property) {
+            throw new UnsupportedOperationException();
+        }
+
+        public void setProperty(String propertyName, Object value) {
+            throw new UnsupportedOperationException();
+        }
+
+        public void setProperty(Property property, Object value) {
             throw new UnsupportedOperationException();
         }
 
@@ -3321,6 +3548,10 @@ public class FunUtil extends Util {
         }
 
         public Map<String, Annotation> getAnnotationMap() {
+            throw new UnsupportedOperationException();
+        }
+
+        public Larder getLarder() {
             throw new UnsupportedOperationException();
         }
 
@@ -3405,11 +3636,7 @@ public class FunUtil extends Util {
             }
             final Comparable thisKey = this.member.getOrderKey();
             final Comparable otherKey = otherMember.getOrderKey();
-            if ((thisKey != null) && (otherKey != null)) {
-                return thisKey.compareTo(otherKey);
-            } else {
-                return this.member.compareTo(otherMember);
-            }
+            return Util.compare(thisKey, otherKey);
         }
     }
 
@@ -3420,8 +3647,8 @@ public class FunUtil extends Util {
      * {@code int} to {@link Integer}.
      */
     public static class ObjIntPair<T> {
-        T t;
-        int i;
+        final T t;
+        final int i;
 
         public ObjIntPair(T t, int i) {
             this.t = t;
@@ -3433,7 +3660,8 @@ public class FunUtil extends Util {
         }
 
         public boolean equals(Object obj) {
-            return obj instanceof ObjIntPair
+            return this == obj
+                || obj instanceof ObjIntPair
                 && this.i == ((ObjIntPair) obj).i
                 && Util.equals(this.t, ((ObjIntPair) obj).t);
         }

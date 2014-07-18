@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
-// Copyright (C) 2005-2009 Pentaho and others
+// Copyright (C) 2005-2011 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.test.comp;
@@ -51,7 +51,7 @@ import javax.xml.parsers.DocumentBuilder;
  *                 &lt;dim&gt;[Education Level]&lt;/dim&gt;<br/>
  *                 &lt;dim&gt;[Marital Status]&lt;/dim&gt;<br/>
  *                 &lt;dim&gt;[Yearly Income]&lt;/dim&gt;<br/>
- *                 &lt;dim&gt;[Promotion Media]&lt;/dim&gt;<br/>
+ *                 &lt;dim&gt;[Promotion].[Media Type]&lt;/dim&gt;<br/>
  *                 &lt;dim&gt;[Gender]&lt;/dim&gt;<br/>
  *             &lt;/dimensions&gt;<br/>
  *             &lt;tuples&gt;<br/>
@@ -73,7 +73,7 @@ import javax.xml.parsers.DocumentBuilder;
  * Status]&lt;/member&gt;<br/>
  *                     &lt;member&gt;[Yearly Income].[All Yearly
  * Incomes]&lt;/member&gt;<br/>
- *                     &lt;member&gt;[Promotion Media].[All
+ *                     &lt;member&gt;[Promotion].[Media Type].[All
  * Media]&lt;/member&gt;<br/>
  *                     &lt;member&gt;[Gender].[All Gender]&lt;/member&gt;<br/>
  *                 &lt;/tuple&gt;<br/>

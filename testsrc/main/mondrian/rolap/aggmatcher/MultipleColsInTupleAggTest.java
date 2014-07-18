@@ -4,12 +4,15 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho and others
+=======
+// Copyright (C) 2005-2013 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.rolap.aggmatcher;
 
-import mondrian.olap.MondrianProperties;
 import mondrian.olap.Result;
 
 /**
@@ -37,11 +40,9 @@ public class MultipleColsInTupleAggTest extends AggTableTestCase {
             return;
         }
 
-        MondrianProperties props = MondrianProperties.instance();
-
         // get value without aggregates
-        propSaver.set(props.UseAggregates, false);
-        propSaver.set(props.ReadAggregates, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
+        propSaver.set(propSaver.props.ReadAggregates, false);
 
         String mdx =
             "select {[Measures].[Total]} on columns from [Fact]";
@@ -50,14 +51,19 @@ public class MultipleColsInTupleAggTest extends AggTableTestCase {
 
         String mdx2 =
             "select {[Measures].[Total]} on columns from [Fact] where "
+<<<<<<< HEAD
             + "{[Product].[Cat One].[Prod Cat One].[One]}";
         Result aresult = getTestContext().executeQuery(mdx2);
+=======
+            + "{[Product].[Products].[Cat One].[Prod Cat One].[One]}";
+        Result aresult = getCubeTestContext().executeQuery(mdx2);
+>>>>>>> upstream/4.0
         Object av = aresult.getCell(new int[]{0}).getValue();
 
         // unless there is a way to flush the cache,
         // I'm skeptical about these results
-        propSaver.set(props.UseAggregates, true);
-        propSaver.set(props.ReadAggregates, false);
+        propSaver.set(propSaver.props.UseAggregates, true);
+        propSaver.set(propSaver.props.ReadAggregates, false);
 
         Result result1 = getTestContext().executeQuery(mdx);
         Object v1 = result1.getCell(new int[]{0}).getValue();
@@ -79,7 +85,7 @@ public class MultipleColsInTupleAggTest extends AggTableTestCase {
             "select "
             + "{[Measures].[Total]} on columns, "
             + "non empty CrossJoin({[Product].[Cat One].[Prod Cat One]},"
-            + "{[Store].[All Stores]}) on rows "
+            + "{[Store].[Store].[All Stores]}) on rows "
             + "from [Fact]";
 
         getTestContext().assertQueryReturns(
@@ -89,8 +95,8 @@ public class MultipleColsInTupleAggTest extends AggTableTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Total]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Cat One].[Prod Cat One],"
-            + " [Store].[All Stores]}\n"
+            + "{[Product].[Products].[Cat One].[Prod Cat One],"
+            + " [Store].[Store].[All Stores]}\n"
             + "Row #0: 15\n");
     }
 
@@ -108,8 +114,8 @@ public class MultipleColsInTupleAggTest extends AggTableTestCase {
             + "Axis #1:\n"
             + "{[Measures].[Total]}\n"
             + "Axis #2:\n"
-            + "{[Product].[Cat One].[Prod Cat Two]}\n"
-            + "{[Product].[Cat One].[Prod Cat One]}\n"
+            + "{[Product].[Products].[Cat One].[Prod Cat Two]}\n"
+            + "{[Product].[Products].[Cat One].[Prod Cat One]}\n"
             + "Row #0: 18\n"
             + "Row #1: 15\n");
     }
@@ -133,7 +139,7 @@ public class MultipleColsInTupleAggTest extends AggTableTestCase {
            + " </Hierarchy>\n"
            + "</Dimension>\n"
            + "<Dimension name='Product' foreignKey='prod_id'>\n"
-           + " <Hierarchy hasAll='true' primaryKey='prod_id' "
+           + " <Hierarchy hasAll='true' name='Products' primaryKey='prod_id' "
            + "primaryKeyTable='product_csv'>\n"
            + " <Join leftKey='prod_cat' rightAlias='product_cat' "
            + "rightKey='prod_cat'>\n"

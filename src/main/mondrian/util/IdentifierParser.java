@@ -58,8 +58,8 @@ public class IdentifierParser extends org.olap4j.impl.IdentifierParser {
             final List<Id.Segment> mondrianSegmentList =
                 Util.convert(this.segmentList);
             Member member =
-                (Member) Util.lookupCompound(
-                    schemaReader, cube, mondrianSegmentList, !ignoreInvalid,
+                (Member) schemaReader.lookupCompound(
+                    cube, mondrianSegmentList, !ignoreInvalid,
                     Category.Member);
             if (member == null) {
                 assert ignoreInvalid;

@@ -4,22 +4,27 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2007 Pentaho
+// Copyright (C) 2006-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
 
-import mondrian.rolap.*;
-
-import java.util.List;
+import mondrian.olap.Util;
+import mondrian.rolap.RolapMember;
 
 /**
  * Column constraint defined by a member.
  *
+ * @see Util#deprecated(Object, boolean) No longer a column predicate;
+ * TODO: rename this class.
+ *
  * @author jhyde
  * @since Mar 16, 2006
  */
-public class MemberColumnPredicate extends ValueColumnPredicate {
+public class MemberColumnPredicate
+    extends ValueColumnPredicate
+    implements MemberPredicate
+{
     private final RolapMember member;
 
     /**
@@ -28,18 +33,21 @@ public class MemberColumnPredicate extends ValueColumnPredicate {
      * @param column Constrained column
      * @param member Member to constrain column to; must not be null
      */
-    public MemberColumnPredicate(RolapStar.Column column, RolapMember member) {
+    public MemberColumnPredicate(
+        PredicateColumn column,
+        RolapMember member)
+    {
         super(column, member.getKey());
         this.member = member;
+        assert column != null;
+        assert member.getLevel().getAttribute().getKeyList().size() == 1;
+        assert column.physColumn
+               == member.getLevel().getAttribute().getKeyList().get(0);
     }
 
     // for debug
     public String toString() {
         return member.getUniqueName();
-    }
-
-    public List<RolapStar.Column> getConstrainedColumnList() {
-        return super.getConstrainedColumnList();
     }
 
     /**
@@ -67,9 +75,6 @@ public class MemberColumnPredicate extends ValueColumnPredicate {
         buf.append(member.getUniqueName());
     }
 
-    public StarColumnPredicate cloneWithColumn(RolapStar.Column column) {
-        return new MemberColumnPredicate(column, member);
-    }
 }
 
 // End MemberColumnPredicate.java

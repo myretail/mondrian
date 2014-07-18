@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2000-2005 Julian Hyde
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -13,7 +13,6 @@ package mondrian.olap;
 import mondrian.mdx.*;
 import mondrian.olap.type.*;
 import mondrian.resource.MondrianResource;
-import mondrian.rolap.RolapCalculatedMember;
 
 import java.io.PrintWriter;
 import java.util.*;
@@ -124,10 +123,9 @@ public class Formula extends QueryPart {
         if (isMember) {
             Exp formatExp = getFormatExp(validator);
             if (formatExp != null) {
+                mdxMember.setProperty(Property.FORMAT_EXP_PARSED, formatExp);
                 mdxMember.setProperty(
-                    Property.FORMAT_EXP_PARSED.name, formatExp);
-                mdxMember.setProperty(
-                    Property.FORMAT_EXP.name, Util.unparse(formatExp));
+                    Property.FORMAT_EXP, Util.unparse(formatExp));
             }
 
             final List<MemberProperty> memberPropertyList =
@@ -215,13 +213,10 @@ public class Formula extends QueryPart {
                         }
                     } else {
                         final Hierarchy hierarchy;
-                        if (parent instanceof Dimension
-                            && MondrianProperties.instance()
-                                .SsasCompatibleNaming.get())
-                        {
+                        if (parent instanceof Dimension) {
                             Dimension dimension = (Dimension) parent;
-                            if (dimension.getHierarchies().length == 1) {
-                                hierarchy = dimension.getHierarchies()[0];
+                            if (dimension.getHierarchyList().size() == 1) {
+                                hierarchy = dimension.getHierarchyList().get(0);
                             } else {
                                 hierarchy = null;
                             }
@@ -232,7 +227,7 @@ public class Formula extends QueryPart {
                             throw MondrianResource.instance()
                                 .MdxCalculatedHierarchyError.ex(id.toString());
                         }
-                        level = hierarchy.getLevels()[0];
+                        level = hierarchy.getLevelList().get(0);
                     }
                     if (parentMember != null
                         && parentMember.isCalculated())
@@ -267,11 +262,9 @@ public class Formula extends QueryPart {
             mdxSet =
                 new SetBase(
                     ((Id.NameSegment) segment0).getName(),
-                    null,
-                    null,
                     exp,
                     false,
-                    Collections.<String, Annotation>emptyMap());
+                    Larders.EMPTY);
         }
     }
 
@@ -462,7 +455,8 @@ public class Formula extends QueryPart {
      * looks for properties called "format", "format_string", etc. Then it looks
      * inside the expression, and returns the formatting expression for the
      * first member it finds.
-     * @param validator
+     *
+     * @param validator Validator
      */
     private Exp getFormatExp(Validator validator) {
         // If they have specified a format string (which they can do under
@@ -554,11 +548,14 @@ public class Formula extends QueryPart {
         public Object visit(MemberExpr memberExpr) {
             Member member = memberExpr.getMember();
             returnFormula(member);
-            if (member.isCalculated()
-                    && member instanceof RolapCalculatedMember
-                    && !hasCyclicReference(memberExpr))
-            {
-                Formula formula = ((RolapCalculatedMember) member).getFormula();
+            xxx:
+            if (!hasCyclicReference(memberExpr) && member.isCalculated()) {
+                Formula formula;
+                if (member instanceof CalculatedMember) {
+                    formula = ((CalculatedMember) member).getFormula();
+                } else {
+                    break xxx;
+                }
                 formula.accept(validator);
                 returnFormula(member);
             }
@@ -567,10 +564,10 @@ public class Formula extends QueryPart {
         }
 
         /**
+         * This check is required to avoid infinite recursion.
          *
-         * @param expr
+         * @param expr Expression
          * @return true if there is cyclic reference in expression.
-         * This check is required to avoid infinite recursion
          */
         private boolean hasCyclicReference(Exp expr) {
             List<MemberExpr> expList = new ArrayList<MemberExpr>();
@@ -580,14 +577,14 @@ public class Formula extends QueryPart {
         private boolean hasCyclicReference(Exp expr, List<MemberExpr> expList) {
             if (expr instanceof MemberExpr) {
                 MemberExpr memberExpr = (MemberExpr) expr;
-                if (expList.contains(expr)) {
+                if (expList.contains(memberExpr)) {
                     return true;
                 }
                 expList.add(memberExpr);
                 Member member = memberExpr.getMember();
-                if (member instanceof RolapCalculatedMember) {
-                    RolapCalculatedMember calculatedMember =
-                        (RolapCalculatedMember) member;
+                if (member instanceof CalculatedMember) {
+                    CalculatedMember calculatedMember =
+                        (CalculatedMember) member;
                     Exp exp1 =
                         calculatedMember.getExpression().accept(validator);
                     return hasCyclicReference(exp1, expList);
@@ -595,22 +592,16 @@ public class Formula extends QueryPart {
             }
             if (expr instanceof FunCall) {
                 FunCall funCall = (FunCall) expr;
-                Exp[] exps = funCall.getArgs();
-                for (int i = 0; i < exps.length; i++) {
+                for (Exp argEXpr : funCall.getArgs()) {
                     if (hasCyclicReference(
-                            exps[i], cloneForEachBranch(expList)))
+                            argEXpr,
+                            new ArrayList<MemberExpr>(expList)))
                     {
                         return true;
                     }
                 }
             }
             return false;
-        }
-
-        private List<MemberExpr> cloneForEachBranch(List<MemberExpr> expList) {
-            ArrayList<MemberExpr> list = new ArrayList<MemberExpr>();
-            list.addAll(expList);
-            return list;
         }
 
         private void returnFormula(Member member) {
@@ -620,8 +611,7 @@ public class Formula extends QueryPart {
         }
 
         private Exp getFormula(Member member) {
-            return (Exp)
-                member.getPropertyValue(Property.FORMAT_EXP_PARSED.name);
+            return (Exp) member.getPropertyValue(Property.FORMAT_EXP_PARSED);
         }
     }
 }

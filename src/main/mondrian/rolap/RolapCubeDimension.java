@@ -5,14 +5,15 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2010 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
 import mondrian.olap.*;
 
-import java.util.List;
+import org.olap4j.metadata.*;
+import org.olap4j.metadata.Dimension;
 
 /**
  * RolapCubeDimension wraps a RolapDimension for a specific Cube.
@@ -21,73 +22,59 @@ import java.util.List;
  */
 public class RolapCubeDimension extends RolapDimension {
 
-    RolapCube cube;
+    final RolapCube cube;
 
-    RolapDimension rolapDimension;
-    int cubeOrdinal;
-    MondrianDef.CubeDimension xmlDimension;
+    final RolapDimension rolapDimension;
+    final int cubeOrdinal;
 
     /**
      * Creates a RolapCubeDimension.
      *
      * @param cube Cube
-     * @param rolapDim Dimension wrapped by this dimension
-     * @param cubeDim XML element definition
+     * @param rolapDimension Dimension wrapped by this dimension
      * @param name Name of dimension
      * @param cubeOrdinal Ordinal of dimension within cube
-     * @param hierarchyList List of hierarchies in cube
-     * @param highCardinality Whether high cardinality dimension
+     * @param larder Larder
      */
     public RolapCubeDimension(
         RolapCube cube,
-        RolapDimension rolapDim,
-        MondrianDef.CubeDimension cubeDim,
+        RolapDimension rolapDimension,
         String name,
         int cubeOrdinal,
-        List<RolapHierarchy> hierarchyList,
-        final boolean highCardinality)
+        Larder larder)
     {
         super(
-            null,
+            cube.getSchema(),
             name,
-            cubeDim.caption != null
-                ? cubeDim.caption
-                : rolapDim.getCaption(),
-            cubeDim.visible,
-            cubeDim.caption != null
-                ? cubeDim.description
-                : rolapDim.getDescription(),
-            null,
-            highCardinality,
-            RolapHierarchy.createAnnotationMap(cubeDim.annotations));
-        this.xmlDimension = cubeDim;
-        this.rolapDimension = rolapDim;
+            rolapDimension.isVisible(),
+            rolapDimension.getDimensionType(),
+            rolapDimension.hanger,
+            larder);
+        this.rolapDimension = rolapDimension;
         this.cubeOrdinal = cubeOrdinal;
         this.cube = cube;
-        this.caption = cubeDim.caption;
-
-        // create new hierarchies
-        hierarchies = new RolapCubeHierarchy[rolapDim.getHierarchies().length];
-
-        for (int i = 0; i < rolapDim.getHierarchies().length; i++) {
-            final RolapCubeHierarchy cubeHierarchy =
-                new RolapCubeHierarchy(
-                    this,
-                    cubeDim,
-                    (RolapHierarchy) rolapDim.getHierarchies()[i],
-                    ((HierarchyBase) rolapDim.getHierarchies()[i]).getSubName(),
-                    hierarchyList.size());
-            hierarchies[i] = cubeHierarchy;
-            hierarchyList.add(cubeHierarchy);
-        }
+        this.keyAttribute = rolapDimension.keyAttribute;
     }
 
     public RolapCube getCube() {
         return cube;
     }
 
-    public Schema getSchema() {
+    public RolapSchema getSchema() {
         return rolapDimension.getSchema();
+    }
+
+    @Override
+    public RolapCubeHierarchy[] getHierarchies() {
+        //noinspection SuspiciousToArrayCall
+        return hierarchyList.toArray(
+            new RolapCubeHierarchy[hierarchyList.size()]);
+    }
+
+    @Override
+    public NamedList<? extends RolapCubeHierarchy> getHierarchyList() {
+        //noinspection unchecked
+        return (NamedList) hierarchyList;
     }
 
     // this method should eventually replace the call below
@@ -110,30 +97,23 @@ public class RolapCubeDimension extends RolapDimension {
         return getUniqueName().equals(that.getUniqueName());
     }
 
-    RolapCubeHierarchy newHierarchy(
-        String subName, boolean hasAll, RolapHierarchy closureFor)
-    {
-        throw new UnsupportedOperationException();
-    }
-
-    public String getCaption() {
-        if (caption != null) {
-            return caption;
-        }
-        return rolapDimension.getCaption();
-    }
-
-    public void setCaption(String caption) {
-        if (true) {
-            throw new UnsupportedOperationException();
-        }
-        rolapDimension.setCaption(caption);
-    }
-
-    public DimensionType getDimensionType() {
+    public Dimension.Type getDimensionType() {
         return rolapDimension.getDimensionType();
     }
 
+    @Override
+    public RolapSchema.PhysPath getKeyPath(RolapSchema.PhysColumn column) {
+        return rolapDimension.getKeyPath(column);
+    }
+
+    @Override
+    public RolapSchema.PhysRelation getKeyTable() {
+        return rolapDimension.getKeyTable();
+    }
+
+    public RolapAttribute getKeyAttribute() {
+        return keyAttribute;
+    }
 }
 
 // End RolapCubeDimension.java

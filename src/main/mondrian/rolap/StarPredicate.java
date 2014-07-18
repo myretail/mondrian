@@ -4,12 +4,13 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2007 Pentaho
+// Copyright (C) 2007-2012 Pentaho
 // All Rights Reserved.
 */
 package mondrian.rolap;
 
-import mondrian.rolap.sql.SqlQuery;
+import mondrian.rolap.agg.PredicateColumn;
+import mondrian.spi.Dialect;
 
 import java.util.List;
 
@@ -36,10 +37,13 @@ public interface StarPredicate {
      *
      * @return List of constrained columns
      */
-    public List<RolapStar.Column> getConstrainedColumnList();
+    public List<PredicateColumn> getColumnList();
 
     /**
-     * Returns a bitmap of constrained columns to speed up comparison
+     * Returns a bitmap of constrained columns to speed up comparison.
+     *
+     * @see mondrian.rolap.RolapSchema.PhysColumn#ordinal()
+     *
      * @return bitmap representing all constraining columns.
      */
     public BitKey getConstrainedColumnBitKey();
@@ -113,7 +117,7 @@ public interface StarPredicate {
      */
     Object WILDCARD = new Object();
 
-    void toSql(SqlQuery sqlQuery, StringBuilder buf);
+    void toSql(Dialect dialect, StringBuilder buf);
 }
 
 // End StarPredicate.java

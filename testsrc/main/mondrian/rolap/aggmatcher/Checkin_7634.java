@@ -60,7 +60,7 @@ public class Checkin_7634 extends CsvDBTestCase {
 
         // Execute query but do not used the CrossJoin nonEmptyList optimization
         propSaver.set(
-            MondrianProperties.instance().CrossJoinOptimizerSize,
+            propSaver.props.CrossJoinOptimizerSize,
             Integer.MAX_VALUE);
         Result result1 = getTestContext().executeQuery(mdx);
         String resultString1 = TestContext.toString(result1);
@@ -68,7 +68,7 @@ public class Checkin_7634 extends CsvDBTestCase {
         // Execute query using the new version of the CrossJoin
         // nonEmptyList optimization
         propSaver.set(
-            MondrianProperties.instance().CrossJoinOptimizerSize,
+            propSaver.props.CrossJoinOptimizerSize,
             Integer.MAX_VALUE);
         Result result2 = getTestContext().executeQuery(mdx);
         String resultString2 = TestContext.toString(result2);

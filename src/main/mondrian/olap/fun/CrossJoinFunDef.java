@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2002-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -461,17 +461,6 @@ public class CrossJoinFunDef extends FunDefBase {
         if (list.isEmpty()) {
             return list;
         }
-        try {
-            final Object o = list.get(0);
-            if (o instanceof Member) {
-                // Cannot optimize high cardinality dimensions
-                if (((Member)o).getDimension().isHighCardinality()) {
-                    return list;
-                }
-            }
-        } catch (IndexOutOfBoundsException ioobe) {
-            return TupleCollections.emptyList(list.getArity());
-        }
         int size = list.size();
 
         if (size > opSize && evaluator.isNonEmpty()) {
@@ -815,7 +804,7 @@ public class CrossJoinFunDef extends FunDefBase {
                 }
             }
 
-            List<Member> slicerMembers = null;
+            List<? extends Member> slicerMembers = null;
             if (evaluator instanceof RolapEvaluator) {
                 RolapEvaluator rev = (RolapEvaluator) evaluator;
                 slicerMembers = rev.getSlicerMembers();

@@ -18,16 +18,16 @@ import org.olap4j.test.TestContext;
 import java.util.Properties;
 
 /**
- * Test suite that runs the olap4j Test Compatiblity Kit (TCK) against
+ * Test suite that runs the olap4j Test Compatibility Kit (TCK) against
  * mondrian's olap4j driver.
  *
  * @author jhyde
  * @since 2010/11/22
  */
 public class Olap4jTckTest extends TestCase {
-    private static final Util.Functor1<Boolean, Test> CONDITION =
-        new Util.Functor1<Boolean, Test>() {
-            public Boolean apply(Test test) {
+    private static final Util.Predicate1<Test> CONDITION =
+        new Util.Predicate1<Test>() {
+            public boolean test(Test test) {
                 if (!(test instanceof TestCase)) {
                     return true;
                 }
@@ -46,7 +46,7 @@ public class Olap4jTckTest extends TestCase {
 
     public static TestSuite suite() {
         final Util.PropertyList list =
-            mondrian.test.TestContext.instance()
+            mondrian.test.TestContext.instance().legacy()
                 .getConnectionProperties();
         final String connStr = "jdbc:mondrian:" + list;
         final String catalog = list.get("Catalog");

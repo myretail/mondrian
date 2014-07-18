@@ -62,8 +62,9 @@ public class UtilCompatibleJdk15 implements UtilCompatible {
     {
         try {
             Class<? extends Annotation> annotationClass =
-                (Class<? extends Annotation>)
-                    Class.forName(annotationClassName);
+                ClassResolver.INSTANCE.forName(
+                    annotationClassName,
+                    true);
             if (method.isAnnotationPresent(annotationClass)) {
                 final Annotation annotation =
                     method.getAnnotation(annotationClass);
@@ -169,6 +170,10 @@ public class UtilCompatibleJdk15 implements UtilCompatible {
             Arrays.asList(ts).subList(start, end), t,
             RolapUtil.ROLAP_COMPARATOR);
         return (i < 0) ? (i - start) : (i + start);
+    }
+
+    public Locale localeForLanguageTag(String localeString) {
+        return null;
     }
 }
 

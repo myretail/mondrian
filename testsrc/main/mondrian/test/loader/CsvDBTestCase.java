@@ -88,7 +88,11 @@ public abstract class CsvDBTestCase extends FoodMartTestCase {
         String namedSetDefs = getNamedSetDescription();
         String udfDefs = getUdfDescription();
         String roleDefs = getRoleDescription();
+<<<<<<< HEAD
         return TestContext.instance().create(
+=======
+        this.testContext = TestContext.instance().legacy().create(
+>>>>>>> upstream/4.0
             parameterDefs,
             cubeDefs,
             virtualCubeDefs,

@@ -4,14 +4,15 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2006-2012 Pentaho
+// Copyright (C) 2006-2014 Pentaho
 // All Rights Reserved.
 */
 package mondrian.server;
 
 import mondrian.olap.MondrianException;
 import mondrian.olap.MondrianServer;
-import mondrian.olap4j.CatalogFinder;
+import mondrian.olap.Util;
+import mondrian.olap4j.*;
 import mondrian.resource.MondrianResource;
 import mondrian.rolap.RolapConnection;
 import mondrian.rolap.RolapResultShepherd;
@@ -20,16 +21,20 @@ import mondrian.rolap.agg.AggregationManager;
 import mondrian.server.monitor.*;
 import mondrian.spi.CatalogLocator;
 import mondrian.util.LockBox;
-import mondrian.xmla.XmlaHandler;
+import mondrian.xmla.*;
 
 import org.apache.commons.collections.map.ReferenceMap;
 import org.apache.log4j.Logger;
 
 import org.olap4j.OlapConnection;
 
+import java.lang.management.ManagementFactory;
+import java.lang.ref.*;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.management.*;
 
 /**
  * Implementation of {@link mondrian.olap.MondrianServer}.
@@ -66,26 +71,46 @@ class MondrianServerImpl
      */
     @SuppressWarnings("unchecked")
     private final Map<Integer, RolapConnection> connectionMap =
+<<<<<<< HEAD
         /*
          * We use a reference map here because the value
          * is what needs to be week, not the key, as it
          * would be the case with a WeakHashMap.
          */
         new ReferenceMap(ReferenceMap.HARD, ReferenceMap.WEAK);
+=======
+         // We use a reference map here because the value
+         // is what needs to be week, not the key, as it
+         // would be the case with a WeakHashMap.
+        new ReferenceMap(ReferenceMap.WEAK, ReferenceMap.WEAK);
+>>>>>>> upstream/4.0
 
     /**
      * Map of open statements, by id. Statements are added just after
      * construction, and are removed when they call close. Garbage collection
-     * may cause a connection to be removed earlier.
+     * may cause references to become null.
+     *
+     * <p>The main reason that the keys are {@link WeakReference}s is for
+     * connections' internal statements. The internal statement references the
+     * connection. We did not want to prevent the connections from being garbage
+     * collected if the only reference to them was their own internal
+     * statement.</p>
      */
     @SuppressWarnings("unchecked")
     private final Map<Long, Statement> statementMap =
+<<<<<<< HEAD
         /*
          * We use a reference map here because the value
          * is what needs to be week, not the key, as it
          * would be the case with a WeakHashMap.
          */
         new ReferenceMap(ReferenceMap.HARD, ReferenceMap.WEAK);
+=======
+         // We use a reference map here because the value
+         // is what needs to be week, not the key, as it
+         // would be the case with a WeakHashMap.
+        new ReferenceMap(ReferenceMap.WEAK, ReferenceMap.WEAK);
+>>>>>>> upstream/4.0
 
     private final MonitorImpl monitor = new MonitorImpl();
 
@@ -185,6 +210,11 @@ class MondrianServerImpl
         this.aggMgr = new AggregationManager(this);
 
         this.shepherd = new RolapResultShepherd();
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("new MondrianServer: id=" + id);
+        }
+        registerMBean();
     }
 
     @Override
@@ -313,6 +343,16 @@ class MondrianServerImpl
 
     @Override
     synchronized public void addConnection(RolapConnection connection) {
+<<<<<<< HEAD
+=======
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "addConnection "
+                + ", id=" + id
+                + ", statements=" + statementMap.size()
+                + ", connections=" + connectionMap.size());
+        }
+>>>>>>> upstream/4.0
         if (shutdown) {
             throw new MondrianException("Server already shutdown.");
         }
@@ -328,6 +368,16 @@ class MondrianServerImpl
 
     @Override
     synchronized public void removeConnection(RolapConnection connection) {
+<<<<<<< HEAD
+=======
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "removeConnection "
+                + ", id=" + id
+                + ", statements=" + statementMap.size()
+                + ", connections=" + connectionMap.size());
+        }
+>>>>>>> upstream/4.0
         if (shutdown) {
             throw new MondrianException("Server already shutdown.");
         }
@@ -352,6 +402,13 @@ class MondrianServerImpl
         if (shutdown) {
             throw new MondrianException("Server already shutdown.");
         }
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "addStatement "
+                + ", id=" + id
+                + ", statements=" + statementMap.size()
+                + ", connections=" + connectionMap.size());
+        }
         statementMap.put(
             statement.getId(),
             statement);
@@ -367,6 +424,16 @@ class MondrianServerImpl
 
     @Override
     synchronized public void removeStatement(Statement statement) {
+<<<<<<< HEAD
+=======
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "removeStatement "
+                + ", id=" + id
+                + ", statements=" + statementMap.size()
+                + ", connections=" + connectionMap.size());
+        }
+>>>>>>> upstream/4.0
         if (shutdown) {
             throw new MondrianException("Server already shutdown.");
         }
@@ -408,6 +475,87 @@ class MondrianServerImpl
         // No pre-configured response; XMLA servlet will connect to get
         // data source info.
         return null;
+    }
+
+    public XmlaHandler.Request startRequest(
+        XmlaRequest request,
+        OlapConnection connection)
+    {
+        if (connection == null) {
+            // REVIEW: Use internal connection for auditing purposes?
+            return null;
+        }
+        try {
+            final RolapConnection mondrianConnection =
+                connection.unwrap(RolapConnection.class);
+            final Statement statement =
+                mondrianConnection.getInternalStatement();
+            Execution execution = new Execution(statement, 0);
+            execution.start();
+            final Locus locus =
+                new Locus(
+                    execution,
+                    "XMLA request",
+                    null);
+            Locus.push(locus);
+            return new MondrianServerXmlaRequest(locus);
+        } catch (SQLException e) {
+            // ignore
+            return null;
+        }
+    }
+
+    public void endRequest(XmlaHandler.Request request) {
+        if (request != null) {
+            final Locus locus = ((MondrianServerXmlaRequest) request).locus;
+            Locus.pop(locus);
+            locus.execution.end();
+        }
+    }
+
+    public XmlaHandler.XmlaExtra getExtra() {
+        return MondrianOlap4jDriver.EXTRA;
+    }
+
+    /**
+     * Allows XMLA requests to be tracked and audited somewhat similarly to
+     * statements.
+     */
+    private static class MondrianServerXmlaRequest
+        implements XmlaHandler.Request
+    {
+        final Locus locus;
+
+        public MondrianServerXmlaRequest(Locus locus) {
+            this.locus = locus;
+        }
+    }
+
+    /**
+     * Registers the MonitorImpl associated with this server
+     * as an MBean accessible via JMX.
+     */
+    private void registerMBean() {
+        if (Util.PreJdk16) {
+            LOGGER.info(
+                "JMX is supported in Mondrian only on Java 6+.");
+            return;
+        }
+        MBeanServer mbs =
+            ManagementFactory.getPlatformMBeanServer();
+        try {
+            ObjectName mxbeanName = new ObjectName(
+                "mondrian4.server:type=Server-" + id);
+            mbs.registerMBean(getMonitor(), mxbeanName);
+        } catch (MalformedObjectNameException e) {
+            LOGGER.warn("Failed to register JMX MBean", e);
+        } catch (NotCompliantMBeanException e) {
+            LOGGER.warn("Failed to register JMX MBean", e);
+        } catch (InstanceAlreadyExistsException e) {
+            LOGGER.warn("Failed to register JMX MBean", e);
+        } catch (MBeanRegistrationException e) {
+            LOGGER.warn("Failed to register JMX MBean", e);
+        }
     }
 }
 

@@ -9,7 +9,6 @@
 */
 package mondrian.rolap.aggmatcher;
 
-import mondrian.olap.MondrianProperties;
 import mondrian.olap.Result;
 
 /**
@@ -36,17 +35,15 @@ public class BUG_1541077 extends AggTableTestCase {
             return;
         }
 
-        MondrianProperties props = MondrianProperties.instance();
-
         // get value without aggregates
-        propSaver.set(props.UseAggregates, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
 
         String mdx =
             "select {[Measures].[Store Count]} on columns from Cheques";
         Result result = getTestContext().executeQuery(mdx);
         Object v = result.getCell(new int[]{0}).getValue();
 
-        propSaver.set(props.UseAggregates, true);
+        propSaver.set(propSaver.props.UseAggregates, true);
 
         Result result1 = getTestContext().executeQuery(mdx);
         Object v1 = result1.getCell(new int[]{0}).getValue();
@@ -59,17 +56,15 @@ public class BUG_1541077 extends AggTableTestCase {
             return;
         }
 
-        MondrianProperties props = MondrianProperties.instance();
-
         // get value without aggregates
-        propSaver.set(props.UseAggregates, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
 
         String mdx =
             "select {[Measures].[Sales Count]} on columns from Cheques";
         Result result = getTestContext().executeQuery(mdx);
         Object v = result.getCell(new int[]{0}).getValue();
 
-        propSaver.set(props.UseAggregates, true);
+        propSaver.set(propSaver.props.UseAggregates, true);
 
         Result result1 = getTestContext().executeQuery(mdx);
         Object v1 = result1.getCell(new int[]{0}).getValue();
@@ -82,17 +77,15 @@ public class BUG_1541077 extends AggTableTestCase {
             return;
         }
 
-        MondrianProperties props = MondrianProperties.instance();
-
         // get value without aggregates
-        propSaver.set(props.UseAggregates, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
 
         String mdx =
             "select {[Measures].[Total Amount]} on columns from Cheques";
         Result result = getTestContext().executeQuery(mdx);
         Object v = result.getCell(new int[]{0}).getValue();
 
-        propSaver.set(props.UseAggregates, false);
+        propSaver.set(propSaver.props.UseAggregates, true);
 
         Result result1 = getTestContext().executeQuery(mdx);
         Object v1 = result1.getCell(new int[]{0}).getValue();
@@ -105,10 +98,8 @@ public class BUG_1541077 extends AggTableTestCase {
             return;
         }
 
-        MondrianProperties props = MondrianProperties.instance();
-
         // get value without aggregates
-        propSaver.set(props.UseAggregates, false);
+        propSaver.set(propSaver.props.UseAggregates, false);
 
         String mdx = "select {[Measures].[Avg Amount]} on columns from Cheques";
 
@@ -116,7 +107,7 @@ public class BUG_1541077 extends AggTableTestCase {
         Object v = result.getCell(new int[]{0}).getFormattedValue();
 
         // get value with aggregates
-        propSaver.set(props.UseAggregates, true);
+        propSaver.set(propSaver.props.UseAggregates, true);
 
         Result result1 = getTestContext().executeQuery(mdx);
         Object v1 = result1.getCell(new int[]{0}).getFormattedValue();
@@ -137,7 +128,7 @@ public class BUG_1541077 extends AggTableTestCase {
                + "<AggMeasure name='[Measures].[Avg Amount]'\n"
                + "   column='amount_AVG' />\n"
 
-               /*
+/*
             + "<AggLevel name='[Worker].[Worker]'\n"
             + "column='worker_worker_name'/>\n"
             + "<AggLevel name='[Discount Card].[Discount\n"
@@ -151,7 +142,7 @@ public class BUG_1541077 extends AggTableTestCase {
                + "</AggName>\n"
                + "</Table>\n"
 
-               /*
+/*
             + "<DimensionUsage name='Year' source='Year'\n"
             + "   foreignKey='year_id'/>\n"
             + "<DimensionUsage name='Quarter'\n"
@@ -173,7 +164,7 @@ public class BUG_1541077 extends AggTableTestCase {
             + "<DimensionUsage name='Department'\n"
             + "   source='Department' foreignKey='department_id'/>\n"
  */
-               /*
+/*
             + "<DimensionUsage name='Store' source='StoreX'\n"
             + "   foreignKey='store_id'/>\n"
             + "<DimensionUsage name='Product' source='ProductX'\n"

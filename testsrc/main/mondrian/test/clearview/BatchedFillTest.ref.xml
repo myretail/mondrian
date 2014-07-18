@@ -12,7 +12,7 @@ With
   Set [*NATIVE_CJ_SET] as 'NonEmptyCrossJoin([*BASE_MEMBERS_Store],[*BASE_MEMBERS_Time])'
   Set [*BASE_MEMBERS_Measures] as '{[Measures].[*FORMATTED_MEASURE_0],[Measures].[*FORMATTED_MEASURE_1],[Measures].[*FORMATTED_MEASURE_2],[Measures].[*FORMATTED_MEASURE_3],[Measures].[*FORMATTED_MEASURE_4]}'
   Set [*BASE_MEMBERS_Store] as '{[Store].[USA].[CA]}'
-  Set [*NATIVE_MEMBERS_Store] as 'Generate([*NATIVE_CJ_SET], {[Store].CurrentMember})'
+  Set [*NATIVE_MEMBERS_Store] as 'Generate([*NATIVE_CJ_SET], {[Store].[Stores].CurrentMember})'
   Set [*BASE_MEMBERS_Time] as '[Time].[Year].Members'
   Set [*NATIVE_MEMBERS_Time] as 'Generate([*NATIVE_CJ_SET], {[Time].[Time].CurrentMember})'
   Member [Measures].[*FORMATTED_MEASURE_0] as '[Measures].[Unit Sales]', FORMAT_STRING = '#,##0', SOLVE_ORDER=300
@@ -22,7 +22,7 @@ With
   Member [Measures].[*FORMATTED_MEASURE_4] as '[Measures].[Sales Count]', FORMAT_STRING = '#,##0', SOLVE_ORDER=300 
 Select
   [*BASE_MEMBERS_Measures] on columns,
-  Non Empty Generate([*NATIVE_CJ_SET], {([Store].CurrentMember,[Time].[Time].CurrentMember)}) on rows 
+  Non Empty Generate([*NATIVE_CJ_SET], {([Store].[Stores].CurrentMember,[Time].[Time].CurrentMember)}) on rows 
 From [Sales]
 ]]>
         </Resource>
@@ -37,7 +37,7 @@ Axis #1:
 {[Measures].[*FORMATTED_MEASURE_3]}
 {[Measures].[*FORMATTED_MEASURE_4]}
 Axis #2:
-{[Store].[USA].[CA], [Time].[1997]}
+{[Store].[Stores].[USA].[CA], [Time].[Time].[1997]}
 Row #0: 74,748
 Row #0: 159,168
 Row #0: 63,530
@@ -100,9 +100,9 @@ Axis #1:
 {[Measures].[*FORMATTED_MEASURE_0]}
 {[Measures].[*FORMATTED_MEASURE_1]}
 Axis #2:
-{[Product].[Drink], [Time].[1997]}
-{[Product].[Food], [Time].[1997]}
-{[Product].[Non-Consumable], [Time].[1997]}
+{[Product].[Products].[Drink], [Time].[Time].[1997]}
+{[Product].[Products].[Food], [Time].[Time].[1997]}
+{[Product].[Products].[Non-Consumable], [Time].[Time].[1997]}
 Row #0: 48,836
 Row #0: 24,597
 Row #1: 409,036
@@ -141,13 +141,13 @@ select
   sum("sales_fact_1997"."unit_sales") as "m0",
   sum("sales_fact_1997"."store_sales") as "m1"
 from
-  "time_by_day" as "time_by_day",
   "sales_fact_1997" as "sales_fact_1997",
-  "product_class" as "product_class",
-  "product" as "product"
+  "time_by_day" as "time_by_day",
+  "product" as "product",
+  "product_class" as "product_class"
 where
-  "sales_fact_1997"."time_id" = "time_by_day"."time_id" and
   "time_by_day"."the_year" = 1997 and
+  "sales_fact_1997"."time_id" = "time_by_day"."time_id" and
   "sales_fact_1997"."product_id" = "product"."product_id" and
   "product"."product_class_id" = "product_class"."product_class_id"
 group by

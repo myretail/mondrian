@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2001-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.olap;
@@ -27,7 +27,6 @@ public abstract class MemberBase
     extends OlapElementBase
     implements Member
 {
-
     protected Member parentMember;
     protected final Level level;
     protected String uniqueName;
@@ -57,18 +56,18 @@ public abstract class MemberBase
      */
     protected final int flags;
 
-    private static final int FLAG_TYPE_MASK = 0x07;
+    public static final int FLAG_TYPE_MASK = 0x07;
     private static final int FLAG_HIDDEN = 0x08;
-    private static final int FLAG_ALL = 0x10;
-    private static final int FLAG_NULL = 0x20;
-    private static final int FLAG_CALCULATED = 0x40;
-    private static final int FLAG_MEASURE = 0x80;
+    public static final int FLAG_ALL = 0x10;
+    public static final int FLAG_NULL = 0x20;
+    public static final int FLAG_CALCULATED = 0x40;
+    public static final int FLAG_MEASURE = 0x80;
 
     /**
      * Cached values of {@link mondrian.olap.Member.MemberType} enumeration.
      * Without caching, get excessive calls to {@link Object#clone}.
      */
-    private static final MemberType[] MEMBER_TYPE_VALUES = MemberType.values();
+    public static final MemberType[] MEMBER_TYPE_VALUES = MemberType.values();
 
     protected MemberBase(
         Member parentMember,
@@ -108,10 +107,7 @@ public abstract class MemberBase
         if (mf != null) {
             return mf.formatMember(this);
         }
-        final String caption = super.getCaption();
-        return (caption != null)
-            ? caption
-            : getName();
+        return super.getCaption();
     }
 
     public String getParentUniqueName() {
@@ -137,7 +133,7 @@ public abstract class MemberBase
     }
 
     public String getDescription() {
-        return (String) getPropertyValue(Property.DESCRIPTION.name);
+        return Larders.getDescription(getLarder());
     }
 
     public boolean isMeasure() {
@@ -275,8 +271,33 @@ public abstract class MemberBase
         return null;
     }
 
-    public String getPropertyFormattedValue(String propertyName) {
-        return getPropertyValue(propertyName).toString();
+    protected Property lookupProperty(String propertyName, boolean matchCase) {
+        return Property.lookup(propertyName, matchCase);
+    }
+
+    public final Object getPropertyValue(String propertyName) {
+        return getPropertyValue(propertyName, true);
+    }
+
+    public final Object getPropertyValue(String propertyName, boolean matchCase)
+    {
+        Property property = lookupProperty(propertyName, matchCase);
+        if (property == null) {
+            return null;
+        }
+        return getPropertyValue(property);
+    }
+
+    public final String getPropertyFormattedValue(String propertyName) {
+        final Property property = lookupProperty(propertyName, true);
+        if (property == null) {
+            return "";
+        }
+        return getPropertyFormattedValue(property);
+    }
+
+    public String getPropertyFormattedValue(Property property) {
+        return getPropertyValue(property).toString();
     }
 
     public boolean isParentChildLeaf() {

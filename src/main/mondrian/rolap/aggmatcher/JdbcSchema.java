@@ -5,18 +5,16 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.aggmatcher;
 
-import mondrian.olap.MondrianDef;
-import mondrian.olap.MondrianProperties;
+import mondrian.olap.*;
 import mondrian.resource.MondrianResource;
-import mondrian.rolap.RolapAggregator;
-import mondrian.rolap.RolapLevel;
-import mondrian.rolap.RolapStar;
-import mondrian.spi.Dialect;
+import mondrian.rolap.*;
+import mondrian.spi.*;
+import mondrian.util.*;
 
 import org.apache.log4j.Logger;
 
@@ -26,26 +24,27 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.SoftReference;
 import java.sql.*;
+import java.sql.Connection;
 import java.util.*;
 import javax.sql.DataSource;
 
 /**
  * Metadata gleaned from JDBC about the tables and columns in the star schema.
  * This class is used to scrape a database and store information about its
- * tables and columnIter.
+ * tables and columns.
  *
  * <p>The structure of this information is as follows: A database has tables. A
- * table has columnIter. A column has one or more usages.  A usage might be a
+ * table has columns. A column has one or more usages.  A usage might be a
  * column being used as a foreign key or as part of a measure.
  *
- * <p> Tables are created when calling code requests the set of available
- * tables. This call <code>getTables()</code> causes all tables to be loaded.
- * But a table's columnIter are not loaded until, on a table-by-table basis,
- * a request is made to get the set of columnIter associated with the table.
+ * <p>Tables are created when calling code requests the set of available
+ * tables. This calls <code>getTables()</code>, causing all tables to be loaded.
+ * Columns are loaded on demand. Each table's columns are not loaded until
+ * a request is made to get the set of columns associated with the table.
  * Since, the AggTableManager first attempts table name matches (recognition)
- * most tables do not match, so why load their columnIter.
- * Of course, as a result, there are a host of methods that can throw an
- * {@link SQLException}, rats.
+ * most tables do not match, so why load their columns.
+ * (Of course, as a result, there are a host of methods that can throw an
+ * {@link SQLException}, rats!)
  *
  * @author Richard M. Emberson
  */
@@ -63,13 +62,12 @@ public class JdbcSchema {
     }
 
     public interface Factory {
-        JdbcSchema makeDB(DataSource dataSource);
-        void clearDB(JdbcSchema db);
-        void removeDB(JdbcSchema db);
+        JdbcSchema loadDatabase(DataSource dataSource);
     }
 
-    private static final Map<DataSource, SoftReference<JdbcSchema>> dbMap =
-        new HashMap<DataSource, SoftReference<JdbcSchema>>();
+    private static final
+    Map<Pair<Factory, DataSource>, SoftReference<JdbcSchema>> dbMap =
+        new HashMap<Pair<Factory, DataSource>, SoftReference<JdbcSchema>>();
 
     /**
      * How often between sweeping through the dbMap looking for nulls.
@@ -77,61 +75,30 @@ public class JdbcSchema {
     private static final int SWEEP_COUNT = 10;
     private static int sweepDBCount = 0;
 
-    public static class StdFactory implements Factory {
-        StdFactory() {
-        }
-        public JdbcSchema makeDB(DataSource dataSource) {
-            return new JdbcSchema(dataSource);
-        }
-        public void clearDB(JdbcSchema db) {
-            // NoOp
-        }
-        public void removeDB(JdbcSchema db) {
-            // NoOp
-        }
-    }
 
-    private static Factory factory;
-
-    private static void makeFactory() {
-        if (factory == null) {
-            String classname =
-                MondrianProperties.instance().JdbcFactoryClass.get();
-            if (classname == null) {
-                factory = new StdFactory();
-            } else {
-                try {
-                    Class<?> clz = Class.forName(classname);
-                    factory = (Factory) clz.newInstance();
-                } catch (ClassNotFoundException ex) {
-                    throw mres.BadJdbcFactoryClassName.ex(classname);
-                } catch (InstantiationException ex) {
-                    throw mres.BadJdbcFactoryInstantiation.ex(classname);
-                } catch (IllegalAccessException ex) {
-                    throw mres.BadJdbcFactoryAccess.ex(classname);
-                }
-            }
-        }
-    }
 
     /**
      * Creates or retrieves an instance of the JdbcSchema for the given
      * DataSource.
      *
+     *
      * @param dataSource DataSource
+     * @param factory Factory for creating a JdbcSchema
      * @return instance of the JdbcSchema for the given DataSource
      */
-    public static synchronized JdbcSchema makeDB(DataSource dataSource) {
-        makeFactory();
-
+    public static synchronized JdbcSchema makeDB(
+        DataSource dataSource, Factory factory)
+    {
         JdbcSchema db = null;
         SoftReference<JdbcSchema> ref = dbMap.get(dataSource);
         if (ref != null) {
             db = ref.get();
         }
         if (db == null) {
-            db = factory.makeDB(dataSource);
-            dbMap.put(dataSource, new SoftReference<JdbcSchema>(db));
+            db = factory.loadDatabase(dataSource);
+            dbMap.put(
+                new Pair<Factory, DataSource>(factory, dataSource),
+                new SoftReference<JdbcSchema>(db));
         }
 
         sweepDB();
@@ -145,35 +112,13 @@ public class JdbcSchema {
      * @param dataSource DataSource
      */
     public static synchronized void clearDB(DataSource dataSource) {
-        makeFactory();
-
         SoftReference<JdbcSchema> ref = dbMap.get(dataSource);
         if (ref != null) {
             JdbcSchema db = ref.get();
             if (db != null) {
-                factory.clearDB(db);
                 db.clear();
             } else {
                 dbMap.remove(dataSource);
-            }
-        }
-        sweepDB();
-    }
-
-    /**
-     * Removes a JdbcSchema associated with a DataSource.
-     *
-     * @param dataSource DataSource
-     */
-    public static synchronized void removeDB(DataSource dataSource) {
-        makeFactory();
-
-        SoftReference<JdbcSchema> ref = dbMap.remove(dataSource);
-        if (ref != null) {
-            JdbcSchema db = ref.get();
-            if (db != null) {
-                factory.removeDB(db);
-                db.remove();
             }
         }
         sweepDB();
@@ -353,8 +298,7 @@ public class JdbcSchema {
                 public RolapStar.Measure rMeasure;
 
                 // hierarchy stuff
-                public MondrianDef.Relation relation;
-                public MondrianDef.Expression joinExp;
+                public RolapSchema.PhysRelation relation;
                 public String levelColumnName;
 
                 // level
@@ -493,7 +437,7 @@ public class JdbcSchema {
             private final Set<UsageType> usageTypes =
                 Olap4jUtil.enumSetNoneOf(UsageType.class);
 
-            private Column(final String name) {
+            public Column(final String name) {
                 this.name = name;
                 this.column =
                     new MondrianDef.Column(
@@ -510,32 +454,32 @@ public class JdbcSchema {
             }
 
             /**
-             * Sets the columnIter java.sql.Type enun of the column.
+             * Sets the {@link java.sql.Types} enum of the column.
              *
-             * @param type
+             * @param type the type
              */
             private void setType(final int type) {
                 this.type = type;
             }
 
             /**
-             * Returns the columnIter java.sql.Type enun of the column.
+             * Returns the {@link java.sql.Types} enum of the column.
              */
             public int getType() {
                 return type;
             }
 
             /**
-             * Sets the columnIter java.sql.Type name.
+             * Sets the type name (per {@link java.sql.Types}) of the column.
              *
-             * @param typeName
+             * @param typeName the typeName
              */
             private void setTypeName(final String typeName) {
                 this.typeName = typeName;
             }
 
             /**
-             * Returns the columnIter java.sql.Type name.
+             * Returns the type name (per {@link java.sql.Types}) of the column.
              */
             public String getTypeName() {
                 return typeName;
@@ -549,7 +493,7 @@ public class JdbcSchema {
             }
 
             /**
-             * Return true if this column is numeric.
+             * Return the data type of this column.
              */
             public Dialect.Datatype getDatatype() {
                 return JdbcSchema.getDatatype(getType());
@@ -558,7 +502,7 @@ public class JdbcSchema {
             /**
              * Sets the size in bytes of the column in the database.
              *
-             * @param columnSize
+             * @param columnSize Size in bytes
              */
             private void setColumnSize(final int columnSize) {
                 this.columnSize = columnSize;
@@ -566,7 +510,6 @@ public class JdbcSchema {
 
             /**
              * Returns the size in bytes of the column in the database.
-             *
              */
             public int getColumnSize() {
                 return columnSize;
@@ -575,7 +518,7 @@ public class JdbcSchema {
             /**
              * Sets number of fractional digits.
              *
-             * @param decimalDigits
+             * @param decimalDigits Number of fractional digits
              */
             private void setDecimalDigits(final int decimalDigits) {
                 this.decimalDigits = decimalDigits;
@@ -591,7 +534,7 @@ public class JdbcSchema {
             /**
              * Sets Radix (typically either 10 or 2).
              *
-             * @param numPrecRadix
+             * @param numPrecRadix Radix
              */
             private void setNumPrecRadix(final int numPrecRadix) {
                 this.numPrecRadix = numPrecRadix;
@@ -607,7 +550,7 @@ public class JdbcSchema {
             /**
              * For char types the maximum number of bytes in the column.
              *
-             * @param charOctetLength
+             * @param charOctetLength Octet length
              */
             private void setCharOctetLength(final int charOctetLength) {
                 this.charOctetLength = charOctetLength;
@@ -623,7 +566,7 @@ public class JdbcSchema {
             /**
              * False means the column definitely does not allow NULL values.
              *
-             * @param isNullable
+             * @param isNullable Whether this column allows NULL values
              */
             private void setIsNullable(final boolean isNullable) {
                 this.isNullable = isNullable;
@@ -650,7 +593,7 @@ public class JdbcSchema {
             }
 
             /**
-             * flushes all star usage references
+             * Flushes all star usage references.
              */
             public void flushUsages() {
                 usages.clear();
@@ -818,11 +761,11 @@ public class JdbcSchema {
         private final String tableType;
 
         // mondriandef stuff
-        public MondrianDef.Table table;
+        public RolapSchema.PhysTable table;
 
         private boolean allColumnsLoaded;
 
-        private Table(final String name, String tableType) {
+        public Table(final String name, String tableType) {
             this.name = name;
             this.tableUsageType = TableUsageType.UNKNOWN;
             this.tableType = tableType;
@@ -933,7 +876,7 @@ public class JdbcSchema {
         /**
          * Sets the table usage (fact, aggregate or other).
          *
-         * @param tableUsageType
+         * @param tableUsageType the tableUsageType
          */
         public void setTableUsageType(final TableUsageType tableUsageType) {
             // if usageIter has already been set, then usageIter can NOT be
@@ -999,14 +942,14 @@ public class JdbcSchema {
         }
 
         /**
-         * Returns all of the columnIter associated with a table and creates
+         * Returns all of the columns associated with a table and creates
          * Column objects with the column's name, type, type name and column
          * size.
          *
-         * @throws SQLException
+         * @throws SQLException on error
          */
         private void loadColumns() throws SQLException {
-            if (! allColumnsLoaded) {
+            if (!allColumnsLoaded) {
                 Connection conn = getDataSource().getConnection();
                 try {
                     DatabaseMetaData dmd = conn.getMetaData();
@@ -1055,7 +998,7 @@ public class JdbcSchema {
                     try {
                         conn.close();
                     } catch (SQLException e) {
-                        //ignore
+                        // ignore
                     }
                 }
 
@@ -1083,17 +1026,22 @@ public class JdbcSchema {
     private final SortedMap<String, Table> tables =
         new TreeMap<String, Table>();
 
-    JdbcSchema(final DataSource dataSource) {
+    public JdbcSchema(final DataSource dataSource) {
+        assert dataSource != null;
         this.dataSource = dataSource;
     }
 
     /**
      * This forces the tables to be loaded.
+     * If called a second time, this method is a no-op.
      *
-     * @throws SQLException
+     * @throws SQLException on error
      */
-    public void load() throws SQLException {
-        loadTables();
+    public synchronized void load() {
+        if (!allTablesLoaded) {
+            loadTables("%");
+            allTablesLoaded = true;
+        }
     }
 
     protected synchronized void clear() {
@@ -1102,20 +1050,6 @@ public class JdbcSchema {
         schema = null;
         catalog = null;
         tables.clear();
-    }
-
-    protected void remove() {
-        // set ALL instance variables to null
-        clear();
-        dataSource = null;
-    }
-
-    /**
-     * Used for testing allowing one to load tables and their columnIter
-     * from more than one datasource
-     */
-    void resetAllTablesLoaded() {
-        allTablesLoaded = false;
     }
 
     public DataSource getDataSource() {
@@ -1187,7 +1121,7 @@ public class JdbcSchema {
         return sw.toString();
     }
 
-    public void print(final PrintWriter pw, final String prefix) {
+    public synchronized void print(final PrintWriter pw, final String prefix) {
         pw.print(prefix);
         pw.println("JdbcSchema:");
         String subprefix = prefix + "  ";
@@ -1203,35 +1137,55 @@ public class JdbcSchema {
     }
 
     /**
-     * Gets all of the tables (and views) in the database.
-     * If called a second time, this method is a no-op.
+     * Gets all of the tables (and views) in the database that match a given
+     * table name.
      *
-     * @throws SQLException
+     * @param tableName Table name
+     * @throws SQLException on error
      */
-    private void loadTables() throws SQLException {
-        if (allTablesLoaded) {
-            return;
-        }
+    private void loadTables(String tableName) {
         Connection conn = null;
         try {
             conn = getDataSource().getConnection();
             final DatabaseMetaData databaseMetaData = conn.getMetaData();
-            String[] tableTypes = { "TABLE", "VIEW" };
+            List<String> tableTypes = Arrays.asList("TABLE", "VIEW");
             if (databaseMetaData.getDatabaseProductName().toUpperCase().indexOf(
                     "VERTICA") >= 0)
             {
                 for (String tableType : tableTypes) {
-                    loadTablesOfType(databaseMetaData, new String[]{tableType});
+                    loadTablesOfType(
+                        databaseMetaData,
+                        Collections.singletonList(tableType),
+                        tableName);
                 }
             } else {
-                loadTablesOfType(databaseMetaData, tableTypes);
+                loadTablesOfType(databaseMetaData, tableTypes, tableName);
             }
-            allTablesLoaded = true;
+        } catch (SQLException e) {
+            throw Util.newError(
+                e, "Error while loading JDBC schema");
         } finally {
             if (conn != null) {
-                conn.close();
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    // no op.
+                }
             }
         }
+    }
+
+    /**
+     * Re-loads a table. Even if all tables have already been loaded.
+     *
+     * @param tableName Table name
+     * @throws SQLException on error
+     */
+    public Table reloadTable(String tableName)
+        throws SQLException
+    {
+        loadTables(tableName);
+        return tables.get(tableName);
     }
 
     /**
@@ -1240,19 +1194,19 @@ public class JdbcSchema {
      */
     private void loadTablesOfType(
         DatabaseMetaData databaseMetaData,
-        String[] tableTypes)
+        List<String> tableTypes,
+        String tableName)
         throws SQLException
     {
         final String schema = getSchemaName();
         final String catalog = getCatalogName();
-        final String tableName = "%";
         ResultSet rs = null;
         try {
             rs = databaseMetaData.getTables(
                 catalog,
                 schema,
                 tableName,
-                tableTypes);
+                tableTypes.toArray(new String[tableTypes.size()]));
             if (rs == null) {
                 getLogger().debug("ERROR: rs == null");
                 return;
@@ -1272,9 +1226,12 @@ public class JdbcSchema {
      * entry.
      *
      * @param rs Result set
-     * @throws SQLException
+     * @throws SQLException on error
      */
-    protected void addTable(final ResultSet rs) throws SQLException {
+    protected synchronized void addTable(
+        final ResultSet rs)
+        throws SQLException
+    {
         String name = rs.getString(3);
         String tableType = rs.getString(4);
         Table table = new Table(name, tableType);
@@ -1283,12 +1240,12 @@ public class JdbcSchema {
     }
 
     private SortedMap<String, Table> getTablesMap() {
+        load();
         return tables;
     }
 
     public static synchronized void clearAllDBs() {
-        factory = null;
-        makeFactory();
+        dbMap.clear();
     }
 }
 

@@ -4,14 +4,13 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2011-2012 Pentaho and others
+// Copyright (C) 2011-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.agg;
 
 import mondrian.olap.CacheControl;
 import mondrian.olap.Cube;
-import mondrian.olap.MondrianProperties;
 import mondrian.olap.MondrianServer;
 import mondrian.rolap.agg.SegmentCacheManager.CompositeSegmentCache;
 import mondrian.spi.SegmentCache;
@@ -46,7 +45,7 @@ public class SegmentCacheTest extends BasicQueryTest {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Gender].[All Gender]}\n"
+            + "{[Customer].[Gender].[All Gender]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Row #0: 5,581\n";
@@ -54,7 +53,7 @@ public class SegmentCacheTest extends BasicQueryTest {
             "Axis #0:\n"
             + "{}\n"
             + "Axis #1:\n"
-            + "{[Gender].[X]}\n"
+            + "{[Customer].[Gender].[X]}\n"
             + "Axis #2:\n"
             + "{[Measures].[Customer Count]}\n"
             + "Row #0: 2,716\n";
@@ -101,9 +100,15 @@ public class SegmentCacheTest extends BasicQueryTest {
 
         try {
             // Register our custom listener.
+<<<<<<< HEAD
             ((CompositeSegmentCache)MondrianServer
                 .forConnection(getTestContext().getConnection())
                 .getAggregationManager().cacheMgr.compositeCache)
+=======
+            MondrianServer
+                .forConnection(getTestContext().getConnection())
+                .getAggregationManager().cacheMgr.compositeCache
+>>>>>>> upstream/4.0
                 .addListener(listener);
             // Now execute a query and check the events
             executeQuery(
@@ -129,9 +134,15 @@ public class SegmentCacheTest extends BasicQueryTest {
             assertEquals("FoodMart", deletedHeaders.get(0).schemaName);
             assertEquals("Unit Sales", deletedHeaders.get(0).measureName);
         } finally {
+<<<<<<< HEAD
             ((CompositeSegmentCache)MondrianServer
                 .forConnection(getTestContext().getConnection())
                 .getAggregationManager().cacheMgr.compositeCache)
+=======
+            MondrianServer
+                .forConnection(getTestContext().getConnection())
+                .getAggregationManager().cacheMgr.compositeCache
+>>>>>>> upstream/4.0
                 .removeListener(listener);
             MondrianServer.forConnection(getTestContext().getConnection())
                 .getAggregationManager().cacheMgr.segmentCacheWorkers

@@ -5,7 +5,7 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2005-2005 Julian Hyde
-// Copyright (C) 2005-2011 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap.aggmatcher;
@@ -14,11 +14,9 @@ import mondrian.olap.*;
 import mondrian.recorder.*;
 import mondrian.resource.MondrianResource;
 import mondrian.rolap.*;
+import mondrian.spi.*;
 
 import org.apache.log4j.Logger;
-
-import org.eigenbase.util.property.Property;
-import org.eigenbase.util.property.Trigger;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -49,12 +47,6 @@ public class AggTableManager {
 
     private static final MondrianResource mres = MondrianResource.instance();
 
-    /**
-     * This is used to create forward references to triggers (so they do not
-     * get reaped until the RolapSchema is reaped).
-     */
-    private Trigger[] triggers;
-
     public AggTableManager(final RolapSchema schema) {
         this.schema = schema;
     }
@@ -65,9 +57,6 @@ public class AggTableManager {
      * associated RolapSchema object.
      */
     public void finalCleanUp() {
-        removeJdbcSchema();
-        deregisterTriggers(MondrianProperties.instance());
-
         if (getLogger().isDebugEnabled()) {
             getLogger().debug(
                 "AggTableManager.finalCleanUp: schema="
@@ -88,41 +77,19 @@ public class AggTableManager {
      * This method should only be called once.
      */
     public void initialize() {
-        if (MondrianProperties.instance().ReadAggregates.get()) {
+        if (Util.deprecated(false, false)
+            && MondrianProperties.instance().ReadAggregates.get())
+        {
             try {
                 loadRolapStarAggregates();
             } catch (SQLException ex) {
                 throw mres.AggLoadingError.ex(ex);
             }
         }
-        registerTriggers();
         printResults();
     }
 
     private void printResults() {
-/*
- *   This was too much information at the INFO level, compared to the
- *   rest of Mondrian
- *
- *         if (getLogger().isInfoEnabled()) {
-            // print just Star table alias and AggStar table names
-            StringBuilder buf = new StringBuilder(1024);
-            buf.append(Util.nl);
-            for (Iterator it = getStars(); it.hasNext();) {
-                RolapStar star = (RolapStar) it.next();
-                buf.append(star.getFactTable().getAlias());
-                buf.append(Util.nl);
-                for (Iterator ait = star.getAggStars(); ait.hasNext();) {
-                    AggStar aggStar = (AggStar) ait.next();
-                    buf.append("    ");
-                    buf.append(aggStar.getFactTable().getName());
-                    buf.append(Util.nl);
-                }
-            }
-            getLogger().info(buf.toString());
-
-        } else
-*/
         if (getLogger().isDebugEnabled()) {
             // print everything, Star, subTables, AggStar and subTables
             // could be a lot
@@ -137,7 +104,9 @@ public class AggTableManager {
     }
 
     private void reLoadRolapStarAggregates() {
-        if (MondrianProperties.instance().ReadAggregates.get()) {
+        if (Util.deprecated(false, false)
+            && MondrianProperties.instance().ReadAggregates.get())
+        {
             try {
                 clearJdbcSchema();
                 loadRolapStarAggregates();
@@ -151,9 +120,12 @@ public class AggTableManager {
     private JdbcSchema getJdbcSchema() {
         DataSource dataSource = schema.getInternalConnection().getDataSource();
 
+        DataServicesProvider provider =
+            DataServicesLocator.getDataServicesProvider(
+                schema.getDataServiceProviderName());
         // This actually just does a lookup or simple constructor invocation,
         // its not expected to fail
-        return JdbcSchema.makeDB(dataSource);
+        return JdbcSchema.makeDB(dataSource, provider.getJdbcSchemaFactory());
     }
 
     /**
@@ -162,14 +134,6 @@ public class AggTableManager {
     private void clearJdbcSchema() {
         DataSource dataSource = schema.getInternalConnection().getDataSource();
         JdbcSchema.clearDB(dataSource);
-    }
-
-    /**
-     * Remove the possibly already loaded snapshot of what is in the database.
-     */
-    private void removeJdbcSchema() {
-        DataSource dataSource = schema.getInternalConnection().getDataSource();
-        JdbcSchema.removeDB(dataSource);
     }
 
 
@@ -181,129 +145,121 @@ public class AggTableManager {
      * to ignore for right now). So, All stars have their columns
      * and their BitKeys can be generated.
      *
-     * @throws SQLException
+     * @throws SQLException on error
      */
     private void loadRolapStarAggregates() throws SQLException {
+        Util.deprecated("never called", true);
         ListRecorder msgRecorder = new ListRecorder();
         try {
             DefaultRules rules = DefaultRules.getInstance();
             JdbcSchema db = getJdbcSchema();
-            // if we don't synchronize this on the db object,
-            // we may end up getting a Concurrency exception due to
-            // calls to other instances of AggTableManager.finalCleanUp()
-            synchronized (db) {
-                // fix for MONDRIAN-496
-                // flush any existing usages of the jdbc schema, so we
-                // don't accidentally use another star's metadata
-                db.flushUsages();
+            // loads tables, not their columns
+            db.load();
 
-                // loads tables, not their columns
-                db.load();
+            for (RolapStar star : getStars()) {
+                // This removes any AggStars from any previous invocation of
+                // this method (if any)
+                star.prepareToLoadAggregates();
 
-                loop:
-                for (RolapStar star : getStars()) {
-                    // This removes any AggStars from any previous invocation of
-                    // this method (if any)
-                    star.prepareToLoadAggregates();
+                List<ExplicitRules.Group> aggGroups = getAggGroups(star);
+                for (ExplicitRules.Group group : aggGroups) {
+                    group.validate(msgRecorder);
+                }
 
-                    List<ExplicitRules.Group> aggGroups = getAggGroups(star);
-                    for (ExplicitRules.Group group : aggGroups) {
-                        group.validate(msgRecorder);
+                String factTableName = star.getFactTable().getAlias();
+
+                JdbcSchema.Table dbFactTable = db.getTable(factTableName);
+                if (dbFactTable == null) {
+                    msgRecorder.reportWarning(
+                        "No Table found for fact name=" + factTableName);
+                    continue;
+                }
+
+                // For each column in the dbFactTable, figure out it they are
+                // measure or foreign key columns
+                bindToStar(dbFactTable, star, msgRecorder);
+                String schemaName = dbFactTable.table.getSchemaName();
+
+                // Now look at all tables in the database and per table, first
+                // see if it is a match for an aggregate table for this fact
+                // table and second see if its columns match foreign key and
+                // level columns.
+                for (JdbcSchema.Table dbTable : db.getTables()) {
+                    String name = dbTable.getName();
+
+                    // Do the catalog schema aggregate excludes, exclude this
+                    // table name.
+                    if (ExplicitRules.excludeTable(name, aggGroups)) {
+                        continue;
                     }
 
-                    String factTableName = star.getFactTable().getAlias();
+                    // First see if there is an ExplicitRules match. If so, then
+                    // if all of the columns match up, then make an AggStar.
+                    // On the other hand, if there is no ExplicitRules match,
+                    // see if there is a Default match. If so and if all the
+                    // columns match up, then also make an AggStar.
+                    ExplicitRules.TableDef tableDef =
+                        ExplicitRules.getIncludeByTableDef(name, aggGroups);
 
-                    JdbcSchema.Table dbFactTable = db.getTable(factTableName);
-                    if (dbFactTable == null) {
-                        msgRecorder.reportWarning(
-                            "No Table found for fact name="
-                                + factTableName);
-                        continue loop;
-                    }
-
-                    // For each column in the dbFactTable, figure out it they
-                    // are measure or foreign key columns
-
-                    bindToStar(dbFactTable, star, msgRecorder);
-                    String schema = dbFactTable.table.schema;
-
-                    // Now look at all tables in the database and per table,
-                    // first see if it is a match for an aggregate table for
-                    // this fact table and second see if its columns match
-                    // foreign key and level columns.
-
-                    for (JdbcSchema.Table dbTable : db.getTables()) {
-                        String name = dbTable.getName();
-
-                        // Do the catalog schema aggregate excludes, exclude
-                        // this table name.
-                        if (ExplicitRules.excludeTable(name, aggGroups)) {
-                            continue;
-                        }
-
-                        // First see if there is an ExplicitRules match. If so,
-                        // then if all of the columns match up, then make an
-                        // AggStar. On the other hand, if there is no
-                        // ExplicitRules match, see if there is a Default
-                        // match. If so and if all the columns match up, then
-                        // also make an AggStar.
-                        ExplicitRules.TableDef tableDef =
-                            ExplicitRules.getIncludeByTableDef(name, aggGroups);
-
-                        boolean makeAggStar = false;
-                        int approxRowCount = Integer.MIN_VALUE;
-                        // Is it handled by the ExplicitRules
-                        if (tableDef != null) {
-                            // load columns
-                            dbTable.load();
-                            makeAggStar = tableDef.columnsOK(
+                    boolean makeAggStar = false;
+                    int approxRowCount = Integer.MIN_VALUE;
+                    // Is it handled by the ExplicitRules
+                    if (tableDef != null) {
+                        // load columns
+                        dbTable.load();
+                        makeAggStar =
+                            tableDef.columnsOK(
                                 star,
                                 dbFactTable,
                                 dbTable,
                                 msgRecorder);
                             approxRowCount = tableDef.getApproxRowCount();
-                        }
-                        if (! makeAggStar) {
-                            // Is it handled by the DefaultRules
-                            if (rules.matchesTableName(factTableName, name)) {
-                                // load columns
-                                dbTable.load();
-                                makeAggStar = rules.columnsOK(
+                    }
+                    if (! makeAggStar) {
+                        // Is it handled by the DefaultRules
+                        if (rules.matchesTableName(factTableName, name)) {
+                            // load columns
+                            dbTable.load();
+                            makeAggStar =
+                                rules.columnsOK(
                                     star,
                                     dbFactTable,
                                     dbTable,
                                     msgRecorder);
-                            }
                         }
+                    }
 
-                        if (makeAggStar) {
-                            dbTable.setTableUsageType(
-                                JdbcSchema.TableUsageType.AGG);
-                            dbTable.table = new MondrianDef.Table(
-                                schema,
+
+                    if (makeAggStar) {
+                        dbTable.setTableUsageType(
+                            JdbcSchema.TableUsageType.AGG);
+                        dbTable.table =
+                            new RolapSchema.PhysTable(
+                                schema.getPhysicalSchema(),
+                                schemaName,
                                 name,
-                                null, // null alias
+                                name, // REVIEW: alias used to be null
                                 null); // don't know about table hints
-                            AggStar aggStar = AggStar.makeAggStar(
+                        AggStar aggStar =
+                            AggStar.makeAggStar(
                                 star,
                                 dbTable,
                                 msgRecorder,
                                 approxRowCount);
-                            if (aggStar.getSize() > 0) {
-                                star.addAggStar(aggStar);
-                            } else {
-                                getLogger().warn(
-                                    mres.AggTableZeroSize.str(
-                                        aggStar.getFactTable().getName(),
-                                        factTableName));
-                            }
+                        if (aggStar.getCost() > 0) {
+                            star.addAggStar(aggStar);
+                        } else {
+                            getLogger().warn(
+                                mres.AggTableZeroSize.str(
+                                    aggStar.getAggFactTable().getName(),
+                                    factTableName));
                         }
-                        // Note: if the dbTable name matches but the columnsOK
-                        // does not, then this is an error and the aggregate
-                        // tables can not be loaded.
-                        // We do not "reset" the column usages in the dbTable
-                        // allowing it maybe to match another rule.
                     }
+                    // Note: if the dbTable name matches but the columnsOK does
+                    // not, then this is an error and the aggregate tables
+                    // can not be loaded.
+                    // We do not "reset" the column usages in the dbTable
+                    // allowing it maybe to match another rule.
                 }
             }
         } catch (RecorderException ex) {
@@ -317,108 +273,6 @@ public class AggTableManager {
                     msgRecorder.getErrorCount());
             }
         }
-    }
-
-    private boolean runTrigger() {
-        if (RolapSchema.cacheContains(schema)) {
-            return true;
-        } else {
-            // must remove triggers
-            deregisterTriggers(MondrianProperties.instance());
-
-            return false;
-        }
-    }
-
-    /**
-     * Registers triggers for the following properties:
-     * <ul>
-     *      <li>{@link MondrianProperties#ChooseAggregateByVolume}
-     *      <li>{@link MondrianProperties#AggregateRules}
-     *      <li>{@link MondrianProperties#AggregateRuleTag}
-     *      <li>{@link MondrianProperties#ReadAggregates}
-     * </ul>
-     */
-    private void registerTriggers() {
-        final MondrianProperties properties = MondrianProperties.instance();
-        triggers = new Trigger[] {
-            // When the ordering AggStars property is changed, we must
-            // reorder them, so we create a trigger.
-            // There is no need to provide equals/hashCode methods for this
-            // Trigger since it is never explicitly removed.
-            new Trigger() {
-                public boolean isPersistent() {
-                    return false;
-                }
-                public int phase() {
-                    return Trigger.SECONDARY_PHASE;
-                }
-                public void execute(Property property, String value) {
-                    if (AggTableManager.this.runTrigger()) {
-                        reOrderAggStarList();
-                    }
-                }
-            },
-
-            // Register to know when the Default resource/url has changed
-            // so that the default aggregate table recognition rules can
-            // be re-loaded.
-            // There is no need to provide equals/hashCode methods for this
-            // Trigger since it is never explicitly removed.
-            new Trigger() {
-                public boolean isPersistent() {
-                    return false;
-                }
-                public int phase() {
-                    return Trigger.SECONDARY_PHASE;
-                }
-                public void execute(Property property, String value) {
-                    if (AggTableManager.this.runTrigger()) {
-                        reLoadRolapStarAggregates();
-                    }
-                }
-            },
-
-            // If the system started not using aggregates, i.e., the aggregate
-            // tables were not loaded, but then the property
-            // was changed to use aggregates, we must then load the aggregates
-            // if they were never loaded.
-            new Trigger() {
-                public boolean isPersistent() {
-                    return false;
-                }
-                public int phase() {
-                    return Trigger.SECONDARY_PHASE;
-                }
-                public void execute(Property property, String value) {
-                    if (AggTableManager.this.runTrigger()) {
-                        reLoadRolapStarAggregates();
-                    }
-                }
-            }
-        };
-
-        // Note that for each AggTableManager theses triggers are
-        // added to the properties object. Each trigger has just
-        // been created and "knows" its AggTableManager instance.
-        // The triggers' hashCode and equals methods (those provided
-        // by the Object class) are used when removing the trigger.
-        properties.ChooseAggregateByVolume.addTrigger(triggers[0]);
-        properties.AggregateRules.addTrigger(triggers[1]);
-        properties.AggregateRuleTag.addTrigger(triggers[1]);
-        properties.ReadAggregates.addTrigger(triggers[2]);
-    }
-
-    private void deregisterTriggers(final MondrianProperties properties) {
-        // Remove this AggTableManager's instance's triggers.
-        final Trigger[] triggers = this.triggers;
-        if (triggers == null) {
-            return;
-        }
-        properties.ChooseAggregateByVolume.removeTrigger(triggers[0]);
-        properties.AggregateRules.removeTrigger(triggers[1]);
-        properties.AggregateRuleTag.removeTrigger(triggers[1]);
-        properties.ReadAggregates.removeTrigger(triggers[2]);
     }
 
     private Collection<RolapStar> getStars() {
@@ -454,9 +308,9 @@ public class AggTableManager {
      * column with the same name and a RolapStar foreign key column becomes a
      * foreign key usage for the column with the same name.
      *
-     * @param dbFactTable
-     * @param star
-     * @param msgRecorder
+     * @param dbFactTable fact table
+     * @param star rolap star
+     * @param msgRecorder message recorder
      */
     void bindToStar(
         final JdbcSchema.Table dbFactTable,
@@ -464,6 +318,7 @@ public class AggTableManager {
         final MessageRecorder msgRecorder)
         throws SQLException
     {
+        Util.deprecated("never called", true);
         msgRecorder.pushContextName("AggTableManager.bindToStar");
         try {
             // load columns
@@ -471,27 +326,33 @@ public class AggTableManager {
 
             dbFactTable.setTableUsageType(JdbcSchema.TableUsageType.FACT);
 
-            MondrianDef.RelationOrJoin relation =
+            // Aggregate tables are in same schema as fact table.
+            // TODO: Create a default schema name for a physical schema, and
+            // remove this logic.
+            Util.deprecated("add PhysicalSchema@schemaName", false);
+            RolapSchema.PhysRelation relation =
                 star.getFactTable().getRelation();
-            String schema = null;
-            MondrianDef.Hint[] tableHints = null;
-            if (relation instanceof MondrianDef.Table) {
-                schema = ((MondrianDef.Table) relation).schema;
-                tableHints = ((MondrianDef.Table) relation).tableHints;
+            String schemaName = null;
+            Map<String, String> tableHints = Collections.emptyMap();
+            if (relation instanceof RolapSchema.PhysTable) {
+                schemaName = ((RolapSchema.PhysTable) relation).getSchemaName();
+                tableHints = ((RolapSchema.PhysTable) relation).getHintMap();
             }
             String tableName = dbFactTable.getName();
-            String alias = null;
-            dbFactTable.table = new MondrianDef.Table(
-                schema,
-                tableName,
-                alias,
-                tableHints);
+            String alias = relation.getSchema().newAlias();
+            dbFactTable.table =
+                new RolapSchema.PhysTable(
+                    relation.getSchema(),
+                    schemaName,
+                    tableName,
+                    alias,
+                    tableHints);
 
             for (JdbcSchema.Table.Column factColumn
                 : dbFactTable.getColumns())
             {
                 String cname = factColumn.getName();
-                RolapStar.Column[] rcs =
+                List<RolapStar.Column> rcs =
                     star.getFactTable().lookupColumns(cname);
 
                 for (RolapStar.Column rc : rcs) {

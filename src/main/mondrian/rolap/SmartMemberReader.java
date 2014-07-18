@@ -6,7 +6,7 @@
 //
 // Copyright (C) 2001-2005 Julian Hyde
 // Copyright (C) 2004-2005 TONBELLER AG
-// Copyright (C) 2005-2012 Pentaho and others
+// Copyright (C) 2005-2013 Pentaho and others
 // All Rights Reserved.
 */
 package mondrian.rolap;
@@ -70,7 +70,7 @@ public class SmartMemberReader implements MemberReader {
         }
     }
     // implement MemberReader
-    public RolapHierarchy getHierarchy() {
+    public RolapCubeHierarchy getHierarchy() {
         return source.getHierarchy();
     }
 
@@ -94,7 +94,7 @@ public class SmartMemberReader implements MemberReader {
     }
 
     public RolapMember getMemberByKey(
-        RolapLevel level, List<Comparable> keyValues)
+        RolapCubeLevel level, List<Comparable> keyValues)
     {
         // Caching by key is not supported.
         return source.getMemberByKey(level, keyValues);
@@ -103,9 +103,8 @@ public class SmartMemberReader implements MemberReader {
     // implement MemberReader
     public List<RolapMember> getMembers() {
         List<RolapMember> v = new ConcatenableList<RolapMember>();
-        RolapLevel[] levels = (RolapLevel[]) getHierarchy().getLevels();
         // todo: optimize by walking to children for members we know about
-        for (RolapLevel level : levels) {
+        for (RolapCubeLevel level : getHierarchy().getLevelList()) {
             List<RolapMember> membersInLevel = getMembersInLevel(level);
             v.addAll(membersInLevel);
         }
@@ -120,23 +119,18 @@ public class SmartMemberReader implements MemberReader {
     }
 
     public List<RolapMember> getMembersInLevel(
-        RolapLevel level)
+        RolapCubeLevel level)
     {
         TupleConstraint constraint =
             sqlConstraintFactory.getLevelMembersConstraint(null);
         return getMembersInLevel(level, constraint);
     }
 
-    protected void checkCacheStatus() {
-        cacheHelper.checkCacheStatus();
-    }
-
     public List<RolapMember> getMembersInLevel(
-        RolapLevel level, TupleConstraint constraint)
+        RolapCubeLevel level,
+        TupleConstraint constraint)
     {
         synchronized (cacheHelper) {
-            checkCacheStatus();
-
             List<RolapMember> members =
                 cacheHelper.getLevelMembersFromCache(level, constraint);
             if (members != null) {
@@ -151,7 +145,7 @@ public class SmartMemberReader implements MemberReader {
         }
     }
 
-    public int getLevelMemberCount(RolapLevel level) {
+    public int getLevelMemberCount(RolapCubeLevel level) {
         // No need to cache the result: the caller saves the result by calling
         // RolapLevel.setApproxRowCount
         return source.getLevelMemberCount(level);
@@ -191,8 +185,6 @@ public class SmartMemberReader implements MemberReader {
         MemberChildrenConstraint constraint)
     {
         synchronized (cacheHelper) {
-            checkCacheStatus();
-
             List<RolapMember> missed = new ArrayList<RolapMember>();
             for (RolapMember parentMember : parentMembers) {
                 List<RolapMember> list =
@@ -251,7 +243,7 @@ public class SmartMemberReader implements MemberReader {
         Map<RolapMember, List<RolapMember>> tempMap =
             new HashMap<RolapMember, List<RolapMember>>();
         for (RolapMember member1 : members) {
-            tempMap.put(member1, Collections.EMPTY_LIST);
+            tempMap.put(member1, Collections.<RolapMember>emptyList());
         }
         for (final RolapMember child : children) {
             // todo: We could optimize here. If members.length is small, it's
@@ -327,8 +319,7 @@ public class SmartMemberReader implements MemberReader {
                     RolapMember sibling = null;
                     while (n-- > 0) {
                         if (!iter.hasNext()) {
-                            return (RolapMember)
-                                member.getHierarchy().getNullMember();
+                            return member.getHierarchy().getNullMember();
                         }
                         sibling = iter.nextMember();
                     }
@@ -338,8 +329,7 @@ public class SmartMemberReader implements MemberReader {
                     RolapMember sibling = null;
                     while (n-- > 0) {
                         if (!iter.hasPrevious()) {
-                            return (RolapMember)
-                                member.getHierarchy().getNullMember();
+                            return member.getHierarchy().getNullMember();
                         }
                         sibling = iter.previousMember();
                     }
@@ -546,8 +536,7 @@ public class SmartMemberReader implements MemberReader {
     }
 
     public RolapMember getDefaultMember() {
-        RolapMember defaultMember =
-            (RolapMember) getHierarchy().getDefaultMember();
+        RolapMember defaultMember = getHierarchy().getDefaultMember();
         if (defaultMember != null) {
             return defaultMember;
         }

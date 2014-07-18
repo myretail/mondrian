@@ -5,7 +5,11 @@
 // You must accept the terms of that agreement to use this software.
 //
 // Copyright (C) 2004-2005 Julian Hyde
+<<<<<<< HEAD
 // Copyright (C) 2005-2012 Pentaho and others
+=======
+// Copyright (C) 2005-2013 Pentaho and others
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.olap.fun;
@@ -54,16 +58,14 @@ class PropertiesFunDef extends FunDefBase {
     }
 
     static Object properties(Member member, String s) {
-        boolean matchCase = MondrianProperties.instance().CaseSensitive.get();
-        Object o = member.getPropertyValue(s, matchCase);
-        if (o == null) {
-            if (!Util.isValidProperty(s, member.getLevel())) {
-                throw new MondrianEvaluationException(
-                    "Property '" + s
-                    + "' is not valid for member '" + member + "'");
-            }
+        final Property property = lookupProperty(member.getLevel(), s);
+        if (property == null) {
+            throw new MondrianEvaluationException(
+                "Property '" + s
+                + "' is not valid for member '" + member + "'");
+        } else {
+            return member.getPropertyValue(property);
         }
-        return o;
     }
 
     /**
@@ -137,9 +139,11 @@ class PropertiesFunDef extends FunDefBase {
             if (hierarchy == null) {
                 return Category.Value;
             }
-            Level[] levels = hierarchy.getLevels();
-            Property property = lookupProperty(
-                levels[levels.length - 1], propertyName);
+            List<? extends Level> levels = hierarchy.getLevelList();
+            Property property =
+                lookupProperty(
+                    levels.get(levels.size() - 1),
+                    propertyName);
             if (property == null) {
                 // we'll likely get a runtime error
                 return Category.Value;

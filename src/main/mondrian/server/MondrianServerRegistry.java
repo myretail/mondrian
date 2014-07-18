@@ -4,7 +4,11 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
+<<<<<<< HEAD
 // Copyright (C) 2010-2012 Pentaho
+=======
+// Copyright (C) 2010-2013 Pentaho
+>>>>>>> upstream/4.0
 // All Rights Reserved.
 */
 package mondrian.server;
@@ -15,9 +19,13 @@ import mondrian.spi.CatalogLocator;
 import mondrian.spi.impl.IdentityCatalogLocator;
 import mondrian.util.LockBox;
 
+<<<<<<< HEAD
 import java.io.*;
 import java.net.URL;
 import java.util.*;
+=======
+import org.apache.log4j.Logger;
+>>>>>>> upstream/4.0
 
 /**
  * Registry of all servers within this JVM, and also serves as a factory for
@@ -29,6 +37,8 @@ import java.util.*;
  * @author jhyde
  */
 public class MondrianServerRegistry {
+    public static final Logger logger =
+        Logger.getLogger(MondrianServerRegistry.class);
     public static final MondrianServerRegistry INSTANCE =
         new MondrianServerRegistry();
 
@@ -46,8 +56,6 @@ public class MondrianServerRegistry {
      */
     final MondrianServer staticServer =
         createWithRepository(null, null);
-
-    private MondrianServer.MondrianVersion version = null;
 
     /**
      * Looks up a server with a given id. If the id is null, returns the
@@ -70,46 +78,19 @@ public class MondrianServerRegistry {
         }
     }
 
-    public synchronized MondrianServer.MondrianVersion getOrLoadVersion() {
-        if (version == null) {
-            final String[] vendorTitleVersion = loadVersionFile();
-            String vendor = vendorTitleVersion[0];
-            final String title = vendorTitleVersion[1];
-            final String versionString = vendorTitleVersion[2];
-            if (false) {
-                System.out.println(
-                    "vendor=" + vendor
-                    + ", title=" + title
-                    + ", versionString=" + versionString);
-            }
-            int dot1 = versionString.indexOf('.');
-            final int majorVersion =
-                dot1 < 0
-                ? 1
-                : Integer.valueOf(versionString.substring(0, dot1));
-            int dot2 = versionString.indexOf('.', dot1 + 1);
-            final int minorVersion =
-                dot2 < 0
-                ? 0
-                : Integer.valueOf(versionString.substring(dot1 + 1, dot2));
-            version = new MondrianServer.MondrianVersion() {
-                public String getVersionString() {
-                    return versionString;
-                }
-
-                public int getMajorVersion() {
-                    return majorVersion;
-                }
-
-                public int getMinorVersion() {
-                    return minorVersion;
-                }
-
-                public String getProductName() {
-                    return title;
-                }
-            };
+    public MondrianServer.MondrianVersion getVersion() {
+        if (logger.isDebugEnabled()) {
+            logger.debug(" Vendor: " + MondrianServerVersion.VENDOR);
+            final String title = MondrianServerVersion.NAME;
+            logger.debug("  Title: " + title);
+            final String versionString = MondrianServerVersion.VERSION;
+            logger.debug("Version: " + versionString);
+            final int majorVersion = MondrianServerVersion.MAJOR_VERSION;
+            logger.debug(String.format("Major Version: %d", majorVersion));
+            final int minorVersion = MondrianServerVersion.MINOR_VERSION;
+            logger.debug(String.format("Minor Version: %d", minorVersion));
         }
+<<<<<<< HEAD
         return version;
     }
 
@@ -180,14 +161,40 @@ public class MondrianServerRegistry {
             } catch (IOException e) {
                 // ignore exception - it's OK if file is not found
                 Util.discard(e);
+=======
+        final StringBuilder sb = new StringBuilder();
+        try {
+            Integer.parseInt(MondrianServerVersion.VERSION);
+            sb.append(MondrianServerVersion.VERSION);
+        } catch (NumberFormatException e) {
+            // Version is not a number (e.g. "TRUNK-SNAPSHOT").
+            // Fall back on VersionMajor, VersionMinor, if present.
+            final String versionMajor =
+                String.valueOf(MondrianServerVersion.MAJOR_VERSION);
+            final String versionMinor =
+                String.valueOf(MondrianServerVersion.MINOR_VERSION);
+            if (versionMajor != null) {
+                sb.append(versionMajor);
+            }
+            if (versionMinor != null) {
+                sb.append(".").append(versionMinor);
+>>>>>>> upstream/4.0
             }
         }
-
-        // Version from jar manifest overrides that from VERSION.txt.
-        if (implementationVersion != null) {
-            version = implementationVersion;
-        }
-        return new String[] {vendor, title, version};
+        return new MondrianServer.MondrianVersion() {
+            public String getVersionString() {
+                return sb.toString();
+            }
+            public String getProductName() {
+                return MondrianServerVersion.NAME;
+            }
+            public int getMinorVersion() {
+                return MondrianServerVersion.MINOR_VERSION;
+            }
+            public int getMajorVersion() {
+                return MondrianServerVersion.MAJOR_VERSION;
+            }
+        };
     }
 
     public MondrianServer createWithRepository(

@@ -14,6 +14,8 @@ package mondrian.olap;
 
 import mondrian.spi.PropertyFormatter;
 
+import org.olap4j.impl.Named;
+
 import java.util.*;
 
 /**
@@ -57,7 +59,7 @@ import java.util.*;
  *
  * @author jhyde
  */
-public class Property extends EnumeratedValues.BasicValue {
+public class Property extends EnumeratedValues.BasicValue implements Named {
 
     public enum Datatype {
         TYPE_STRING,
@@ -802,6 +804,7 @@ public class Property extends EnumeratedValues.BasicValue {
                 CAPTION,
                 CONTRIBUTING_CHILDREN,
                 FORMULA,
+                MEMBER_SCOPE,
                 CATALOG_NAME,
                 SCHEMA_NAME,
                 CUBE_NAME,
@@ -837,10 +840,13 @@ public class Property extends EnumeratedValues.BasicValue {
                 SOLVE_ORDER,
                 VALUE,
                 DATATYPE,
+                DEPTH,
+                DISPLAY_INFO,
                 MEMBER_KEY,
                 KEY,
                 SCENARIO,
                 DISPLAY_FOLDER,
+                LANGUAGE,
                 FORMAT_EXP,
                 ACTION_TYPE,
                 DRILLTHROUGH_COUNT,

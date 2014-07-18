@@ -4,14 +4,16 @@
 // http://www.eclipse.org/legal/epl-v10.html.
 // You must accept the terms of that agreement to use this software.
 //
-// Copyright (C) 2007-2012 Pentaho
+// Copyright (C) 2007-2013 Pentaho
 // All Rights Reserved.
 */
 package mondrian.olap4j;
 
-import mondrian.olap.Hierarchy;
+import mondrian.olap.LocalizedProperty;
 import mondrian.olap.OlapElement;
 import mondrian.olap.Role;
+
+import mondrian.rolap.*;
 
 import org.olap4j.OlapException;
 import org.olap4j.impl.*;
@@ -32,7 +34,7 @@ class MondrianOlap4jSchema
 {
     final MondrianOlap4jCatalog olap4jCatalog;
     final String schemaName;
-    final mondrian.olap.Schema schema;
+    final RolapSchema schema;
 
     /**
      * Creates a MondrianOlap4jSchema.
@@ -49,7 +51,7 @@ class MondrianOlap4jSchema
     MondrianOlap4jSchema(
         MondrianOlap4jCatalog olap4jCatalog,
         String schemaName,
-        mondrian.olap.Schema schema)
+        RolapSchema schema)
     {
         this.olap4jCatalog = olap4jCatalog;
         this.schemaName = schemaName;
@@ -58,6 +60,26 @@ class MondrianOlap4jSchema
 
     public Catalog getCatalog() {
         return olap4jCatalog;
+    }
+
+    public String getUniqueName() {
+        return schema.getUniqueName();
+    }
+
+    public String getCaption() {
+        return schema.getLocalized(
+            LocalizedProperty.CAPTION,
+            getLocale());
+    }
+
+    public String getDescription() {
+        return schema.getLocalized(
+            LocalizedProperty.DESCRIPTION,
+            getLocale());
+    }
+
+    public boolean isVisible() {
+        return schema.isVisible();
     }
 
     public NamedList<Cube> getCubes() throws OlapException {
@@ -69,6 +91,10 @@ class MondrianOlap4jSchema
             : olap4jConnection.getMondrianConnection()
                 .getSchemaReader().getCubes())
         {
+            // Hide the dummy cube created for each shared dimension.
+            if (cube.getName().startsWith("$")) {
+                continue;
+            }
             list.add(olap4jConnection.toOlap4j(cube));
         }
         return Olap4jUtil.cast(list);
@@ -89,10 +115,10 @@ class MondrianOlap4jSchema
                 }
             );
         final Role role = olap4jConnection.getMondrianConnection().getRole();
-        for (Hierarchy hierarchy : schema.getSharedHierarchies()) {
-            if (role.canAccess(hierarchy)) {
+        for (RolapCubeDimension dim : schema.getSharedDimensionList()) {
+            if (role.canAccess(dim)) {
                 dimensions.add(
-                    olap4jConnection.toOlap4j(hierarchy.getDimension()));
+                    olap4jConnection.toOlap4j(dim));
             }
         }
         NamedList<MondrianOlap4jDimension> list =
@@ -101,8 +127,8 @@ class MondrianOlap4jSchema
         return Olap4jUtil.cast(list);
     }
 
-    public Collection<Locale> getSupportedLocales() throws OlapException {
-        return Collections.emptyList();
+    public Collection<Locale> getSupportedLocales() {
+        return schema.locales;
     }
 
     public String getName() {
@@ -120,7 +146,7 @@ class MondrianOlap4jSchema
     }
 
     protected OlapElement getOlapElement() {
-        return null;
+        return schema;
     }
 }
 

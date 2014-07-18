@@ -42,11 +42,18 @@ public class ImpalaDialect extends HiveDialect {
     public static final JdbcDialectFactory FACTORY =
         new JdbcDialectFactory(
             ImpalaDialect.class,
+<<<<<<< HEAD
             DatabaseProduct.HIVE)
         {
             protected boolean acceptsConnection(Connection connection) {
                 return super.acceptsConnection(connection)
                     && isDatabase(DatabaseProduct.IMPALA, connection);
+=======
+            DatabaseProduct.IMPALA)
+        {
+            protected boolean acceptsConnection(Connection connection) {
+                return isDatabase(DatabaseProduct.IMPALA, connection);
+>>>>>>> upstream/4.0
             }
         };
 
@@ -135,9 +142,18 @@ public class ImpalaDialect extends HiveDialect {
         List<String> columnTypes,
         List<String[]> valueList)
     {
+<<<<<<< HEAD
         // TODO: fix this, when Impala has the necessary features. See bug
         // http://jira.pentaho.com/browse/MONDRIAN-1512.
         return "";
+=======
+        return generateInlineGeneric(
+            columnNames, columnTypes, valueList, null, false);
+    }
+
+    public boolean allowsJoinOn() {
+        return false;
+>>>>>>> upstream/4.0
     }
 
     @Override
