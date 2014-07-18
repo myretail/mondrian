@@ -1,3 +1,8 @@
+GTAGS
+GSYMS
+GRTAGS
+GPATH
+.settings/
 testclasses
 testlib
 build
